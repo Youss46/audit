@@ -1,0 +1,55 @@
+import {
+  index,
+  integer,
+  pgTable,
+  serial,
+  text,
+  timestamp,
+} from "drizzle-orm/pg-core";
+import { createInsertSchema } from "drizzle-zod";
+import { z } from "zod/v4";
+import { firmsTable } from "./firms";
+import { clientsTable } from "./clients";
+import type { AccountingSystem, MissionStatusValue } from "./clients";
+
+// A mission is one fiscal-year visa engagement for a client (module M4/P2).
+export const missionsTable = pgTable(
+  "missions",
+  {
+    id: serial("id").primaryKey(),
+    firmId: integer("firm_id")
+      .notNull()
+      .references(() => firmsTable.id, { onDelete: "cascade" }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clientsTable.id, { onDelete: "cascade" }),
+    fiscalYear: integer("fiscal_year").notNull(),
+    accountingSystem: text("accounting_system")
+      .notNull()
+      .$type<AccountingSystem>(),
+    status: text("status")
+      .notNull()
+      .$type<MissionStatusValue>()
+      .default("en_attente"),
+    createdById: integer("created_by_id"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow()
+      .$onUpdate(() => new Date()),
+  },
+  (table) => [
+    index("missions_firm_id_idx").on(table.firmId),
+    index("missions_client_id_idx").on(table.clientId),
+  ],
+);
+
+export const insertMissionSchema = createInsertSchema(missionsTable).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertMission = z.infer<typeof insertMissionSchema>;
+export type Mission = typeof missionsTable.$inferSelect;

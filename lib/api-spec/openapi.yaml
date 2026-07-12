@@ -3,13 +3,27 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: M15-AUDIT API specification
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication
+  - name: users
+    description: Firm user administration (RBAC)
+  - name: audit
+    description: Audit trail
+  - name: clients
+    description: Client / dossier management
+  - name: missions
+    description: SYSCOHADA visa missions
+  - name: documents
+    description: Document management (GED)
+  - name: dashboard
+    description: Dashboard aggregates
 paths:
   /healthz:
     get:
@@ -24,6 +38,569 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/register:
+    post:
+      operationId: register
+      tags: [auth]
+      summary: Register a new accounting firm and its first administrator
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterInput"
+      responses:
+        "201":
+          description: Firm and user created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/login:
+    post:
+      operationId: login
+      tags: [auth]
+      summary: Authenticate and obtain a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginInput"
+      responses:
+        "200":
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      operationId: getCurrentUser
+      tags: [auth]
+      summary: Get the currently authenticated user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "401":
+          description: Not authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users belonging to the current firm
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create (invite) a new user in the current firm
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserInput"
+      responses:
+        "201":
+          description: User created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /users/{id}:
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update a user's role or status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserUpdate"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Remove a user from the firm
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /audit-logs:
+    get:
+      operationId: listAuditLogs
+      tags: [audit]
+      summary: List the firm's audit trail (who did what, when)
+      parameters:
+        - name: entityType
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of audit log entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AuditLog"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Aggregate counts for the firm's dashboard
+      responses:
+        "200":
+          description: Dashboard summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /clients:
+    get:
+      operationId: listClients
+      tags: [clients]
+      summary: List clients (dossiers) of the current firm
+      parameters:
+        - name: missionStatus
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MissionStatus"
+      responses:
+        "200":
+          description: List of clients
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Client"
+    post:
+      operationId: createClient
+      tags: [clients]
+      summary: Create a new client dossier
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientInput"
+      responses:
+        "201":
+          description: Client created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clients/{id}:
+    get:
+      operationId: getClient
+      tags: [clients]
+      summary: Get a single client dossier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateClient
+      tags: [clients]
+      summary: Update a client dossier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientUpdate"
+      responses:
+        "200":
+          description: Updated client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Client"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteClient
+      tags: [clients]
+      summary: Delete a client dossier
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clients/{id}/documents:
+    get:
+      operationId: listClientDocuments
+      tags: [documents]
+      summary: List all documents (GED) stored for a client, across all folders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of documents (metadata only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+    post:
+      operationId: uploadClientDocument
+      tags: [documents]
+      summary: Upload a document (PDF/image) into a client's folder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DocumentInput"
+      responses:
+        "201":
+          description: Document uploaded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get a document including its base64-encoded content
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Document detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentDetail"
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /missions:
+    get:
+      operationId: listMissions
+      tags: [missions]
+      summary: List visa missions
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/MissionStatus"
+      responses:
+        "200":
+          description: List of missions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Mission"
+    post:
+      operationId: createMission
+      tags: [missions]
+      summary: Open a new visa mission for a client and fiscal year (auto-determines the SYSCOHADA system and generates the control checklist)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MissionInput"
+      responses:
+        "201":
+          description: Mission created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mission"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /missions/{id}:
+    get:
+      operationId: getMission
+      tags: [missions]
+      summary: Get mission detail including its checklist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Mission detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionDetail"
+        "404":
+          description: Mission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateMission
+      tags: [missions]
+      summary: Update a mission's status (visa workflow tracker)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MissionUpdate"
+      responses:
+        "200":
+          description: Updated mission
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mission"
+        "404":
+          description: Mission not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /missions/{id}/checklist:
+    get:
+      operationId: listMissionChecklistItems
+      tags: [missions]
+      summary: List the control checklist items of a mission
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Checklist items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChecklistItem"
+
+  /missions/{id}/checklist/{itemId}:
+    patch:
+      operationId: updateMissionChecklistItem
+      tags: [missions]
+      summary: Update a checklist item's control status / note
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: itemId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChecklistItemUpdate"
+      responses:
+        "200":
+          description: Updated checklist item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChecklistItem"
+        "404":
+          description: Checklist item not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +611,343 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    UserRole:
+      type: string
+      enum:
+        - expert_comptable
+        - collaborateur
+        - stagiaire
+        - client_pme
+
+    UserStatus:
+      type: string
+      enum:
+        - active
+        - invited
+        - disabled
+
+    User:
+      type: object
+      required: [id, firmId, email, fullName, role, status, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        email: { type: string }
+        fullName: { type: string }
+        role:
+          $ref: "#/components/schemas/UserRole"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        createdAt: { type: string, format: date-time }
+
+    RegisterInput:
+      type: object
+      required: [firmName, fullName, email, password]
+      properties:
+        firmName: { type: string, minLength: 2 }
+        fullName: { type: string, minLength: 2 }
+        email: { type: string, minLength: 3 }
+        password: { type: string, minLength: 8 }
+
+    LoginInput:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, minLength: 3 }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      required: [token, user]
+      properties:
+        token: { type: string }
+        user:
+          $ref: "#/components/schemas/User"
+
+    UserInput:
+      type: object
+      required: [email, fullName, role, password]
+      properties:
+        email: { type: string, minLength: 3 }
+        fullName: { type: string, minLength: 2 }
+        role:
+          $ref: "#/components/schemas/UserRole"
+        password: { type: string, minLength: 8 }
+
+    UserUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2 }
+        role:
+          $ref: "#/components/schemas/UserRole"
+        status:
+          $ref: "#/components/schemas/UserStatus"
+
+    AuditLog:
+      type: object
+      required: [id, firmId, action, entityType, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        userId: { type: ["integer", "null"] }
+        userName: { type: ["string", "null"] }
+        action: { type: string }
+        entityType: { type: string }
+        entityId: { type: ["string", "null"] }
+        details: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    Sector:
+      type: string
+      enum:
+        - commerce
+        - artisanat
+        - services
+
+    AccountingSystem:
+      type: string
+      enum:
+        - SMT
+        - ALLEGE
+        - NORMAL
+
+    MissionStatus:
+      type: string
+      enum:
+        - en_attente
+        - en_cours
+        - anomalie
+        - valide
+        - visa_emis
+
+    Client:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          name,
+          legalForm,
+          sector,
+          missionStatus,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        name: { type: string }
+        legalForm: { type: string }
+        sector:
+          $ref: "#/components/schemas/Sector"
+        rccm: { type: ["string", "null"] }
+        taxId: { type: ["string", "null"] }
+        address: { type: ["string", "null"] }
+        phone: { type: ["string", "null"] }
+        email: { type: ["string", "null"] }
+        contactName: { type: ["string", "null"] }
+        annualTurnover: { type: ["number", "null"] }
+        accountingSystem:
+          oneOf:
+            - $ref: "#/components/schemas/AccountingSystem"
+            - type: "null"
+        missionStatus:
+          $ref: "#/components/schemas/MissionStatus"
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ClientInput:
+      type: object
+      required: [name, legalForm, sector]
+      properties:
+        name: { type: string, minLength: 1 }
+        legalForm: { type: string, minLength: 1 }
+        sector:
+          $ref: "#/components/schemas/Sector"
+        rccm: { type: string }
+        taxId: { type: string }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        contactName: { type: string }
+        annualTurnover: { type: number }
+
+    ClientUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        legalForm: { type: string, minLength: 1 }
+        sector:
+          $ref: "#/components/schemas/Sector"
+        rccm: { type: string }
+        taxId: { type: string }
+        address: { type: string }
+        phone: { type: string }
+        email: { type: string }
+        contactName: { type: string }
+        annualTurnover: { type: number }
+        missionStatus:
+          $ref: "#/components/schemas/MissionStatus"
+
+    DashboardSummary:
+      type: object
+      required:
+        [
+          totalClients,
+          totalMissions,
+          enAttente,
+          enCours,
+          anomalie,
+          valide,
+          visaEmis,
+        ]
+      properties:
+        totalClients: { type: integer }
+        totalMissions: { type: integer }
+        enAttente: { type: integer }
+        enCours: { type: integer }
+        anomalie: { type: integer }
+        valide: { type: integer }
+        visaEmis: { type: integer }
+
+    ChecklistItemStatus:
+      type: string
+      enum:
+        - a_verifier
+        - conforme
+        - anomalie
+
+    ChecklistItem:
+      type: object
+      required: [id, missionId, orderIndex, label, status, updatedAt]
+      properties:
+        id: { type: integer }
+        missionId: { type: integer }
+        orderIndex: { type: integer }
+        label: { type: string }
+        status:
+          $ref: "#/components/schemas/ChecklistItemStatus"
+        note: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+
+    ChecklistItemUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/ChecklistItemStatus"
+        note: { type: string }
+
+    Mission:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          fiscalYear,
+          accountingSystem,
+          status,
+          checklistTotal,
+          checklistCompleted,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        fiscalYear: { type: integer }
+        accountingSystem:
+          $ref: "#/components/schemas/AccountingSystem"
+        status:
+          $ref: "#/components/schemas/MissionStatus"
+        checklistTotal: { type: integer }
+        checklistCompleted: { type: integer }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    MissionDetail:
+      allOf:
+        - $ref: "#/components/schemas/Mission"
+        - type: object
+          required: [checklist]
+          properties:
+            checklist:
+              type: array
+              items:
+                $ref: "#/components/schemas/ChecklistItem"
+
+    MissionInput:
+      type: object
+      required: [clientId, fiscalYear]
+      properties:
+        clientId: { type: integer }
+        fiscalYear: { type: integer }
+
+    MissionUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/MissionStatus"
+
+    DocumentInput:
+      type: object
+      required: [fileName, mimeType, fileData, category]
+      properties:
+        fileName:
+          type: string
+          minLength: 1
+        mimeType:
+          type: string
+          minLength: 1
+        fileData:
+          type: string
+          description: Base64-encoded file content
+        category:
+          type: string
+          minLength: 1
+        missionId:
+          type: integer
+
+    Document:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          category,
+          fileName,
+          mimeType,
+          fileSize,
+          createdAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        missionId: { type: ["integer", "null"] }
+        category: { type: string }
+        fileName: { type: string }
+        mimeType: { type: string }
+        fileSize: { type: integer }
+        uploadedByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    DocumentDetail:
+      allOf:
+        - $ref: "#/components/schemas/Document"
+        - type: object
+          required: [fileData]
+          properties:
+            fileData:
+              type: string
+              description: Base64-encoded file content

@@ -1,0 +1,19 @@
+import type { UserRole } from "@workspace/db";
+
+// Augments Express' Request with the authenticated principal attached by the
+// `requireAuth` middleware.
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        id: number;
+        firmId: number;
+        role: UserRole;
+        email: string;
+        fullName: string;
+      };
+    }
+  }
+}
+
+export {};

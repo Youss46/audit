@@ -1,0 +1,2 @@
+- [Orval/zod/OpenAPI codegen gotchas](orval-zod-openapi-gotchas.md) — avoid format:email, path+query param mixing, and multipart file uploads in this template's pipeline.
+- [React+Vite scaffold missing CSS import](react-vite-scaffold-css-import.md) — unstyled app despite correct theme means main.tsx is missing `import "./index.css"`; always screenshot after a design pass.
