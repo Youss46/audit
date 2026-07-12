@@ -67,7 +67,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Nom du cabinet</FormLabel>
                       <FormControl>
-                        <Input placeholder="Cabinet Expertise & Associés" {...field} data-testid="input-firm" />
+                        <Input placeholder="Cabinet Kouassi & Associés" {...field} data-testid="input-firm" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -80,7 +80,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Nom de l'administrateur</FormLabel>
                       <FormControl>
-                        <Input placeholder="Jean Dupont" {...field} data-testid="input-name" />
+                        <Input placeholder="Kouassi Yao" {...field} data-testid="input-name" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -93,7 +93,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Email professionnel</FormLabel>
                       <FormControl>
-                        <Input placeholder="jean@cabinet.com" {...field} data-testid="input-email" />
+                        <Input placeholder="kouassi.yao@cabinet.ci" {...field} data-testid="input-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

@@ -118,7 +118,7 @@ export default function ClientNew() {
                     <FormItem>
                       <FormLabel>Raison sociale *</FormLabel>
                       <FormControl>
-                        <Input placeholder="Acme SARL" {...field} />
+                        <Input placeholder="Ivoire Négoce SARL" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

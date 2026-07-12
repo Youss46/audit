@@ -63,7 +63,7 @@ export default function Login() {
                     <FormItem>
                       <FormLabel>Email professionnel</FormLabel>
                       <FormControl>
-                        <Input placeholder="expert@cabinet.com" {...field} data-testid="input-email" />
+                        <Input placeholder="kouassi.yao@cabinet.ci" {...field} data-testid="input-email" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
