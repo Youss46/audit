@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { Sector } from './sector';
+import type { TaxRegime } from './taxRegime';
 
 export interface ClientInput {
   /** @minLength 1 */
@@ -20,4 +21,6 @@ export interface ClientInput {
   email?: string;
   contactName?: string;
   annualTurnover?: number;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
 }

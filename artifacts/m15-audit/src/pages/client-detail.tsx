@@ -12,11 +12,13 @@ import {
   useDeleteDocument,
   useUpdateClient,
   MissionStatus,
-  Sector
+  Sector,
+  TaxRegime
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime, formatDate } from "@/lib/utils"
 import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
+import { getTaxRegimeLabel } from "@/lib/status"
 import { 
   Building2, 
   ChevronLeft, 
@@ -66,6 +68,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
 import { EtatsFinanciers } from "@/components/reporting/etats-financiers"
 import {
   Select,
@@ -228,6 +231,8 @@ export default function ClientDetail() {
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [editSector, setEditSector] = useState<Sector>(Sector.services)
   const [editTurnover, setEditTurnover] = useState<number>(0)
+  const [editTaxRegime, setEditTaxRegime] = useState<TaxRegime>(TaxRegime.REEL_NORMAL)
+  const [editIsVatRegistered, setEditIsVatRegistered] = useState<boolean>(true)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -309,6 +314,8 @@ export default function ClientDetail() {
     if (!client) return
     setEditSector(client.sector)
     setEditTurnover(client.annualTurnover ?? 0)
+    setEditTaxRegime(client.taxRegime ?? TaxRegime.REEL_NORMAL)
+    setEditIsVatRegistered(client.isVatRegistered ?? true)
     setIsEditingProfile(true)
   }
 
@@ -316,7 +323,12 @@ export default function ClientDetail() {
     e.preventDefault()
     updateClientMutation.mutate({
       id: clientId,
-      data: { sector: editSector, annualTurnover: editTurnover }
+      data: {
+        sector: editSector,
+        annualTurnover: editTurnover,
+        taxRegime: editTaxRegime,
+        isVatRegistered: editIsVatRegistered,
+      }
     })
   }
 
@@ -481,6 +493,33 @@ export default function ClientDetail() {
                         onChange={(e) => setEditTurnover(parseFloat(e.target.value) || 0)}
                       />
                     </div>
+                    <div className="space-y-2">
+                      <Label>Régime fiscal</Label>
+                      <Select value={editTaxRegime} onValueChange={(v) => setEditTaxRegime(v as TaxRegime)}>
+                        <SelectTrigger data-testid="select-tax-regime">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value={TaxRegime.REEL_NORMAL}>{getTaxRegimeLabel('REEL_NORMAL')}</SelectItem>
+                          <SelectItem value={TaxRegime.REEL_SIMPLIFIE}>{getTaxRegimeLabel('REEL_SIMPLIFIE')}</SelectItem>
+                          <SelectItem value={TaxRegime.ENTREPRENANT}>{getTaxRegimeLabel('ENTREPRENANT')}</SelectItem>
+                          <SelectItem value={TaxRegime.EXONERE}>{getTaxRegimeLabel('EXONERE')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-center justify-between rounded-lg border p-3">
+                      <div>
+                        <Label className="text-sm">Assujetti à la TVA</Label>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Désactivez si cette entité est exonérée ou non assujettie à la TVA.
+                        </p>
+                      </div>
+                      <Switch
+                        checked={editIsVatRegistered}
+                        onCheckedChange={setEditIsVatRegistered}
+                        data-testid="switch-vat-registered"
+                      />
+                    </div>
                     {previewSystem && (
                       <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
                         <Calculator className="h-5 w-5 text-primary shrink-0" />
@@ -522,6 +561,22 @@ export default function ClientDetail() {
                         {client.accountingSystem ? (
                           <Badge variant="secondary" className="font-mono">{client.accountingSystem}</Badge>
                         ) : '-'}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">Régime fiscal</div>
+                      <div className="font-medium">{getTaxRegimeLabel(client.taxRegime)}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">Assujetti à la TVA</div>
+                      <div className="font-medium">
+                        {client.isVatRegistered ? (
+                          <Badge variant="secondary">Oui</Badge>
+                        ) : (
+                          <Badge variant="outline" className="border-amber-300 text-amber-700 dark:text-amber-400">
+                            Non — Exonéré / Non assujetti
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </div>

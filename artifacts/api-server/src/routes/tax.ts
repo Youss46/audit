@@ -176,6 +176,13 @@ router.get("/tax/exports/vat-annex", async (req, res) => {
     return;
   }
 
+  if (!client.isVatRegistered) {
+    res.status(400).json({
+      error: "Ce client n'est pas assujetti à la TVA. Aucune annexe D-201/VA n'est requise.",
+    });
+    return;
+  }
+
   const groups = await fetchVatTransactionGroups(clientId, req.user!.firmId, period);
   const rows = computeVatAnnex(groups);
 
@@ -302,6 +309,14 @@ router.post(
     const client = await findClient(req, clientId);
     if (!client) {
       res.status(404).json({ error: "Client introuvable." });
+      return;
+    }
+
+    if (!client.isVatRegistered) {
+      res.status(400).json({
+        error:
+          "Ce client n'est pas assujetti à la TVA. Aucune déclaration ni liquidation de TVA n'est requise.",
+      });
       return;
     }
 

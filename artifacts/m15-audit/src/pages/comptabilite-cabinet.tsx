@@ -7,6 +7,7 @@ import {
   useRejectTransaction,
   useUpdateTransactionJournalLines,
   getListAssetsQueryKey,
+  useListClients,
   TransactionStatus,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -22,6 +23,7 @@ import {
   getAnomalyLabel,
   getAnomalyShortLabel,
   formatFcfa,
+  isVatAccount,
 } from "@/lib/status"
 import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -69,6 +71,14 @@ export default function ComptabiliteCabinet() {
     ...(statusFilter === "ALL" ? {} : { status: statusFilter }),
     ...(clientId ? { clientId } : {}),
   })
+
+  // Module M21 VAT-exemption guard: a transaction's serialized shape only
+  // carries clientName, not the VAT-registration flag, so the client list is
+  // fetched here to look it up per row and disable/hide the VAT account
+  // entry client-side (the authoritative block is server-side, in
+  // PATCH /transactions/:id/journal-lines).
+  const { data: clients } = useListClients({})
+  const vatRegisteredByClientId = new Map((clients ?? []).map((c) => [c.id, c.isVatRegistered]))
 
   const invalidateList = () =>
     queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() })
@@ -152,9 +162,26 @@ export default function ComptabiliteCabinet() {
     }))
   }
 
-  const saveEditedAccounts = (transactionId: number) => {
+  const saveEditedAccounts = (transactionId: number, clientVatId: number | undefined) => {
     const edits = editingAccounts[transactionId]
     if (!edits) return
+
+    // Client-side mirror of the server-side guard: never let a non-assujetti
+    // client's opération be redirected onto a TVA account. The server
+    // enforces this authoritatively; this just avoids a round-trip failure.
+    if (clientVatId !== undefined && vatRegisteredByClientId.get(clientVatId) === false) {
+      const blocked = Object.values(edits).some((accountNumber) => isVatAccount(accountNumber))
+      if (blocked) {
+        toast({
+          title: "Compte TVA non autorisé",
+          description:
+            "Cette entité n'est pas assujettie à la TVA. Veuillez comptabiliser le montant TTC directement en charge/immobilisation.",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
     updateJournalLinesMutation.mutate({
       id: transactionId,
       data: {
@@ -381,7 +408,7 @@ export default function ComptabiliteCabinet() {
                           <Button
                             size="sm"
                             variant="outline"
-                            onClick={() => saveEditedAccounts(t.id)}
+                            onClick={() => saveEditedAccounts(t.id, t.clientId)}
                             disabled={updateJournalLinesMutation.isPending}
                             data-testid={`button-save-accounts-${t.id}`}
                           >
@@ -410,34 +437,46 @@ export default function ComptabiliteCabinet() {
                         </tr>
                       </thead>
                       <tbody>
-                        {t.journalLines.map((line) => (
-                          <tr key={line.id} className="border-t">
-                            <td className="py-1.5">
-                              {editingAccounts[t.id]?.[line.id] !== undefined ? (
-                                <Input
-                                  className="h-7 w-24 font-mono text-xs inline-block mr-1.5"
-                                  value={editingAccounts[t.id][line.id]}
-                                  onChange={(e) =>
-                                    setEditingAccounts((prev) => ({
-                                      ...prev,
-                                      [t.id]: { ...prev[t.id], [line.id]: e.target.value },
-                                    }))
-                                  }
-                                  data-testid={`input-account-${line.id}`}
-                                />
-                              ) : (
-                                <span className="font-mono text-xs mr-1.5">{line.accountNumber}</span>
-                              )}
-                              {line.label}
-                            </td>
-                            <td className="text-right py-1.5">
-                              {line.debitAmount > 0 ? formatFcfa(line.debitAmount) : ""}
-                            </td>
-                            <td className="text-right py-1.5">
-                              {line.creditAmount > 0 ? formatFcfa(line.creditAmount) : ""}
-                            </td>
-                          </tr>
-                        ))}
+                        {t.journalLines.map((line) => {
+                          const isEditing = editingAccounts[t.id]?.[line.id] !== undefined
+                          const editedValue = isEditing ? editingAccounts[t.id][line.id] : line.accountNumber
+                          const clientNotVatRegistered = vatRegisteredByClientId.get(t.clientId) === false
+                          const vatFieldDisabled = clientNotVatRegistered && isVatAccount(editedValue)
+                          return (
+                            <tr key={line.id} className="border-t">
+                              <td className="py-1.5">
+                                {isEditing ? (
+                                  <Input
+                                    className="h-7 w-24 font-mono text-xs inline-block mr-1.5"
+                                    value={editingAccounts[t.id][line.id]}
+                                    disabled={clientNotVatRegistered && isVatAccount(line.accountNumber)}
+                                    onChange={(e) =>
+                                      setEditingAccounts((prev) => ({
+                                        ...prev,
+                                        [t.id]: { ...prev[t.id], [line.id]: e.target.value },
+                                      }))
+                                    }
+                                    data-testid={`input-account-${line.id}`}
+                                  />
+                                ) : (
+                                  <span className="font-mono text-xs mr-1.5">{line.accountNumber}</span>
+                                )}
+                                {line.label}
+                                {vatFieldDisabled && (
+                                  <span className="block text-[11px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                    Non assujetti à la TVA — compte TVA non modifiable
+                                  </span>
+                                )}
+                              </td>
+                              <td className="text-right py-1.5">
+                                {line.debitAmount > 0 ? formatFcfa(line.debitAmount) : ""}
+                              </td>
+                              <td className="text-right py-1.5">
+                                {line.creditAmount > 0 ? formatFcfa(line.creditAmount) : ""}
+                              </td>
+                            </tr>
+                          )
+                        })}
                       </tbody>
                     </table>
                     {t.validatedByName && (

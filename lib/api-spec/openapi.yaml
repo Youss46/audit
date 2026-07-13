@@ -2144,6 +2144,14 @@ components:
         - ALLEGE
         - NORMAL
 
+    TaxRegime:
+      type: string
+      enum:
+        - REEL_NORMAL
+        - REEL_SIMPLIFIE
+        - ENTREPRENANT
+        - EXONERE
+
     MissionStatus:
       type: string
       enum:
@@ -2183,6 +2191,9 @@ components:
           oneOf:
             - $ref: "#/components/schemas/AccountingSystem"
             - type: "null"
+        taxRegime:
+          $ref: "#/components/schemas/TaxRegime"
+        isVatRegistered: { type: boolean }
         # Null means no mission has ever been opened for this client yet.
         missionStatus:
           oneOf:
@@ -2206,6 +2217,9 @@ components:
         email: { type: string }
         contactName: { type: string }
         annualTurnover: { type: number }
+        taxRegime:
+          $ref: "#/components/schemas/TaxRegime"
+        isVatRegistered: { type: boolean }
 
     ClientUpdate:
       type: object
@@ -2221,6 +2235,9 @@ components:
         email: { type: string }
         contactName: { type: string }
         annualTurnover: { type: number }
+        taxRegime:
+          $ref: "#/components/schemas/TaxRegime"
+        isVatRegistered: { type: boolean }
         missionStatus:
           $ref: "#/components/schemas/MissionStatus"
 

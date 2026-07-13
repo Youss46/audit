@@ -238,6 +238,11 @@ export default function Teledeclaration() {
   const rows = useMemo(() => annexRows ?? [], [annexRows])
   const missingNccCount = rows.filter((r) => r.missingNcc).length
   const canLiquidate = user?.role === "expert_comptable"
+  // Module M21 VAT-exemption: an entity marked non-assujetti on its dossier
+  // has no monthly D-201/VA obligation at all -- the form/annexe/liquidation
+  // are all hidden rather than shown empty, to avoid implying a declaration
+  // is still expected.
+  const isVatRegistered = client?.isVatRegistered !== false
 
   async function handleDownload() {
     if (!clientId) return
@@ -330,7 +335,19 @@ export default function Teledeclaration() {
         </div>
       )}
 
-      {!declarationLoading && missingNccCount > 0 && (
+      {!isVatRegistered && (
+        <Alert className="border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200">
+          <ShieldAlert className="h-4 w-4" />
+          <AlertTitle>Client non assujetti à la TVA</AlertTitle>
+          <AlertDescription className="text-sm">
+            Ce client est enregistré sous un régime non assujetti à la TVA (
+            {client?.taxRegime === "EXONERE" ? "Exonéré / Non assujetti" : "régime spécifique"}
+            ). Aucune déclaration mensuelle de TVA (D-201/VA) n'est requise pour cette entité.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {!declarationLoading && isVatRegistered && missingNccCount > 0 && (
         <Alert variant="destructive">
           <BadgeAlert className="h-4 w-4" />
           <AlertTitle>NCC Fournisseur manquant !</AlertTitle>
@@ -344,7 +361,7 @@ export default function Teledeclaration() {
         </Alert>
       )}
 
-      {!declarationLoading && declaration && (
+      {!declarationLoading && isVatRegistered && declaration && (
         <Tabs defaultValue="formulaire">
           <TabsList>
             <TabsTrigger value="formulaire" data-testid="tab-formulaire">
@@ -607,7 +624,7 @@ export default function Teledeclaration() {
       {/* -------------------------------------------------------------------- */}
       {/* Actions panel                                                        */}
       {/* -------------------------------------------------------------------- */}
-      {!declarationLoading && declaration && (
+      {!declarationLoading && isVatRegistered && declaration && (
         <Card className="shadow-sm border-2 border-dashed border-muted">
           <CardContent className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

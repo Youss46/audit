@@ -1,4 +1,5 @@
 import {
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -18,6 +19,21 @@ export type Sector = (typeof SECTORS)[number];
 
 export const ACCOUNTING_SYSTEMS = ["SMT", "ALLEGE", "NORMAL"] as const;
 export type AccountingSystem = (typeof ACCOUNTING_SYSTEMS)[number];
+
+// Ivorian tax regime (régime fiscal) governing which declarations a client
+// is subject to. REEL_NORMAL/REEL_SIMPLIFIE/ENTREPRENANT are ordinary
+// taxable regimes; EXONERE marks an entity exempted or not subject to VAT
+// by law (e.g. certain non-profits, or a regime with no VAT obligation).
+// Kept independent of `isVatRegistered` below -- a client can in principle
+// change VAT registration status without changing tax regime, and vice
+// versa -- but in practice EXONERE implies isVatRegistered = false.
+export const TAX_REGIMES = [
+  "REEL_NORMAL",
+  "REEL_SIMPLIFIE",
+  "ENTREPRENANT",
+  "EXONERE",
+] as const;
+export type TaxRegime = (typeof TAX_REGIMES)[number];
 
 export const MISSION_STATUSES = [
   "en_attente",
@@ -47,6 +63,12 @@ export const clientsTable = pgTable(
     contactName: text("contact_name"),
     annualTurnover: doublePrecision("annual_turnover"),
     accountingSystem: text("accounting_system").$type<AccountingSystem>(),
+    // Ivorian tax regime + VAT registration status (see TAX_REGIMES above).
+    // Defaults keep every pre-existing client fully taxable/VAT-registered
+    // (the historical behavior) unless the accountant explicitly marks the
+    // dossier as exempt/non-assujetti.
+    taxRegime: text("tax_regime").notNull().default("REEL_NORMAL").$type<TaxRegime>(),
+    isVatRegistered: boolean("is_vat_registered").notNull().default(true),
     // Denormalized cache of the client's most recent mission status, kept in
     // sync by the missions routes. Null means no mission has ever been
     // opened for this client -- do NOT default this to "en_attente", or the

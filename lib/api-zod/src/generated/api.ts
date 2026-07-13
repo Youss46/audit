@@ -254,6 +254,8 @@ export const ListClientsResponseItem = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional(),
   "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -278,7 +280,9 @@ export const CreateClientBody = zod.object({
   "phone": zod.string().optional(),
   "email": zod.string().optional(),
   "contactName": zod.string().optional(),
-  "annualTurnover": zod.number().optional()
+  "annualTurnover": zod.number().optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional()
 })
 
 export const CreateClientResponse = zod.object({
@@ -295,6 +299,8 @@ export const CreateClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional(),
   "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -322,6 +328,8 @@ export const GetClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional(),
   "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
@@ -350,6 +358,8 @@ export const UpdateClientBody = zod.object({
   "email": zod.string().optional(),
   "contactName": zod.string().optional(),
   "annualTurnover": zod.number().optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional(),
   "missionStatus": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']).optional()
 })
 
@@ -367,6 +377,8 @@ export const UpdateClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
+  "taxRegime": zod.enum(['REEL_NORMAL', 'REEL_SIMPLIFIE', 'ENTREPRENANT', 'EXONERE']).optional(),
+  "isVatRegistered": zod.boolean().optional(),
   "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()

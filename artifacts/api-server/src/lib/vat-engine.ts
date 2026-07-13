@@ -26,6 +26,29 @@ export const ACCOUNT_TVA_DEDUCTIBLE_IMMO = "445100";
 export const ACCOUNT_TVA_DEDUCTIBLE_BIENS_SERVICES = "445200";
 export const ACCOUNT_CREDIT_TVA_REPORTE = "445400";
 
+// True for any account in the VAT collection/deduction classes (443 TVA
+// Collectée, 445 TVA Déductible) -- used to block VAT-account postings for
+// a client whose dossier is marked non-assujetti (isVatRegistered = false).
+// Deliberately matches on the class prefix rather than the exact constants
+// above, since a sub-account (e.g. "4451001") must be blocked too.
+export function isVatAccount(accountNumber: string): boolean {
+  return accountNumber.startsWith("443") || accountNumber.startsWith("445");
+}
+
+// Thrown when an operation would post to a VAT account (443/445) for a
+// client whose dossier says they are not subject to VAT. The full
+// TTC (Toutes Taxes Comprises) amount for such a client belongs entirely
+// on the class 6 (charge) or class 2 (immobilisation) counterpart account.
+export class ClientNotVatRegisteredError extends Error {
+  readonly statusCode = 400;
+  constructor() {
+    super(
+      "Cette entité n'est pas assujettie à la TVA. Veuillez comptabiliser le montant TTC directement en charge/immobilisation.",
+    );
+    this.name = "ClientNotVatRegisteredError";
+  }
+}
+
 /** One journal line, scoped to the transaction it belongs to. */
 export interface VatJournalLine {
   accountNumber: string;

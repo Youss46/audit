@@ -8,6 +8,7 @@
 import type { AccountingSystem } from './accountingSystem';
 import type { MissionStatus } from './missionStatus';
 import type { Sector } from './sector';
+import type { TaxRegime } from './taxRegime';
 
 export interface Client {
   id: number;
@@ -30,6 +31,8 @@ export interface Client {
   /** @nullable */
   annualTurnover?: number | null;
   accountingSystem?: AccountingSystem | null;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
   missionStatus?: MissionStatus | null;
   createdAt: Date;
   updatedAt: Date;

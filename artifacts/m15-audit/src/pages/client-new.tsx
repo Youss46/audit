@@ -2,16 +2,18 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
 import { useLocation } from "wouter"
-import { useCreateClient, Sector } from "@workspace/api-client-react"
+import { useCreateClient, Sector, TaxRegime } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { Building2, ChevronLeft, Calculator } from "lucide-react"
 import { Link } from "wouter"
 import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
+import { getTaxRegimeLabel } from "@/lib/status"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
@@ -30,6 +32,13 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 
+const TAX_REGIME_VALUES = [
+  TaxRegime.REEL_NORMAL,
+  TaxRegime.REEL_SIMPLIFIE,
+  TaxRegime.ENTREPRENANT,
+  TaxRegime.EXONERE,
+] as const
+
 const clientSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   legalForm: z.string().min(1, "La forme juridique est requise"),
@@ -43,6 +52,8 @@ const clientSchema = z.object({
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   contactName: z.string().optional(),
   annualTurnover: z.coerce.number().min(0, "Le chiffre d'affaires doit être positif").optional(),
+  taxRegime: z.enum(TAX_REGIME_VALUES, { required_error: "Le régime fiscal est requis" }),
+  isVatRegistered: z.boolean(),
 })
 
 export default function ClientNew() {
@@ -62,6 +73,8 @@ export default function ClientNew() {
       email: "",
       contactName: "",
       annualTurnover: 0,
+      taxRegime: TaxRegime.REEL_NORMAL,
+      isVatRegistered: true,
     }
   })
 
@@ -306,7 +319,67 @@ export default function ClientNew() {
               </CardContent>
             </Card>
           </div>
-          
+
+          <Card className="shadow-sm border-border/50">
+            <CardHeader className="pb-4">
+              <CardTitle>Fiscalité</CardTitle>
+              <CardDescription>Régime fiscal et assujettissement à la TVA</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="taxRegime"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Régime fiscal *</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-tax-regime">
+                            <SelectValue placeholder="Sélectionner..." />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {TAX_REGIME_VALUES.map((regime) => (
+                            <SelectItem key={regime} value={regime}>
+                              {getTaxRegimeLabel(regime)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="isVatRegistered"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col justify-center">
+                      <FormLabel>Assujetti à la TVA</FormLabel>
+                      <div className="flex items-center gap-2 h-9">
+                        <FormControl>
+                          <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="switch-vat-registered"
+                          />
+                        </FormControl>
+                        <span className="text-sm text-muted-foreground">
+                          {field.value ? "Oui" : "Non — Exonéré / Non assujetti"}
+                        </span>
+                      </div>
+                      <FormDescription>
+                        Décochez si cette entité est exonérée ou non assujettie à la TVA
+                        (régime fiscal Entreprenant, Exonéré, etc.).
+                      </FormDescription>
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="flex justify-end gap-4">
             <Button type="button" variant="outline" asChild>
               <Link href="/clients">Annuler</Link>

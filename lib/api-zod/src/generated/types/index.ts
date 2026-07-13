@@ -115,6 +115,7 @@ export * from './postPayrollLedgerResult';
 export * from './postVatLiquidationResult';
 export * from './registerInput';
 export * from './sector';
+export * from './taxRegime';
 export * from './transaction';
 export * from './transactionCategoryOption';
 export * from './transactionDetail';

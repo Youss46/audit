@@ -7,6 +7,7 @@
  */
 import type { MissionStatus } from './missionStatus';
 import type { Sector } from './sector';
+import type { TaxRegime } from './taxRegime';
 
 export interface ClientUpdate {
   /** @minLength 1 */
@@ -21,5 +22,7 @@ export interface ClientUpdate {
   email?: string;
   contactName?: string;
   annualTurnover?: number;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
   missionStatus?: MissionStatus;
 }

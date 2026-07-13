@@ -1,4 +1,25 @@
-import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, PaymentType, TransactionType, TransactionSource, ClosureStatus } from "@workspace/api-client-react"
+import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, PaymentType, TransactionType, TransactionSource, ClosureStatus, TaxRegime } from "@workspace/api-client-react"
+
+// Module M21 (Télédéclaration TVA): régime fiscal ivoirien, French label per
+// backend enum key (see TAX_REGIMES in lib/db/src/schema/clients.ts). Backend
+// stays English/upper-snake-case -- this is purely the display layer.
+// True for any account in the VAT collection/deduction classes (443 TVA
+// Collectée, 445 TVA Déductible) -- mirrors isVatAccount() server-side
+// (artifacts/api-server/src/lib/vat-engine.ts), used to disable/hide VAT
+// account entry for a client whose dossier is not VAT-registered.
+export function isVatAccount(accountNumber: string) {
+  return accountNumber.startsWith('443') || accountNumber.startsWith('445')
+}
+
+export function getTaxRegimeLabel(regime: TaxRegime | string | null | undefined) {
+  switch (regime) {
+    case 'REEL_NORMAL': return 'Réel Normal'
+    case 'REEL_SIMPLIFIE': return 'Réel Simplifié'
+    case 'ENTREPRENANT': return 'Entreprenant'
+    case 'EXONERE': return 'Exonéré / Non assujetti'
+    default: return '—'
+  }
+}
 
 // Shared French labels/colors for the mission workflow state machine and the
 // RBAC role badges, so every screen (dashboard, clients, missions, GED, team)

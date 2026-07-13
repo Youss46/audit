@@ -152,6 +152,16 @@ export const AccountingSystem = {
   NORMAL: 'NORMAL',
 } as const;
 
+export type TaxRegime = typeof TaxRegime[keyof typeof TaxRegime];
+
+
+export const TaxRegime = {
+  REEL_NORMAL: 'REEL_NORMAL',
+  REEL_SIMPLIFIE: 'REEL_SIMPLIFIE',
+  ENTREPRENANT: 'ENTREPRENANT',
+  EXONERE: 'EXONERE',
+} as const;
+
 export type MissionStatus = typeof MissionStatus[keyof typeof MissionStatus];
 
 
@@ -184,6 +194,8 @@ export interface Client {
   /** @nullable */
   annualTurnover?: number | null;
   accountingSystem?: AccountingSystem | null;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
   missionStatus?: MissionStatus | null;
   createdAt: string;
   updatedAt: string;
@@ -202,6 +214,8 @@ export interface ClientInput {
   email?: string;
   contactName?: string;
   annualTurnover?: number;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
 }
 
 export interface ClientUpdate {
@@ -217,6 +231,8 @@ export interface ClientUpdate {
   email?: string;
   contactName?: string;
   annualTurnover?: number;
+  taxRegime?: TaxRegime;
+  isVatRegistered?: boolean;
   missionStatus?: MissionStatus;
 }
 

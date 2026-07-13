@@ -45,6 +45,7 @@ import {
 } from "../lib/accounting-engine";
 import { detectAnomalies } from "../lib/anomaly-detector";
 import { isPeriodLocked } from "../lib/closing-engine";
+import { isVatAccount, ClientNotVatRegisteredError } from "../lib/vat-engine";
 
 const router: IRouter = Router();
 
@@ -814,6 +815,20 @@ router.patch(
       if (!existingIds.has(line.id)) {
         res.status(400).json({ error: "Ligne d'écriture introuvable pour cette opération." });
         return;
+      }
+    }
+
+    // VAT-exemption guard: a client whose dossier is not VAT-registered
+    // (isVatRegistered = false) may never have a line redirected onto a
+    // class 443 (TVA Collectée) or 445 (TVA Déductible) account -- the
+    // TTC amount must stay entirely on the class 6/2 counterpart account.
+    if (tx.client && !tx.client.isVatRegistered) {
+      for (const line of body.lines) {
+        if (isVatAccount(line.accountNumber)) {
+          const err = new ClientNotVatRegisteredError();
+          res.status(err.statusCode).json({ error: err.message });
+          return;
+        }
       }
     }
 
