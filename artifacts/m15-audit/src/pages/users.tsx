@@ -1,4 +1,4 @@
-import { useListUsers, useUpdateUser, useCreateUser, useDeleteUser, UserRole, UserStatus } from "@workspace/api-client-react"
+import { useListUsers, useUpdateUser, useCreateUser, useDeleteUser, useListClients, UserRole, UserStatus } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useState } from "react"
 import { 
@@ -98,6 +98,7 @@ export default function Users() {
   const { user: currentUser } = useAuth()
   const { toast } = useToast()
   const { data: users, isLoading, refetch } = useListUsers()
+  const { data: clients } = useListClients()
   
   const [isInviteOpen, setIsInviteOpen] = useState(false)
   const [userToDelete, setUserToDelete] = useState<number | null>(null)
@@ -107,6 +108,7 @@ export default function Users() {
   const [inviteName, setInviteName] = useState("")
   const [inviteRole, setInviteRole] = useState<UserRole>('collaborateur')
   const [invitePassword, setInvitePassword] = useState("")
+  const [inviteClientId, setInviteClientId] = useState<string>("")
 
   const inviteMutation = useCreateUser({
     mutation: {
@@ -116,6 +118,7 @@ export default function Users() {
         setInviteName("")
         setInvitePassword("")
         setInviteRole('collaborateur')
+        setInviteClientId("")
         toast({ title: "Utilisateur invité avec succès" })
         refetch()
       },
@@ -150,12 +153,21 @@ export default function Users() {
 
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault()
+    if (inviteRole === 'client_pme' && !inviteClientId) {
+      toast({
+        title: "Erreur",
+        description: "Un compte Espace PME doit être associé à un dossier client.",
+        variant: "destructive"
+      })
+      return
+    }
     inviteMutation.mutate({
       data: {
         email: inviteEmail,
         fullName: inviteName,
         role: inviteRole,
-        password: invitePassword
+        password: invitePassword,
+        ...(inviteRole === 'client_pme' ? { clientId: Number(inviteClientId) } : {})
       }
     })
   }
@@ -323,6 +335,22 @@ export default function Users() {
                 </SelectContent>
               </Select>
             </div>
+            {inviteRole === 'client_pme' && (
+              <div className="space-y-2">
+                <Label htmlFor="client">Dossier client</Label>
+                <Select value={inviteClientId} onValueChange={setInviteClientId}>
+                  <SelectTrigger id="client">
+                    <SelectValue placeholder="Sélectionner un client" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients?.map((c) => (
+                      <SelectItem key={c.id} value={String(c.id)}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">Ce compte n'aura accès qu'au dossier sélectionné.</p>
+              </div>
+            )}
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsInviteOpen(false)} disabled={inviteMutation.isPending}>
                 Annuler
