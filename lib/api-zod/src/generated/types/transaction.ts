@@ -42,6 +42,10 @@ export interface Transaction {
   /** @nullable */
   parentTransactionId?: number | null;
   /** @nullable */
+  cashRegisterId?: number | null;
+  /** @nullable */
+  cashRegisterName?: string | null;
+  /** @nullable */
   createdByName?: string | null;
   /** @nullable */
   validatedByName?: string | null;

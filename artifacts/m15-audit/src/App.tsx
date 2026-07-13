@@ -18,6 +18,7 @@ import Users from '@/pages/users';
 import AuditLog from '@/pages/audit-log';
 import ComptabilitePme from '@/pages/comptabilite-pme';
 import ComptabiliteCabinet from '@/pages/comptabilite-cabinet';
+import CaisseExpress from '@/pages/caisse-express';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -38,6 +39,7 @@ function Router() {
         <Route path="/documents" component={GestionDocumentaire} />
         <Route path="/portal" component={ClientPortal} />
         <Route path="/mes-operations" component={ComptabilitePme} />
+        <Route path="/caisse" component={CaisseExpress} />
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

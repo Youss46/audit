@@ -340,6 +340,7 @@ export const TransactionSource = {
   pme_entry: 'pme_entry',
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
+  caisse_closure: 'caisse_closure',
 } as const;
 
 export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
@@ -406,6 +407,10 @@ export interface Transaction {
   /** @nullable */
   parentTransactionId?: number | null;
   /** @nullable */
+  cashRegisterId?: number | null;
+  /** @nullable */
+  cashRegisterName?: string | null;
+  /** @nullable */
   createdByName?: string | null;
   /** @nullable */
   validatedByName?: string | null;
@@ -439,6 +444,11 @@ export interface TransactionInput {
   dueDate?: string | null;
   /** @nullable */
   documentId?: number | null;
+  /**
+     * Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+     * @nullable
+     */
+  cashRegisterId?: number | null;
 }
 
 export interface TransactionRejectInput {
@@ -448,6 +458,90 @@ export interface TransactionRejectInput {
 
 export interface TransactionSettleInput {
   paymentMethod: PaymentMethod;
+  /**
+     * Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+     * @nullable
+     */
+  cashRegisterId?: number | null;
+}
+
+export interface BatchCreateTransactionsInput {
+  /** @minItems 1 */
+  entries: TransactionInput[];
+}
+
+export type BatchCreateTransactionsResultErrorsItem = {
+  index: number;
+  error: string;
+};
+
+export interface BatchCreateTransactionsResult {
+  created: TransactionDetail[];
+  errors: BatchCreateTransactionsResultErrorsItem[];
+}
+
+export interface CashRegister {
+  id: number;
+  name: string;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  currentBalance: number;
+  createdAt: string;
+}
+
+export interface CashRegisterInput {
+  /** @minLength 1 */
+  name: string;
+  clientId: number;
+}
+
+export type ClosureStatus = typeof ClosureStatus[keyof typeof ClosureStatus];
+
+
+export const ClosureStatus = {
+  OPEN: 'OPEN',
+  CLOSED: 'CLOSED',
+} as const;
+
+export interface DailyClosure {
+  id: number;
+  cashRegisterId: number;
+  date: string;
+  openingBalance: number;
+  /** @nullable */
+  expectedClosingBalance?: number | null;
+  /** @nullable */
+  physicalClosingBalance?: number | null;
+  /** @nullable */
+  discrepancyAmount?: number | null;
+  liveBalance: number;
+  status: ClosureStatus;
+  /** @nullable */
+  comment?: string | null;
+  /** @nullable */
+  closedById?: number | null;
+  /** @nullable */
+  closedByName?: string | null;
+  /** @nullable */
+  closedAt?: string | null;
+  createdAt: string;
+}
+
+export interface CloseDailyClosureInput {
+  /** @minimum 0 */
+  physicalClosingBalance: number;
+  /**
+     * Mandatory ("Justification") whenever the physical count doesn't match the theoretical balance.
+     * @nullable
+     */
+  comment?: string | null;
+}
+
+export interface CloseDailyClosureResult {
+  closure: DailyClosure;
+  cashRegister: CashRegister;
+  summaryTransaction?: TransactionDetail | null;
 }
 
 export type UpdateJournalLinesInputLinesItem = {
@@ -485,5 +579,9 @@ type: TransactionType;
 export type ListTransactionsParams = {
 clientId?: number;
 status?: TransactionStatus;
+};
+
+export type ListCashRegistersParams = {
+clientId?: number;
 };
 

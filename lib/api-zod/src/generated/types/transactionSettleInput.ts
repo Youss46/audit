@@ -9,4 +9,9 @@ import type { PaymentMethod } from './paymentMethod';
 
 export interface TransactionSettleInput {
   paymentMethod: PaymentMethod;
+  /**
+     * Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+     * @nullable
+     */
+  cashRegisterId?: number | null;
 }

@@ -13,6 +13,7 @@ import {
   FolderOpen,
   Wallet,
   BookOpenCheck,
+  Banknote,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -75,10 +76,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, user, location, setLocation])
 
-  // "Mes Opérations" (module P3) is the Espace PME's own entry screen --
-  // cabinet staff have no client context there and use "/comptabilite" instead.
+  // "Mes Opérations" (module P3) and "Caisse Terrain" (module P5) are the
+  // Espace PME's own entry screens -- cabinet staff have no client context
+  // there and use "/comptabilite" instead.
   React.useEffect(() => {
-    if (!isLoading && user && user.role !== "client_pme" && location.startsWith("/mes-operations")) {
+    if (
+      !isLoading &&
+      user &&
+      user.role !== "client_pme" &&
+      (location.startsWith("/mes-operations") || location.startsWith("/caisse"))
+    ) {
       setLocation("/dashboard")
     }
   }, [isLoading, user, location, setLocation])
@@ -101,7 +108,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (user.role === "client_pme" && isCabinetOnlyRoute) {
     return <div className="min-h-screen bg-background" />
   }
-  if (user.role !== "client_pme" && location.startsWith("/mes-operations")) {
+  if (user.role !== "client_pme" && (location.startsWith("/mes-operations") || location.startsWith("/caisse"))) {
     return <div className="min-h-screen bg-background" />
   }
 
@@ -127,6 +134,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )} data-testid="link-comptabilite-pme">
             <Wallet className="h-5 w-5" />
             Mes Opérations
+          </Link>
+
+          <Link href="/caisse" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/caisse")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-caisse-express">
+            <Banknote className="h-5 w-5" />
+            Caisse Terrain
           </Link>
         </>
       ) : (

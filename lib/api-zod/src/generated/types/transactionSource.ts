@@ -13,4 +13,5 @@ export const TransactionSource = {
   pme_entry: 'pme_entry',
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
+  caisse_closure: 'caisse_closure',
 } as const;

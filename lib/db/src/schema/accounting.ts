@@ -14,6 +14,7 @@ import { firmsTable } from "./firms";
 import { clientsTable } from "./clients";
 import { usersTable } from "./users";
 import { documentsTable } from "./documents";
+import { cashRegistersTable } from "./caisse";
 
 // Module P3/M3 (Comptabilité Simplifiée & Comptabilité et Travaux): a
 // double-entry ledger bridging plain-language PME cash entries and the
@@ -56,7 +57,14 @@ export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 // "settlement" is the second leg of a credit (accrual) operation -- the
 // treasury movement generated when a PME marks an outstanding invoice as
 // paid (module P3 "Factures en attente" -> "Marquer comme payé").
-export const TRANSACTION_SOURCES = ["pme_entry", "manual_cabinet", "settlement"] as const;
+// "caisse_closure" is the écart de caisse (cash discrepancy) adjustment
+// automatically generated when a Module P5 daily closure doesn't balance.
+export const TRANSACTION_SOURCES = [
+  "pme_entry",
+  "manual_cabinet",
+  "settlement",
+  "caisse_closure",
+] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
 export const PAYMENT_METHODS = ["especes", "mobile_money", "cheque", "virement"] as const;
@@ -123,6 +131,13 @@ export const transactionsTable = pgTable(
       (): AnyPgColumn => transactionsTable.id,
       { onDelete: "set null" },
     ),
+    // Module P5 (Caisse Terrain): required whenever paymentMethod is
+    // "especes" -- every physical cash movement must be tied to the
+    // register it went in/out of, so that register's currentBalance stays
+    // an accurate live count.
+    cashRegisterId: integer("cash_register_id").references(() => cashRegistersTable.id, {
+      onDelete: "set null",
+    }),
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),
@@ -142,6 +157,7 @@ export const transactionsTable = pgTable(
     index("transactions_firm_id_idx").on(table.firmId),
     index("transactions_client_id_idx").on(table.clientId),
     index("transactions_status_idx").on(table.status),
+    index("transactions_cash_register_id_idx").on(table.cashRegisterId),
   ],
 );
 

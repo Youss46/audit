@@ -7,6 +7,7 @@ import { checklistItemsTable } from "./checklist-items";
 import { documentsTable } from "./documents";
 import { auditLogsTable } from "./audit-logs";
 import { transactionsTable, journalLinesTable } from "./accounting";
+import { cashRegistersTable, dailyClosuresTable } from "./caisse";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -24,6 +25,7 @@ export const clientsRelations = relations(clientsTable, ({ one, many }) => ({
   documents: many(documentsTable),
   portalUsers: many(usersTable),
   transactions: many(transactionsTable),
+  cashRegisters: many(cashRegistersTable),
 }));
 
 export const missionsRelations = relations(missionsTable, ({ one, many }) => ({
@@ -86,11 +88,36 @@ export const transactionsRelations = relations(transactionsTable, ({ one, many }
   settlementTransaction: many(transactionsTable, {
     relationName: "settlement",
   }),
+  cashRegister: one(cashRegistersTable, {
+    fields: [transactionsTable.cashRegisterId],
+    references: [cashRegistersTable.id],
+  }),
 }));
 
 export const journalLinesRelations = relations(journalLinesTable, ({ one }) => ({
   transaction: one(transactionsTable, {
     fields: [journalLinesTable.transactionId],
     references: [transactionsTable.id],
+  }),
+}));
+
+// Module P5 (Caisse Terrain).
+export const cashRegistersRelations = relations(cashRegistersTable, ({ one, many }) => ({
+  client: one(clientsTable, {
+    fields: [cashRegistersTable.clientId],
+    references: [clientsTable.id],
+  }),
+  closures: many(dailyClosuresTable),
+  transactions: many(transactionsTable),
+}));
+
+export const dailyClosuresRelations = relations(dailyClosuresTable, ({ one }) => ({
+  cashRegister: one(cashRegistersTable, {
+    fields: [dailyClosuresTable.cashRegisterId],
+    references: [cashRegistersTable.id],
+  }),
+  closedBy: one(usersTable, {
+    fields: [dailyClosuresTable.closedById],
+    references: [usersTable.id],
   }),
 }));

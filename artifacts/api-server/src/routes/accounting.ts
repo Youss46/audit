@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import {
   db,
   clientsTable,
@@ -7,6 +7,7 @@ import {
   transactionsTable,
   journalLinesTable,
   usersTable,
+  cashRegistersTable,
 } from "@workspace/db";
 import {
   ListTransactionCategoriesQueryParams,
@@ -28,8 +29,10 @@ import {
   UpdateTransactionJournalLinesParams,
   UpdateTransactionJournalLinesBody,
   UpdateTransactionJournalLinesResponse,
+  BatchCreateTransactionsBody,
+  BatchCreateTransactionsResponse,
 } from "@workspace/api-zod";
-import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
+import { canAccessClient, requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import {
   AccountingEngineError,
@@ -50,6 +53,7 @@ function serializeTransaction(
     documentFileName?: string | null;
     createdByName?: string | null;
     validatedByName?: string | null;
+    cashRegisterName?: string | null;
   } = {},
 ) {
   return {
@@ -73,12 +77,31 @@ function serializeTransaction(
     clarificationNote: tx.clarificationNote ?? null,
     settledAt: tx.settledAt ?? null,
     parentTransactionId: tx.parentTransactionId ?? null,
+    cashRegisterId: tx.cashRegisterId ?? null,
+    cashRegisterName: extra.cashRegisterName ?? null,
     createdByName: extra.createdByName ?? null,
     validatedByName: extra.validatedByName ?? null,
     validatedAt: tx.validatedAt ?? null,
     createdAt: tx.createdAt,
     updatedAt: tx.updatedAt,
   };
+}
+
+// Module P5: applies a physical cash movement to a register's live running
+// balance the instant it's recorded -- deliberately independent of the
+// separate M3 cabinet approval workflow, which only governs when the entry
+// is permanently booked into the general ledger. Uses an atomic SQL
+// increment so concurrent Caisse Express entries never race each other.
+async function applyCashRegisterMovement(
+  cashRegisterId: number,
+  type: "recette" | "depense",
+  amount: number,
+) {
+  const delta = type === "recette" ? amount : -amount;
+  await db
+    .update(cashRegistersTable)
+    .set({ currentBalance: sql`${cashRegistersTable.currentBalance} + ${delta}` })
+    .where(eq(cashRegistersTable.id, cashRegisterId));
 }
 
 async function withJournalLines(
@@ -89,6 +112,141 @@ async function withJournalLines(
     where: eq(journalLinesTable.transactionId, tx.id),
   });
   return { ...serializeTransaction(tx, extra), journalLines: lines };
+}
+
+class HttpError extends Error {
+  constructor(
+    public status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+// Shared by the single-entry POST /transactions and the module P5 offline
+// sync POST /transactions/batch: validates one plain-language cash entry,
+// computes its journal lines, inserts it as "à valider", and -- when it's
+// an espèces movement -- applies it to the linked cash register's live
+// balance. Throws HttpError for any validation failure so callers can
+// decide whether to fail the whole request (single create) or just skip
+// this one entry and keep processing the rest (batch sync).
+async function createTransactionEntry(
+  req: Parameters<typeof requireOwnClient>[0],
+  body: ReturnType<typeof CreateTransactionBody.parse>,
+) {
+  if (!canAccessClient(req, body.clientId)) {
+    throw new HttpError(403, "Accès refusé à ce dossier client.");
+  }
+
+  const client = await db.query.clientsTable.findFirst({
+    where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
+  });
+  if (!client) throw new HttpError(404, "Client introuvable.");
+
+  if (body.documentId != null) {
+    const doc = await db.query.documentsTable.findFirst({
+      where: and(
+        eq(documentsTable.id, body.documentId),
+        eq(documentsTable.clientId, body.clientId),
+      ),
+    });
+    if (!doc) throw new HttpError(404, "Pièce jointe introuvable pour ce client.");
+  }
+
+  // Cash (au comptant) operations require a payment method; credit (à
+  // crédit) operations require a due date instead, and never touch treasury
+  // until settled (see /transactions/:id/settle).
+  if (body.paymentType === "cash" && !body.paymentMethod) {
+    throw new HttpError(400, "Le mode de règlement est requis pour une opération au comptant.");
+  }
+  if (body.paymentType === "credit" && !body.dueDate) {
+    throw new HttpError(400, "La date d'échéance est requise pour une opération à crédit.");
+  }
+
+  // Module P5: every physical espèces movement must be tied to the cash
+  // register it went in/out of, so that register's live balance stays
+  // accurate.
+  let cashRegisterId: number | null = null;
+  let cashRegisterName: string | null = null;
+  if (body.paymentType === "cash" && body.paymentMethod === "especes") {
+    if (!body.cashRegisterId) {
+      throw new HttpError(400, "La caisse est requise pour un règlement en espèces.");
+    }
+    const register = await db.query.cashRegistersTable.findFirst({
+      where: and(
+        eq(cashRegistersTable.id, body.cashRegisterId),
+        eq(cashRegistersTable.clientId, body.clientId),
+      ),
+    });
+    if (!register) throw new HttpError(404, "Caisse introuvable pour ce client.");
+    cashRegisterId = register.id;
+    cashRegisterName = register.name;
+  }
+
+  let journalLines: ReturnType<typeof computeJournalLines>;
+  try {
+    journalLines = computeJournalLines({
+      category: body.category,
+      type: body.type,
+      paymentType: body.paymentType,
+      paymentMethod: body.paymentMethod,
+      amount: body.amount,
+    });
+  } catch (err) {
+    if (err instanceof AccountingEngineError) throw new HttpError(400, err.message);
+    throw err;
+  }
+
+  const source = req.user!.role === "client_pme" ? "pme_entry" : "manual_cabinet";
+
+  const [tx] = await db
+    .insert(transactionsTable)
+    .values({
+      firmId: req.user!.firmId,
+      clientId: body.clientId,
+      date: body.date,
+      label: body.label,
+      amount: body.amount,
+      type: body.type,
+      category: body.category,
+      paymentType: body.paymentType,
+      paymentMethod: body.paymentType === "cash" ? body.paymentMethod : null,
+      dueDate: body.paymentType === "credit" ? body.dueDate : null,
+      documentId: body.documentId ?? null,
+      cashRegisterId,
+      status: "a_valider",
+      source,
+      createdById: req.user!.id,
+    })
+    .returning();
+
+  await db.insert(journalLinesTable).values(
+    journalLines.map((line) => ({
+      transactionId: tx.id,
+      accountNumber: line.accountNumber,
+      label: line.label,
+      debitAmount: line.debitAmount,
+      creditAmount: line.creditAmount,
+    })),
+  );
+
+  if (cashRegisterId) {
+    await applyCashRegisterMovement(cashRegisterId, body.type, body.amount);
+  }
+
+  await logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    userRole: req.user!.role,
+    action: AuditAction.TRANSACTION_CREATE,
+    entityType: "transaction",
+    entityId: tx.id,
+    details: `Déclaration "${body.label}" (${body.amount} FCFA) pour "${client.name}"`,
+    ipAddress: req.ip,
+  });
+
+  return { tx, client, cashRegisterName };
 }
 
 // Module P3: the plain-language category menu the PME picks from, scoped to
@@ -120,7 +278,14 @@ router.get("/transactions", async (req, res) => {
   const transactions = await db.query.transactionsTable.findMany({
     where: and(...conditions),
     orderBy: (t, { desc }) => [desc(t.date), desc(t.createdAt)],
-    with: { client: true, document: true, createdBy: true, validatedBy: true, journalLines: true },
+    with: {
+      client: true,
+      document: true,
+      createdBy: true,
+      validatedBy: true,
+      journalLines: true,
+      cashRegister: true,
+    },
   });
 
   res.json(
@@ -131,6 +296,7 @@ router.get("/transactions", async (req, res) => {
           documentFileName: t.document?.fileName,
           createdByName: t.createdBy?.fullName,
           validatedByName: t.validatedBy?.fullName,
+          cashRegisterName: t.cashRegister?.name,
         }),
         journalLines: t.journalLines,
       })),
@@ -145,113 +311,74 @@ router.get("/transactions", async (req, res) => {
 router.post("/transactions", async (req, res) => {
   const body = CreateTransactionBody.parse(req.body);
 
-  if (!requireOwnClient(req, res, body.clientId)) return;
-
-  const client = await db.query.clientsTable.findFirst({
-    where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
-  });
-  if (!client) {
-    res.status(404).json({ error: "Client introuvable." });
-    return;
-  }
-
-  if (body.documentId != null) {
-    const doc = await db.query.documentsTable.findFirst({
-      where: and(
-        eq(documentsTable.id, body.documentId),
-        eq(documentsTable.clientId, body.clientId),
-      ),
-    });
-    if (!doc) {
-      res.status(404).json({ error: "Pièce jointe introuvable pour ce client." });
-      return;
-    }
-  }
-
-  // Cash (au comptant) operations require a payment method; credit (à
-  // crédit) operations require a due date instead, and never touch treasury
-  // until settled (see /transactions/:id/settle).
-  if (body.paymentType === "cash" && !body.paymentMethod) {
-    res.status(400).json({
-      error: "Le mode de règlement est requis pour une opération au comptant.",
-    });
-    return;
-  }
-  if (body.paymentType === "credit" && !body.dueDate) {
-    res.status(400).json({
-      error: "La date d'échéance est requise pour une opération à crédit.",
-    });
-    return;
-  }
-
-  let journalLines: ReturnType<typeof computeJournalLines>;
   try {
-    journalLines = computeJournalLines({
-      category: body.category,
-      type: body.type,
-      paymentType: body.paymentType,
-      paymentMethod: body.paymentMethod,
-      amount: body.amount,
-    });
+    const { tx, client, cashRegisterName } = await createTransactionEntry(req, body);
+    res
+      .status(201)
+      .json(
+        CreateTransactionResponse.parse(
+          await withJournalLines(tx, {
+            clientName: client.name,
+            createdByName: req.user!.fullName,
+            cashRegisterName,
+          }),
+        ),
+      );
   } catch (err) {
-    if (err instanceof AccountingEngineError) {
-      res.status(400).json({ error: err.message });
+    if (err instanceof HttpError) {
+      res.status(err.status).json({ error: err.message });
       return;
     }
     throw err;
   }
+});
 
-  const source = req.user!.role === "client_pme" ? "pme_entry" : "manual_cabinet";
+// Module P5 (Caisse Terrain) offline sync: a Caisse Express device queues
+// quick cash entries locally (LocalStorage/IndexedDB) while hors-ligne, then
+// flushes them here once back online. Each entry is validated and inserted
+// independently so one bad entry never blocks the rest of the batch.
+router.post("/transactions/batch", async (req, res) => {
+  const body = BatchCreateTransactionsBody.parse(req.body);
 
-  const [tx] = await db
-    .insert(transactionsTable)
-    .values({
+  const created: Awaited<ReturnType<typeof withJournalLines>>[] = [];
+  const errors: { index: number; error: string }[] = [];
+
+  for (let index = 0; index < body.entries.length; index++) {
+    try {
+      const { tx, client, cashRegisterName } = await createTransactionEntry(
+        req,
+        body.entries[index],
+      );
+      created.push(
+        await withJournalLines(tx, {
+          clientName: client.name,
+          createdByName: req.user!.fullName,
+          cashRegisterName,
+        }),
+      );
+    } catch (err) {
+      if (err instanceof HttpError) {
+        errors.push({ index, error: err.message });
+      } else {
+        throw err;
+      }
+    }
+  }
+
+  if (created.length > 0) {
+    await logAudit({
       firmId: req.user!.firmId,
-      clientId: body.clientId,
-      date: body.date,
-      label: body.label,
-      amount: body.amount,
-      type: body.type,
-      category: body.category,
-      paymentType: body.paymentType,
-      paymentMethod: body.paymentType === "cash" ? body.paymentMethod : null,
-      dueDate: body.paymentType === "credit" ? body.dueDate : null,
-      documentId: body.documentId ?? null,
-      status: "a_valider",
-      source,
-      createdById: req.user!.id,
-    })
-    .returning();
+      userId: req.user!.id,
+      userName: req.user!.fullName,
+      userRole: req.user!.role,
+      action: AuditAction.CASH_ENTRIES_SYNC,
+      entityType: "transaction",
+      details: `Synchronisation hors-ligne : ${created.length} opération(s) importée(s)${errors.length ? `, ${errors.length} en échec` : ""}`,
+      ipAddress: req.ip,
+    });
+  }
 
-  await db.insert(journalLinesTable).values(
-    journalLines.map((line) => ({
-      transactionId: tx.id,
-      accountNumber: line.accountNumber,
-      label: line.label,
-      debitAmount: line.debitAmount,
-      creditAmount: line.creditAmount,
-    })),
-  );
-
-  await logAudit({
-    firmId: req.user!.firmId,
-    userId: req.user!.id,
-    userName: req.user!.fullName,
-    userRole: req.user!.role,
-    action: AuditAction.TRANSACTION_CREATE,
-    entityType: "transaction",
-    entityId: tx.id,
-    details: `Déclaration "${body.label}" (${body.amount} FCFA) pour "${client.name}"`,
-    ipAddress: req.ip,
-  });
-
-  res
-    .status(201)
-    .json(
-      CreateTransactionResponse.parse(
-        await withJournalLines(tx, { clientName: client.name, createdByName: req.user!.fullName }),
-      ),
-    );
+  res.json(BatchCreateTransactionsResponse.parse({ created, errors }));
 });
 
 router.get("/transactions/:id", async (req, res) => {
@@ -259,7 +386,7 @@ router.get("/transactions/:id", async (req, res) => {
 
   const tx = await db.query.transactionsTable.findFirst({
     where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
-    with: { client: true, document: true, createdBy: true, validatedBy: true },
+    with: { client: true, document: true, createdBy: true, validatedBy: true, cashRegister: true },
   });
   if (!tx) {
     res.status(404).json({ error: "Opération introuvable." });
@@ -274,6 +401,7 @@ router.get("/transactions/:id", async (req, res) => {
         documentFileName: tx.document?.fileName,
         createdByName: tx.createdBy?.fullName,
         validatedByName: tx.validatedBy?.fullName,
+        cashRegisterName: tx.cashRegister?.name,
       }),
     ),
   );
@@ -426,6 +554,29 @@ router.post("/transactions/:id/settle", async (req, res) => {
     return;
   }
 
+  // Module P5: a cash settlement is a real physical cash movement, so it
+  // needs a cash register just like any other espèces entry.
+  let cashRegisterId: number | null = null;
+  let cashRegisterName: string | null = null;
+  if (body.paymentMethod === "especes") {
+    if (!body.cashRegisterId) {
+      res.status(400).json({ error: "La caisse est requise pour un règlement en espèces." });
+      return;
+    }
+    const register = await db.query.cashRegistersTable.findFirst({
+      where: and(
+        eq(cashRegistersTable.id, body.cashRegisterId),
+        eq(cashRegistersTable.clientId, tx.clientId),
+      ),
+    });
+    if (!register) {
+      res.status(404).json({ error: "Caisse introuvable pour ce client." });
+      return;
+    }
+    cashRegisterId = register.id;
+    cashRegisterName = register.name;
+  }
+
   let journalLines: ReturnType<typeof computeSettlementJournalLines>;
   try {
     journalLines = computeSettlementJournalLines({
@@ -453,6 +604,7 @@ router.post("/transactions/:id/settle", async (req, res) => {
       category: tx.category,
       paymentType: "cash",
       paymentMethod: body.paymentMethod,
+      cashRegisterId,
       status: "a_valider",
       source: "settlement",
       parentTransactionId: tx.id,
@@ -469,6 +621,10 @@ router.post("/transactions/:id/settle", async (req, res) => {
       creditAmount: line.creditAmount,
     })),
   );
+
+  if (cashRegisterId) {
+    await applyCashRegisterMovement(cashRegisterId, tx.type, tx.amount);
+  }
 
   await db
     .update(transactionsTable)
@@ -494,6 +650,7 @@ router.post("/transactions/:id/settle", async (req, res) => {
         await withJournalLines(settlement, {
           clientName: tx.client?.name,
           createdByName: req.user!.fullName,
+          cashRegisterName,
         }),
       ),
     );
@@ -512,7 +669,14 @@ router.patch(
 
     const tx = await db.query.transactionsTable.findFirst({
       where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
-      with: { client: true, document: true, createdBy: true, validatedBy: true, journalLines: true },
+      with: {
+        client: true,
+        document: true,
+        createdBy: true,
+        validatedBy: true,
+        journalLines: true,
+        cashRegister: true,
+      },
     });
     if (!tx) {
       res.status(404).json({ error: "Opération introuvable." });
@@ -561,6 +725,7 @@ router.patch(
           documentFileName: tx.document?.fileName,
           createdByName: tx.createdBy?.fullName,
           validatedByName: tx.validatedBy?.fullName,
+          cashRegisterName: tx.cashRegister?.name,
         }),
       ),
     );

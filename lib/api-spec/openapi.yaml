@@ -26,6 +26,8 @@ tags:
     description: Dashboard aggregates
   - name: accounting
     description: Comptabilité simplifiée (P3) & Comptabilité et travaux (M3) - SYSCOHADA ledger
+  - name: caisse
+    description: Caisse Terrain (P5) - physical cash register control, quick offline-capable entries and daily closures
 paths:
   /healthz:
     get:
@@ -867,6 +869,188 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /transactions/batch:
+    post:
+      operationId: batchCreateTransactions
+      tags: [accounting]
+      summary: "Module P5 (Caisse Terrain) offline sync: creates several plain-language cash entries at once, e.g. queued while a Caisse Express device was hors-ligne. Each entry is validated and inserted independently -- one invalid entry never blocks the rest of the batch."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BatchCreateTransactionsInput"
+      responses:
+        "200":
+          description: Batch result (partial success is possible; see `errors`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BatchCreateTransactionsResult"
+
+  /cash-registers:
+    get:
+      operationId: listCashRegisters
+      tags: [caisse]
+      summary: "List the cash registers (module P5). Espace PME accounts only ever see their own client's registers."
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of cash registers
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CashRegister"
+    post:
+      operationId: createCashRegister
+      tags: [caisse]
+      summary: Create a new cash register for a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CashRegisterInput"
+      responses:
+        "201":
+          description: Cash register created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashRegister"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cash-registers/{id}:
+    get:
+      operationId: getCashRegister
+      tags: [caisse]
+      summary: Get a cash register's detail, including its live balance
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Cash register detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashRegister"
+        "404":
+          description: Cash register not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cash-registers/{id}/closure-today:
+    get:
+      operationId: getTodayClosure
+      tags: [caisse]
+      summary: "Get (or auto-create, if none exists yet) today's OPEN daily closure for this register, including its live theoretical balance ('Solde théorique')."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Today's daily closure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyClosure"
+        "404":
+          description: Cash register not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cash-registers/{id}/closures:
+    get:
+      operationId: listClosures
+      tags: [caisse]
+      summary: List past daily closures for a register, most recent first
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of daily closures
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyClosure"
+
+  /cash-registers/{id}/closures/{closureId}/close:
+    post:
+      operationId: closeDailyClosure
+      tags: [caisse]
+      summary: "'Clôturer la journée' (Clôture de Caisse en 1 Tap): records the physically counted balance, computes the écart de caisse against the theoretical balance, and -- if they differ -- books the discrepancy and pushes it to the cabinet's À valider queue."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: closureId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseDailyClosureInput"
+      responses:
+        "200":
+          description: Closed daily closure
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CloseDailyClosureResult"
+        "400":
+          description: Invalid input, e.g. missing mandatory justification comment for a non-zero écart
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Cash register or closure not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Closure is already closed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1271,6 +1455,7 @@ components:
         - pme_entry
         - manual_cabinet
         - settlement
+        - caisse_closure
 
     PaymentMethod:
       type: string
@@ -1349,6 +1534,8 @@ components:
         clarificationNote: { type: ["string", "null"] }
         settledAt: { type: ["string", "null"], format: date-time }
         parentTransactionId: { type: ["integer", "null"] }
+        cashRegisterId: { type: ["integer", "null"] }
+        cashRegisterName: { type: ["string", "null"] }
         createdByName: { type: ["string", "null"] }
         validatedByName: { type: ["string", "null"] }
         validatedAt: { type: ["string", "null"], format: date-time }
@@ -1395,6 +1582,9 @@ components:
           type: ["string", "null"]
           format: date-time
         documentId: { type: ["integer", "null"] }
+        cashRegisterId:
+          description: Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+          type: ["integer", "null"]
 
     TransactionRejectInput:
       type: object
@@ -1410,6 +1600,115 @@ components:
       properties:
         paymentMethod:
           $ref: "#/components/schemas/PaymentMethod"
+        cashRegisterId:
+          description: Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+          type: ["integer", "null"]
+
+    BatchCreateTransactionsInput:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/TransactionInput"
+
+    BatchCreateTransactionsResult:
+      type: object
+      required: [created, errors]
+      properties:
+        created:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransactionDetail"
+        errors:
+          type: array
+          items:
+            type: object
+            required: [index, error]
+            properties:
+              index: { type: integer }
+              error: { type: string }
+
+    CashRegister:
+      type: object
+      required: [id, name, clientId, currentBalance, createdAt]
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        currentBalance: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    CashRegisterInput:
+      type: object
+      required: [name, clientId]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        clientId: { type: integer }
+
+    ClosureStatus:
+      type: string
+      enum: [OPEN, CLOSED]
+
+    DailyClosure:
+      type: object
+      required:
+        [
+          id,
+          cashRegisterId,
+          date,
+          openingBalance,
+          liveBalance,
+          status,
+          createdAt,
+        ]
+      properties:
+        id: { type: integer }
+        cashRegisterId: { type: integer }
+        date: { type: string }
+        openingBalance: { type: integer }
+        expectedClosingBalance: { type: ["integer", "null"] }
+        physicalClosingBalance: { type: ["integer", "null"] }
+        discrepancyAmount: { type: ["integer", "null"] }
+        # The cash register's live currentBalance at the time of this
+        # response. Only meaningful as a "solde théorique" while the
+        # closure is still OPEN -- frozen into expectedClosingBalance once
+        # closed.
+        liveBalance: { type: integer }
+        status:
+          $ref: "#/components/schemas/ClosureStatus"
+        comment: { type: ["string", "null"] }
+        closedById: { type: ["integer", "null"] }
+        closedByName: { type: ["string", "null"] }
+        closedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    CloseDailyClosureInput:
+      type: object
+      required: [physicalClosingBalance]
+      properties:
+        physicalClosingBalance: { type: integer, minimum: 0 }
+        comment:
+          description: Mandatory ("Justification") whenever the physical count doesn't match the theoretical balance.
+          type: ["string", "null"]
+
+    CloseDailyClosureResult:
+      type: object
+      required: [closure, cashRegister]
+      properties:
+        closure:
+          $ref: "#/components/schemas/DailyClosure"
+        cashRegister:
+          $ref: "#/components/schemas/CashRegister"
+        summaryTransaction:
+          anyOf:
+            - $ref: "#/components/schemas/TransactionDetail"
+            - type: "null"
 
     UpdateJournalLinesInput:
       type: object

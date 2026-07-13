@@ -4,3 +4,4 @@
 - [RBAC "read but annotate" role pattern](rbac-partial-write-roles.md) — model roles that can comment but not validate via allow-list + inline per-field check, not a second endpoint.
 - [Reusing an "anomalie" status across modules](reused-anomalie-status-cross-module.md) — a workflow status enum reused between two unrelated modules must document each module's meaning separately.
 - [Accrual (à crédit) settlement flow design](accrual-settlement-flow.md) — settlement is a new, separately-approved transaction, never an in-place edit of the original.
+- [Caisse Terrain (P5) design decisions](caisse-terrain-p5-design.md) — register balance updates at entry not approval; closure resets balance to physical count; écart booked as separate reviewable transaction.

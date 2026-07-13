@@ -29,4 +29,9 @@ export interface TransactionInput {
   dueDate?: Date | null;
   /** @nullable */
   documentId?: number | null;
+  /**
+     * Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+     * @nullable
+     */
+  cashRegisterId?: number | null;
 }

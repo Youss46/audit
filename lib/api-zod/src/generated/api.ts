@@ -706,12 +706,14 @@ export const ListTransactionsResponseItem = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -748,7 +750,8 @@ export const CreateTransactionBody = zod.object({
   "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional().describe('Required when paymentType is \"cash\"; ignored for \"credit\".'),
   "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
-  "documentId": zod.number().nullish()
+  "documentId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).')
 })
 
 export const CreateTransactionResponse = zod.object({
@@ -766,12 +769,14 @@ export const CreateTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -811,12 +816,14 @@ export const GetTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -856,12 +863,14 @@ export const ApproveTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -908,12 +917,14 @@ export const RejectTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -939,7 +950,8 @@ export const SettleTransactionParams = zod.object({
 })
 
 export const SettleTransactionBody = zod.object({
-  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement'])
+  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),
+  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).')
 })
 
 export const SettleTransactionResponse = zod.object({
@@ -957,12 +969,14 @@ export const SettleTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1013,12 +1027,14 @@ export const UpdateTransactionJournalLinesResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
   "settledAt": zod.coerce.date().nullish(),
   "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1034,5 +1050,266 @@ export const UpdateTransactionJournalLinesResponse = zod.object({
   "creditAmount": zod.number()
 }))
 }))
+
+
+/**
+ * @summary Module P5 (Caisse Terrain) offline sync: creates several plain-language cash entries at once, e.g. queued while a Caisse Express device was hors-ligne. Each entry is validated and inserted independently -- one invalid entry never blocks the rest of the batch.
+ */
+
+
+
+
+
+
+export const BatchCreateTransactionsBody = zod.object({
+  "entries": zod.array(zod.object({
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "label": zod.string().min(1),
+  "amount": zod.number().min(1),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().min(1),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional().describe('Required when paymentType is \"cash\"; ignored for \"credit\".'),
+  "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
+  "documentId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).')
+})).min(1)
+})
+
+export const BatchCreateTransactionsResponse = zod.object({
+  "created": zod.array(zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))),
+  "errors": zod.array(zod.object({
+  "index": zod.number(),
+  "error": zod.string()
+}))
+})
+
+
+/**
+ * @summary List the cash registers (module P5). Espace PME accounts only ever see their own client's registers.
+ */
+export const ListCashRegistersQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional()
+})
+
+export const ListCashRegistersResponseItem = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "currentBalance": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListCashRegistersResponse = zod.array(ListCashRegistersResponseItem)
+
+
+/**
+ * @summary Create a new cash register for a client
+ */
+
+
+
+export const CreateCashRegisterBody = zod.object({
+  "name": zod.string().min(1),
+  "clientId": zod.number()
+})
+
+export const CreateCashRegisterResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "currentBalance": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a cash register's detail, including its live balance
+ */
+export const GetCashRegisterParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetCashRegisterResponse = zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "currentBalance": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get (or auto-create, if none exists yet) today's OPEN daily closure for this register, including its live theoretical balance ('Solde théorique').
+ */
+export const GetTodayClosureParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetTodayClosureResponse = zod.object({
+  "id": zod.number(),
+  "cashRegisterId": zod.number(),
+  "date": zod.string(),
+  "openingBalance": zod.number(),
+  "expectedClosingBalance": zod.number().nullish(),
+  "physicalClosingBalance": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "liveBalance": zod.number(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "comment": zod.string().nullish(),
+  "closedById": zod.number().nullish(),
+  "closedByName": zod.string().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List past daily closures for a register, most recent first
+ */
+export const ListClosuresParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListClosuresResponseItem = zod.object({
+  "id": zod.number(),
+  "cashRegisterId": zod.number(),
+  "date": zod.string(),
+  "openingBalance": zod.number(),
+  "expectedClosingBalance": zod.number().nullish(),
+  "physicalClosingBalance": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "liveBalance": zod.number(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "comment": zod.string().nullish(),
+  "closedById": zod.number().nullish(),
+  "closedByName": zod.string().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListClosuresResponse = zod.array(ListClosuresResponseItem)
+
+
+/**
+ * @summary 'Clôturer la journée' (Clôture de Caisse en 1 Tap): records the physically counted balance, computes the écart de caisse against the theoretical balance, and -- if they differ -- books the discrepancy and pushes it to the cabinet's À valider queue.
+ */
+export const CloseDailyClosureParams = zod.object({
+  "id": zod.coerce.number(),
+  "closureId": zod.coerce.number()
+})
+
+export const closeDailyClosureBodyPhysicalClosingBalanceMin = 0;
+
+
+
+export const CloseDailyClosureBody = zod.object({
+  "physicalClosingBalance": zod.number().min(closeDailyClosureBodyPhysicalClosingBalanceMin),
+  "comment": zod.string().nullish().describe('Mandatory (\"Justification\") whenever the physical count doesn\'t match the theoretical balance.')
+})
+
+export const CloseDailyClosureResponse = zod.object({
+  "closure": zod.object({
+  "id": zod.number(),
+  "cashRegisterId": zod.number(),
+  "date": zod.string(),
+  "openingBalance": zod.number(),
+  "expectedClosingBalance": zod.number().nullish(),
+  "physicalClosingBalance": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "liveBalance": zod.number(),
+  "status": zod.enum(['OPEN', 'CLOSED']),
+  "comment": zod.string().nullish(),
+  "closedById": zod.number().nullish(),
+  "closedByName": zod.string().nullish(),
+  "closedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "cashRegister": zod.object({
+  "id": zod.number(),
+  "name": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "currentBalance": zod.number(),
+  "createdAt": zod.coerce.date()
+}),
+  "summaryTransaction": zod.union([zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),zod.null()]).optional()
+})
 
 

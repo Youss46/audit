@@ -46,6 +46,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "622", name: "Locations et charges locatives", accountClass: 6 },
   { accountNumber: "624", name: "Entretien, réparations et maintenance", accountClass: 6 },
   { accountNumber: "628", name: "Autres charges externes", accountClass: 6 },
+  { accountNumber: "658", name: "Charges diverses", accountClass: 6 },
   { accountNumber: "661", name: "Appointements, salaires et commissions", accountClass: 6 },
   { accountNumber: "681", name: "Dotations aux amortissements", accountClass: 6 },
 

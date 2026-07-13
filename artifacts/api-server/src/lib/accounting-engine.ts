@@ -38,6 +38,9 @@ export interface CategoryRule {
   // SYSCOHADA counterpart account (the non-treasury side of the entry).
   counterpartAccount: string;
   counterpartName: string;
+  // System-generated categories (e.g. module P5 caisse discrepancies) are
+  // never offered in the PME's manual category picker.
+  hidden?: boolean;
 }
 
 // Category -> SYSCOHADA counterpart account mapping (module P3/M3). Kept as
@@ -119,13 +122,32 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
     counterpartAccount: "758",
     counterpartName: "Produits divers",
   },
+
+  // Module P5 (Caisse Terrain): system-generated only, booked automatically
+  // when a daily closure ("Clôture de Caisse en 1 Tap") reveals a
+  // discrepancy between the theoretical and the physically counted
+  // balance. Never offered in the PME's manual category picker.
+  ecart_caisse_gain: {
+    label: "Écart de caisse (excédent)",
+    type: "recette",
+    counterpartAccount: "758",
+    counterpartName: "Produits divers",
+    hidden: true,
+  },
+  ecart_caisse_perte: {
+    label: "Écart de caisse (manquant)",
+    type: "depense",
+    counterpartAccount: "658",
+    counterpartName: "Charges diverses",
+    hidden: true,
+  },
 } as const;
 
 export type TransactionCategory = keyof typeof CATEGORY_RULES;
 
 export function listCategoriesForType(type: TransactionType) {
   return Object.entries(CATEGORY_RULES)
-    .filter(([, rule]) => rule.type === type)
+    .filter(([, rule]) => rule.type === type && !rule.hidden)
     .map(([key, rule]) => ({ key, label: rule.label }));
 }
 

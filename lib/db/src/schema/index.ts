@@ -5,5 +5,6 @@ export * from "./missions";
 export * from "./checklist-items";
 export * from "./documents";
 export * from "./accounting";
+export * from "./caisse";
 export * from "./audit-logs";
 export * from "./relations";

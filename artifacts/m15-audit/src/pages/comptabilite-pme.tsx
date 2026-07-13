@@ -8,6 +8,9 @@ import {
   useSettleTransaction,
   useListClientDocuments,
   getListClientDocumentsQueryKey,
+  useListCashRegisters,
+  getListCashRegistersQueryKey,
+  useCreateCashRegister,
   TransactionType,
   PaymentMethod,
   PaymentType,
@@ -68,6 +71,7 @@ function emptyForm(type: TransactionType) {
     paymentMethod: "" as PaymentMethod | "",
     dueDate: "",
     documentId: "" as string,
+    cashRegisterId: "" as string,
   }
 }
 
@@ -86,6 +90,8 @@ export default function ComptabilitePme() {
   const [form, setForm] = useState(emptyForm("recette"))
   const [settleTarget, setSettleTarget] = useState<number | null>(null)
   const [settlePaymentMethod, setSettlePaymentMethod] = useState<PaymentMethod | "">("")
+  const [settleCashRegisterId, setSettleCashRegisterId] = useState<string>("")
+  const [newRegisterName, setNewRegisterName] = useState("")
 
   const { data: transactions, isLoading } = useListTransactions(
     { clientId },
@@ -97,6 +103,27 @@ export default function ComptabilitePme() {
   )
   const { data: documents } = useListClientDocuments(clientId, {
     query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId) },
+  })
+  const { data: cashRegisters } = useListCashRegisters(
+    { clientId },
+    { query: { enabled: !!clientId, queryKey: getListCashRegistersQueryKey({ clientId }) } },
+  )
+
+  const createRegisterMutation = useCreateCashRegister({
+    mutation: {
+      onSuccess: (register) => {
+        queryClient.invalidateQueries({ queryKey: getListCashRegistersQueryKey({ clientId }) })
+        setForm((f) => ({ ...f, cashRegisterId: String(register.id) }))
+        setNewRegisterName("")
+      },
+      onError: (error) => {
+        toast({
+          title: "Erreur",
+          description: error.data?.error || "Impossible de créer la caisse.",
+          variant: "destructive",
+        })
+      },
+    },
   })
 
   const createMutation = useCreateTransaction({
@@ -152,6 +179,7 @@ export default function ComptabilitePme() {
     if (!form.label.trim() || !amount || amount <= 0 || !form.category) return
     if (form.paymentType === "cash" && !form.paymentMethod) return
     if (form.paymentType === "credit" && !form.dueDate) return
+    if (form.paymentType === "cash" && form.paymentMethod === "especes" && !form.cashRegisterId) return
     createMutation.mutate({
       data: {
         clientId,
@@ -164,6 +192,10 @@ export default function ComptabilitePme() {
         paymentMethod: form.paymentType === "cash" ? (form.paymentMethod as PaymentMethod) : null,
         dueDate: form.paymentType === "credit" ? new Date(form.dueDate).toISOString() : null,
         documentId: form.documentId ? parseInt(form.documentId, 10) : null,
+        cashRegisterId:
+          form.paymentType === "cash" && form.paymentMethod === "especes"
+            ? parseInt(form.cashRegisterId, 10)
+            : null,
       },
     })
   }
@@ -171,7 +203,14 @@ export default function ComptabilitePme() {
   const handleSettle = (e: React.FormEvent) => {
     e.preventDefault()
     if (settleTarget == null || !settlePaymentMethod) return
-    settleMutation.mutate({ id: settleTarget, data: { paymentMethod: settlePaymentMethod } })
+    if (settlePaymentMethod === "especes" && !settleCashRegisterId) return
+    settleMutation.mutate({
+      id: settleTarget,
+      data: {
+        paymentMethod: settlePaymentMethod,
+        cashRegisterId: settlePaymentMethod === "especes" ? parseInt(settleCashRegisterId, 10) : null,
+      },
+    })
   }
 
   const { recettes, depenses, facturesEnAttente } = useMemo(() => {
@@ -514,7 +553,9 @@ export default function ComptabilitePme() {
                 <Label htmlFor="paymentMethod">Mode de règlement</Label>
                 <Select
                   value={form.paymentMethod}
-                  onValueChange={(v) => setForm((f) => ({ ...f, paymentMethod: v as PaymentMethod }))}
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, paymentMethod: v as PaymentMethod, cashRegisterId: "" }))
+                  }
                 >
                   <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
                     <SelectValue placeholder="Sélectionner un mode..." />
@@ -527,6 +568,47 @@ export default function ComptabilitePme() {
                     ))}
                   </SelectContent>
                 </Select>
+                {form.paymentMethod === "especes" && (
+                  <div className="space-y-2 pt-1">
+                    <Label htmlFor="cashRegisterId">Caisse</Label>
+                    <Select
+                      value={form.cashRegisterId}
+                      onValueChange={(v) => setForm((f) => ({ ...f, cashRegisterId: v }))}
+                    >
+                      <SelectTrigger id="cashRegisterId" data-testid="select-cash-register">
+                        <SelectValue placeholder="Sélectionner une caisse..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(cashRegisters ?? []).map((r) => (
+                          <SelectItem key={r.id} value={String(r.id)}>
+                            {r.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(cashRegisters ?? []).length === 0 && (
+                      <div className="flex gap-2 pt-1">
+                        <Input
+                          placeholder="Ex : Caisse principale"
+                          value={newRegisterName}
+                          onChange={(e) => setNewRegisterName(e.target.value)}
+                          data-testid="input-new-cash-register"
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          disabled={!newRegisterName.trim() || createRegisterMutation.isPending}
+                          onClick={() =>
+                            createRegisterMutation.mutate({ data: { name: newRegisterName.trim(), clientId } })
+                          }
+                          data-testid="button-create-cash-register"
+                        >
+                          Créer
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="space-y-2">
@@ -600,7 +682,10 @@ export default function ComptabilitePme() {
               <Label htmlFor="settlePaymentMethod">Mode de règlement</Label>
               <Select
                 value={settlePaymentMethod}
-                onValueChange={(v) => setSettlePaymentMethod(v as PaymentMethod)}
+                onValueChange={(v) => {
+                  setSettlePaymentMethod(v as PaymentMethod)
+                  setSettleCashRegisterId("")
+                }}
               >
                 <SelectTrigger id="settlePaymentMethod" data-testid="select-settle-payment-method">
                   <SelectValue placeholder="Sélectionner un mode..." />
@@ -614,6 +699,23 @@ export default function ComptabilitePme() {
                 </SelectContent>
               </Select>
             </div>
+            {settlePaymentMethod === "especes" && (
+              <div className="space-y-2">
+                <Label htmlFor="settleCashRegisterId">Caisse</Label>
+                <Select value={settleCashRegisterId} onValueChange={setSettleCashRegisterId}>
+                  <SelectTrigger id="settleCashRegisterId" data-testid="select-settle-cash-register">
+                    <SelectValue placeholder="Sélectionner une caisse..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(cashRegisters ?? []).map((r) => (
+                      <SelectItem key={r.id} value={String(r.id)}>
+                        {r.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <DialogFooter>
               <Button
                 type="button"
@@ -623,7 +725,14 @@ export default function ComptabilitePme() {
               >
                 Annuler
               </Button>
-              <Button type="submit" disabled={settleMutation.isPending || !settlePaymentMethod}>
+              <Button
+                type="submit"
+                disabled={
+                  settleMutation.isPending ||
+                  !settlePaymentMethod ||
+                  (settlePaymentMethod === "especes" && !settleCashRegisterId)
+                }
+              >
                 {settleMutation.isPending ? "Envoi..." : "Confirmer le paiement"}
               </Button>
             </DialogFooter>

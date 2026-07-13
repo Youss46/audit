@@ -22,11 +22,18 @@ import type {
 import type {
   AuditLog,
   AuthResponse,
+  BatchCreateTransactionsInput,
+  BatchCreateTransactionsResult,
+  CashRegister,
+  CashRegisterInput,
   ChecklistItem,
   ChecklistItemUpdate,
   Client,
   ClientInput,
   ClientUpdate,
+  CloseDailyClosureInput,
+  CloseDailyClosureResult,
+  DailyClosure,
   DashboardSummary,
   Document,
   DocumentDetail,
@@ -34,6 +41,7 @@ import type {
   ErrorResponse,
   HealthStatus,
   ListAuditLogsParams,
+  ListCashRegistersParams,
   ListClientsParams,
   ListDocumentsParams,
   ListMissionsParams,
@@ -2644,5 +2652,536 @@ export const useUpdateTransactionJournalLines = <TError = ErrorType<ErrorRespons
         TContext
       > => {
       return useMutation(getUpdateTransactionJournalLinesMutationOptions(options));
+    }
+
+export const getBatchCreateTransactionsUrl = () => {
+
+
+
+
+  return `/api/transactions/batch`
+}
+
+/**
+ * @summary Module P5 (Caisse Terrain) offline sync: creates several plain-language cash entries at once, e.g. queued while a Caisse Express device was hors-ligne. Each entry is validated and inserted independently -- one invalid entry never blocks the rest of the batch.
+ */
+export const batchCreateTransactions = async (batchCreateTransactionsInput: BatchCreateTransactionsInput, options?: RequestInit): Promise<BatchCreateTransactionsResult> => {
+
+  return customFetch<BatchCreateTransactionsResult>(getBatchCreateTransactionsUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(batchCreateTransactionsInput)
+  }
+);}
+
+
+
+
+
+export const getBatchCreateTransactionsMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchCreateTransactions>>, TError,{data: BodyType<BatchCreateTransactionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof batchCreateTransactions>>, TError,{data: BodyType<BatchCreateTransactionsInput>}, TContext> => {
+
+const mutationKey = ['batchCreateTransactions'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof batchCreateTransactions>>, {data: BodyType<BatchCreateTransactionsInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  batchCreateTransactions(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BatchCreateTransactionsMutationResult = NonNullable<Awaited<ReturnType<typeof batchCreateTransactions>>>
+    export type BatchCreateTransactionsMutationBody = BodyType<BatchCreateTransactionsInput>
+    export type BatchCreateTransactionsMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Module P5 (Caisse Terrain) offline sync: creates several plain-language cash entries at once, e.g. queued while a Caisse Express device was hors-ligne. Each entry is validated and inserted independently -- one invalid entry never blocks the rest of the batch.
+ */
+export const useBatchCreateTransactions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof batchCreateTransactions>>, TError,{data: BodyType<BatchCreateTransactionsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof batchCreateTransactions>>,
+        TError,
+        {data: BodyType<BatchCreateTransactionsInput>},
+        TContext
+      > => {
+      return useMutation(getBatchCreateTransactionsMutationOptions(options));
+    }
+
+export const getListCashRegistersUrl = (params?: ListCashRegistersParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cash-registers?${stringifiedParams}` : `/api/cash-registers`
+}
+
+/**
+ * @summary List the cash registers (module P5). Espace PME accounts only ever see their own client's registers.
+ */
+export const listCashRegisters = async (params?: ListCashRegistersParams, options?: RequestInit): Promise<CashRegister[]> => {
+
+  return customFetch<CashRegister[]>(getListCashRegistersUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCashRegistersQueryKey = (params?: ListCashRegistersParams,) => {
+    return [
+    `/api/cash-registers`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListCashRegistersQueryOptions = <TData = Awaited<ReturnType<typeof listCashRegisters>>, TError = ErrorType<unknown>>(params?: ListCashRegistersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCashRegisters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCashRegistersQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listCashRegisters>>> = ({ signal }) => listCashRegisters(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listCashRegisters>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCashRegistersQueryResult = NonNullable<Awaited<ReturnType<typeof listCashRegisters>>>
+export type ListCashRegistersQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the cash registers (module P5). Espace PME accounts only ever see their own client's registers.
+ */
+
+export function useListCashRegisters<TData = Awaited<ReturnType<typeof listCashRegisters>>, TError = ErrorType<unknown>>(
+ params?: ListCashRegistersParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listCashRegisters>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCashRegistersQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateCashRegisterUrl = () => {
+
+
+
+
+  return `/api/cash-registers`
+}
+
+/**
+ * @summary Create a new cash register for a client
+ */
+export const createCashRegister = async (cashRegisterInput: CashRegisterInput, options?: RequestInit): Promise<CashRegister> => {
+
+  return customFetch<CashRegister>(getCreateCashRegisterUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(cashRegisterInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCashRegisterMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCashRegister>>, TError,{data: BodyType<CashRegisterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createCashRegister>>, TError,{data: BodyType<CashRegisterInput>}, TContext> => {
+
+const mutationKey = ['createCashRegister'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createCashRegister>>, {data: BodyType<CashRegisterInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createCashRegister(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCashRegisterMutationResult = NonNullable<Awaited<ReturnType<typeof createCashRegister>>>
+    export type CreateCashRegisterMutationBody = BodyType<CashRegisterInput>
+    export type CreateCashRegisterMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a new cash register for a client
+ */
+export const useCreateCashRegister = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createCashRegister>>, TError,{data: BodyType<CashRegisterInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createCashRegister>>,
+        TError,
+        {data: BodyType<CashRegisterInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCashRegisterMutationOptions(options));
+    }
+
+export const getGetCashRegisterUrl = (id: number,) => {
+
+
+
+
+  return `/api/cash-registers/${id}`
+}
+
+/**
+ * @summary Get a cash register's detail, including its live balance
+ */
+export const getCashRegister = async (id: number, options?: RequestInit): Promise<CashRegister> => {
+
+  return customFetch<CashRegister>(getGetCashRegisterUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCashRegisterQueryKey = (id: number,) => {
+    return [
+    `/api/cash-registers/${id}`
+    ] as const;
+    }
+
+
+export const getGetCashRegisterQueryOptions = <TData = Awaited<ReturnType<typeof getCashRegister>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCashRegisterQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCashRegister>>> = ({ signal }) => getCashRegister(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCashRegisterQueryResult = NonNullable<Awaited<ReturnType<typeof getCashRegister>>>
+export type GetCashRegisterQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a cash register's detail, including its live balance
+ */
+
+export function useGetCashRegister<TData = Awaited<ReturnType<typeof getCashRegister>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashRegister>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCashRegisterQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetTodayClosureUrl = (id: number,) => {
+
+
+
+
+  return `/api/cash-registers/${id}/closure-today`
+}
+
+/**
+ * @summary Get (or auto-create, if none exists yet) today's OPEN daily closure for this register, including its live theoretical balance ('Solde théorique').
+ */
+export const getTodayClosure = async (id: number, options?: RequestInit): Promise<DailyClosure> => {
+
+  return customFetch<DailyClosure>(getGetTodayClosureUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTodayClosureQueryKey = (id: number,) => {
+    return [
+    `/api/cash-registers/${id}/closure-today`
+    ] as const;
+    }
+
+
+export const getGetTodayClosureQueryOptions = <TData = Awaited<ReturnType<typeof getTodayClosure>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTodayClosure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTodayClosureQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTodayClosure>>> = ({ signal }) => getTodayClosure(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTodayClosure>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTodayClosureQueryResult = NonNullable<Awaited<ReturnType<typeof getTodayClosure>>>
+export type GetTodayClosureQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get (or auto-create, if none exists yet) today's OPEN daily closure for this register, including its live theoretical balance ('Solde théorique').
+ */
+
+export function useGetTodayClosure<TData = Awaited<ReturnType<typeof getTodayClosure>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTodayClosure>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTodayClosureQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListClosuresUrl = (id: number,) => {
+
+
+
+
+  return `/api/cash-registers/${id}/closures`
+}
+
+/**
+ * @summary List past daily closures for a register, most recent first
+ */
+export const listClosures = async (id: number, options?: RequestInit): Promise<DailyClosure[]> => {
+
+  return customFetch<DailyClosure[]>(getListClosuresUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClosuresQueryKey = (id: number,) => {
+    return [
+    `/api/cash-registers/${id}/closures`
+    ] as const;
+    }
+
+
+export const getListClosuresQueryOptions = <TData = Awaited<ReturnType<typeof listClosures>>, TError = ErrorType<unknown>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClosures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClosuresQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClosures>>> = ({ signal }) => listClosures(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClosures>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClosuresQueryResult = NonNullable<Awaited<ReturnType<typeof listClosures>>>
+export type ListClosuresQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List past daily closures for a register, most recent first
+ */
+
+export function useListClosures<TData = Awaited<ReturnType<typeof listClosures>>, TError = ErrorType<unknown>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClosures>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClosuresQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCloseDailyClosureUrl = (id: number,
+    closureId: number,) => {
+
+
+
+
+  return `/api/cash-registers/${id}/closures/${closureId}/close`
+}
+
+/**
+ * @summary 'Clôturer la journée' (Clôture de Caisse en 1 Tap): records the physically counted balance, computes the écart de caisse against the theoretical balance, and -- if they differ -- books the discrepancy and pushes it to the cabinet's À valider queue.
+ */
+export const closeDailyClosure = async (id: number,
+    closureId: number,
+    closeDailyClosureInput: CloseDailyClosureInput, options?: RequestInit): Promise<CloseDailyClosureResult> => {
+
+  return customFetch<CloseDailyClosureResult>(getCloseDailyClosureUrl(id,closureId),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(closeDailyClosureInput)
+  }
+);}
+
+
+
+
+
+export const getCloseDailyClosureMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeDailyClosure>>, TError,{id: number;closureId: number;data: BodyType<CloseDailyClosureInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closeDailyClosure>>, TError,{id: number;closureId: number;data: BodyType<CloseDailyClosureInput>}, TContext> => {
+
+const mutationKey = ['closeDailyClosure'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closeDailyClosure>>, {id: number;closureId: number;data: BodyType<CloseDailyClosureInput>}> = (props) => {
+          const {id,closureId,data} = props ?? {};
+
+          return  closeDailyClosure(id,closureId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CloseDailyClosureMutationResult = NonNullable<Awaited<ReturnType<typeof closeDailyClosure>>>
+    export type CloseDailyClosureMutationBody = BodyType<CloseDailyClosureInput>
+    export type CloseDailyClosureMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary 'Clôturer la journée' (Clôture de Caisse en 1 Tap): records the physically counted balance, computes the écart de caisse against the theoretical balance, and -- if they differ -- books the discrepancy and pushes it to the cabinet's À valider queue.
+ */
+export const useCloseDailyClosure = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closeDailyClosure>>, TError,{id: number;closureId: number;data: BodyType<CloseDailyClosureInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closeDailyClosure>>,
+        TError,
+        {id: number;closureId: number;data: BodyType<CloseDailyClosureInput>},
+        TContext
+      > => {
+      return useMutation(getCloseDailyClosureMutationOptions(options));
     }
 

@@ -1,4 +1,4 @@
-import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, PaymentType, TransactionType, TransactionSource } from "@workspace/api-client-react"
+import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, PaymentType, TransactionType, TransactionSource, ClosureStatus } from "@workspace/api-client-react"
 
 // Shared French labels/colors for the mission workflow state machine and the
 // RBAC role badges, so every screen (dashboard, clients, missions, GED, team)
@@ -97,6 +97,23 @@ export function getTransactionSourceLabel(source: TransactionSource | string | n
     case 'manual_cabinet': return 'Saisie cabinet'
     case 'pme_entry': return 'Déclaration client'
     default: return '—'
+  }
+}
+
+// Module P5 (Caisse Terrain): the daily closure workflow state.
+export function getClosureStatusLabel(status: ClosureStatus | string | null | undefined) {
+  switch (status) {
+    case 'OPEN': return 'Ouverte'
+    case 'CLOSED': return 'Clôturée'
+    default: return status ?? '—'
+  }
+}
+
+export function getClosureStatusColor(status: ClosureStatus | string | null | undefined) {
+  switch (status) {
+    case 'OPEN': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+    case 'CLOSED': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   }
 }
 
