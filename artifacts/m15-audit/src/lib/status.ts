@@ -87,6 +87,10 @@ export function getAuditActionLabel(action: string, entityId?: string | null) {
     case 'LIASSE_FISCALE_EXPORT': return `Export de la liasse fiscale${ref}`
     case 'TRANSACTION_FORCE_VALIDATE': return `Validation forcée d'une écriture en anomalie${ref}`
     case 'AI_OVERRIDE': return `Correction manuelle d'une valeur pré-remplie par l'IA${ref}`
+    // Module M17 (Gestion des Immobilisations & Amortissements).
+    case 'FIXED_ASSET_CREATE': return `Enregistrement d'une immobilisation${ref}`
+    case 'FIXED_ASSET_UPDATE': return `Mise à jour d'une immobilisation${ref}`
+    case 'DEPRECIATION_CLOSING_GENERATE': return `Génération des dotations aux amortissements${ref}`
     default: return action
   }
 }
@@ -209,5 +213,41 @@ export function getAnomalyShortLabel(code: string) {
     case 'INCOHERENCE_COMPTABLE': return 'Incohérence comptable'
     case 'MONTANT_ANORMAL': return 'Montant anormal'
     default: return 'Anomalie'
+  }
+}
+
+// Module M17 (Gestion des Immobilisations & Amortissements).
+export function getFixedAssetStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'Actif'
+    case 'RETIRE': return 'Retiré'
+    default: return status ?? '—'
+  }
+}
+
+export function getFixedAssetStatusColor(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+    case 'RETIRE': return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
+
+export function getDepreciationTypeLabel(type: string | null | undefined) {
+  switch (type) {
+    case 'LINEAIRE': return 'Linéaire'
+    case 'DEGRESSIF': return 'Dégressif'
+    default: return type ?? '—'
+  }
+}
+
+// Add M17 audit action labels.
+export function getAuditActionLabelM17(action: string, entityId?: string | null) {
+  const ref = entityId ? ` #${entityId}` : ''
+  switch (action) {
+    case 'FIXED_ASSET_CREATE': return `Enregistrement d'une immobilisation${ref}`
+    case 'FIXED_ASSET_UPDATE': return `Mise à jour d'une immobilisation${ref}`
+    case 'DEPRECIATION_CLOSING_GENERATE': return `Génération des dotations aux amortissements${ref}`
+    default: return null
   }
 }

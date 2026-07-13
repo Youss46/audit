@@ -10,6 +10,7 @@ import missionsRouter from "./missions";
 import accountingRouter from "./accounting";
 import caisseRouter from "./caisse";
 import reportingRouter from "./reporting";
+import fixedAssetsRouter from "./fixed-assets";
 
 const router: IRouter = Router();
 
@@ -24,5 +25,6 @@ router.use(missionsRouter);
 router.use(accountingRouter);
 router.use(caisseRouter);
 router.use(reportingRouter);
+router.use(fixedAssetsRouter);
 
 export default router;

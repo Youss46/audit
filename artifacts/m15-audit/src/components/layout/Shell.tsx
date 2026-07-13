@@ -16,6 +16,7 @@ import {
   Banknote,
   Gauge,
   ShieldCheck,
+  Layers,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -67,7 +68,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Espace PME (client_pme) accounts have their own dedicated portal and
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/cabinet/compliance"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/cabinet/client", "/cabinet/compliance"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -221,6 +222,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )} data-testid="link-comptabilite-cabinet">
         <BookOpenCheck className="h-5 w-5" />
         Comptabilité &amp; Travaux
+      </Link>
+
+      <Link href="/immobilisations" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        (location.startsWith("/immobilisations") || location.startsWith("/cabinet/client"))
+          ? "bg-primary text-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-immobilisations">
+        <Layers className="h-5 w-5" />
+        Immobilisations
       </Link>
       
           <Link href="/users" className={cn(

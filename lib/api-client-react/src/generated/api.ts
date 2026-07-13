@@ -38,12 +38,17 @@ import type {
   CompteDeResultatResult,
   DailyClosure,
   DashboardSummary,
+  DepreciationSchedule,
   Document,
   DocumentDetail,
   DocumentInput,
   ErrorResponse,
   ExportLiasseFiscaleInput,
   ExportLiasseFiscaleResult,
+  FixedAsset,
+  FixedAssetInput,
+  FixedAssetUpdate,
+  GenerateClosingsResult,
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
   GetCompteDeResultatParams,
@@ -51,6 +56,7 @@ import type {
   GetPilotageDashboardParams,
   GrandLivreResult,
   HealthStatus,
+  ListAssetsParams,
   ListAuditLogsParams,
   ListCashRegistersParams,
   ListClientsParams,
@@ -3686,5 +3692,459 @@ export const useExportLiasseFiscale = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getExportLiasseFiscaleMutationOptions(options));
+    }
+
+export const getListAssetsUrl = (params: ListAssetsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/assets?${stringifiedParams}` : `/api/assets`
+}
+
+/**
+ * @summary List fixed assets for a client with computed depreciation columns (M17)
+ */
+export const listAssets = async (params: ListAssetsParams, options?: RequestInit): Promise<FixedAsset[]> => {
+
+  return customFetch<FixedAsset[]>(getListAssetsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAssetsQueryKey = (params?: ListAssetsParams,) => {
+    return [
+    `/api/assets`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAssetsQueryOptions = <TData = Awaited<ReturnType<typeof listAssets>>, TError = ErrorType<ErrorResponse>>(params: ListAssetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAssetsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAssets>>> = ({ signal }) => listAssets(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAssetsQueryResult = NonNullable<Awaited<ReturnType<typeof listAssets>>>
+export type ListAssetsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List fixed assets for a client with computed depreciation columns (M17)
+ */
+
+export function useListAssets<TData = Awaited<ReturnType<typeof listAssets>>, TError = ErrorType<ErrorResponse>>(
+ params: ListAssetsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAssets>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAssetsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAssetUrl = () => {
+
+
+
+
+  return `/api/assets`
+}
+
+/**
+ * @summary Register a new fixed asset (M17)
+ */
+export const createAsset = async (fixedAssetInput: FixedAssetInput, options?: RequestInit): Promise<FixedAsset> => {
+
+  return customFetch<FixedAsset>(getCreateAssetUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(fixedAssetInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAssetMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAsset>>, TError,{data: BodyType<FixedAssetInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAsset>>, TError,{data: BodyType<FixedAssetInput>}, TContext> => {
+
+const mutationKey = ['createAsset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAsset>>, {data: BodyType<FixedAssetInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAsset(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAssetMutationResult = NonNullable<Awaited<ReturnType<typeof createAsset>>>
+    export type CreateAssetMutationBody = BodyType<FixedAssetInput>
+    export type CreateAssetMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Register a new fixed asset (M17)
+ */
+export const useCreateAsset = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAsset>>, TError,{data: BodyType<FixedAssetInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAsset>>,
+        TError,
+        {data: BodyType<FixedAssetInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAssetMutationOptions(options));
+    }
+
+export const getGetAssetUrl = (id: number,) => {
+
+
+
+
+  return `/api/assets/${id}`
+}
+
+/**
+ * @summary Get a single fixed asset (M17)
+ */
+export const getAsset = async (id: number, options?: RequestInit): Promise<FixedAsset> => {
+
+  return customFetch<FixedAsset>(getGetAssetUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAssetQueryKey = (id: number,) => {
+    return [
+    `/api/assets/${id}`
+    ] as const;
+    }
+
+
+export const getGetAssetQueryOptions = <TData = Awaited<ReturnType<typeof getAsset>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAssetQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAsset>>> = ({ signal }) => getAsset(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAssetQueryResult = NonNullable<Awaited<ReturnType<typeof getAsset>>>
+export type GetAssetQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single fixed asset (M17)
+ */
+
+export function useGetAsset<TData = Awaited<ReturnType<typeof getAsset>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAsset>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAssetQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateAssetUrl = (id: number,) => {
+
+
+
+
+  return `/api/assets/${id}`
+}
+
+/**
+ * @summary Update a fixed asset status or label (M17)
+ */
+export const updateAsset = async (id: number,
+    fixedAssetUpdate: FixedAssetUpdate, options?: RequestInit): Promise<FixedAsset> => {
+
+  return customFetch<FixedAsset>(getUpdateAssetUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(fixedAssetUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAssetMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAsset>>, TError,{id: number;data: BodyType<FixedAssetUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAsset>>, TError,{id: number;data: BodyType<FixedAssetUpdate>}, TContext> => {
+
+const mutationKey = ['updateAsset'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAsset>>, {id: number;data: BodyType<FixedAssetUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAsset(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAssetMutationResult = NonNullable<Awaited<ReturnType<typeof updateAsset>>>
+    export type UpdateAssetMutationBody = BodyType<FixedAssetUpdate>
+    export type UpdateAssetMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a fixed asset status or label (M17)
+ */
+export const useUpdateAsset = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAsset>>, TError,{id: number;data: BodyType<FixedAssetUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAsset>>,
+        TError,
+        {id: number;data: BodyType<FixedAssetUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAssetMutationOptions(options));
+    }
+
+export const getGetAssetDepreciationScheduleUrl = (id: number,) => {
+
+
+
+
+  return `/api/assets/${id}/schedule`
+}
+
+/**
+ * @summary Get full multi-year tableau d'amortissement for an asset (M17)
+ */
+export const getAssetDepreciationSchedule = async (id: number, options?: RequestInit): Promise<DepreciationSchedule> => {
+
+  return customFetch<DepreciationSchedule>(getGetAssetDepreciationScheduleUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAssetDepreciationScheduleQueryKey = (id: number,) => {
+    return [
+    `/api/assets/${id}/schedule`
+    ] as const;
+    }
+
+
+export const getGetAssetDepreciationScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getAssetDepreciationSchedule>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssetDepreciationSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAssetDepreciationScheduleQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAssetDepreciationSchedule>>> = ({ signal }) => getAssetDepreciationSchedule(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAssetDepreciationSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAssetDepreciationScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getAssetDepreciationSchedule>>>
+export type GetAssetDepreciationScheduleQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get full multi-year tableau d'amortissement for an asset (M17)
+ */
+
+export function useGetAssetDepreciationSchedule<TData = Awaited<ReturnType<typeof getAssetDepreciationSchedule>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAssetDepreciationSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAssetDepreciationScheduleQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateDepreciationClosingsUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/assets/generate-closings/${clientId}/${year}`
+}
+
+/**
+ * @summary Generate year-end depreciation journal entries for all active assets (M17)
+ */
+export const generateDepreciationClosings = async (clientId: number,
+    year: number, options?: RequestInit): Promise<GenerateClosingsResult> => {
+
+  return customFetch<GenerateClosingsResult>(getGenerateDepreciationClosingsUrl(clientId,year),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateDepreciationClosingsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDepreciationClosings>>, TError,{clientId: number;year: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateDepreciationClosings>>, TError,{clientId: number;year: number}, TContext> => {
+
+const mutationKey = ['generateDepreciationClosings'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateDepreciationClosings>>, {clientId: number;year: number}> = (props) => {
+          const {clientId,year} = props ?? {};
+
+          return  generateDepreciationClosings(clientId,year,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateDepreciationClosingsMutationResult = NonNullable<Awaited<ReturnType<typeof generateDepreciationClosings>>>
+
+    export type GenerateDepreciationClosingsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Generate year-end depreciation journal entries for all active assets (M17)
+ */
+export const useGenerateDepreciationClosings = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateDepreciationClosings>>, TError,{clientId: number;year: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateDepreciationClosings>>,
+        TError,
+        {clientId: number;year: number},
+        TContext
+      > => {
+      return useMutation(getGenerateDepreciationClosingsMutationOptions(options));
     }
 

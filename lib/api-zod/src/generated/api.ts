@@ -1483,3 +1483,188 @@ export const ExportLiasseFiscaleResponse = zod.object({
 })
 
 
+/**
+ * @summary List fixed assets for a client with computed depreciation columns (M17)
+ */
+export const ListAssetsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number().optional().describe('Fiscal year for cumulative depreciation and VNC (defaults to current year)')
+})
+
+export const ListAssetsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "acquisitionDate": zod.coerce.date(),
+  "acquisitionCost": zod.number(),
+  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
+  "usefulLifeYears": zod.number(),
+  "salvageValue": zod.number(),
+  "status": zod.enum(['ACTIF', 'RETIRE']),
+  "cumulativeDepreciation": zod.number(),
+  "netBookValue": zod.number(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListAssetsResponse = zod.array(ListAssetsResponseItem)
+
+
+/**
+ * @summary Register a new fixed asset (M17)
+ */
+
+
+
+export const createAssetBodyUsefulLifeYearsMax = 50;
+
+export const createAssetBodySalvageValueMin = 0;
+
+
+
+export const CreateAssetBody = zod.object({
+  "clientId": zod.number(),
+  "accountNumber": zod.string().min(1),
+  "label": zod.string().min(1),
+  "acquisitionDate": zod.coerce.date(),
+  "acquisitionCost": zod.number().min(1),
+  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
+  "usefulLifeYears": zod.number().min(1).max(createAssetBodyUsefulLifeYearsMax),
+  "salvageValue": zod.number().min(createAssetBodySalvageValueMin).optional()
+})
+
+export const CreateAssetResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "acquisitionDate": zod.coerce.date(),
+  "acquisitionCost": zod.number(),
+  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
+  "usefulLifeYears": zod.number(),
+  "salvageValue": zod.number(),
+  "status": zod.enum(['ACTIF', 'RETIRE']),
+  "cumulativeDepreciation": zod.number(),
+  "netBookValue": zod.number(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a single fixed asset (M17)
+ */
+export const GetAssetParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetAssetResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "acquisitionDate": zod.coerce.date(),
+  "acquisitionCost": zod.number(),
+  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
+  "usefulLifeYears": zod.number(),
+  "salvageValue": zod.number(),
+  "status": zod.enum(['ACTIF', 'RETIRE']),
+  "cumulativeDepreciation": zod.number(),
+  "netBookValue": zod.number(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a fixed asset status or label (M17)
+ */
+export const UpdateAssetParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateAssetBody = zod.object({
+  "status": zod.enum(['ACTIF', 'RETIRE']).optional(),
+  "label": zod.string().min(1).optional()
+})
+
+export const UpdateAssetResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "acquisitionDate": zod.coerce.date(),
+  "acquisitionCost": zod.number(),
+  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
+  "usefulLifeYears": zod.number(),
+  "salvageValue": zod.number(),
+  "status": zod.enum(['ACTIF', 'RETIRE']),
+  "cumulativeDepreciation": zod.number(),
+  "netBookValue": zod.number(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get full multi-year tableau d'amortissement for an asset (M17)
+ */
+export const GetAssetDepreciationScheduleParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetAssetDepreciationScheduleResponse = zod.object({
+  "assetId": zod.number(),
+  "rows": zod.array(zod.object({
+  "year": zod.number(),
+  "openingVNC": zod.number(),
+  "depreciableBase": zod.number(),
+  "rate": zod.number(),
+  "annuity": zod.number(),
+  "cumulativeDepreciation": zod.number(),
+  "closingVNC": zod.number(),
+  "isProrata": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Generate year-end depreciation journal entries for all active assets (M17)
+ */
+export const GenerateDepreciationClosingsParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GenerateDepreciationClosingsResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "generated": zod.array(zod.object({
+  "assetId": zod.number(),
+  "assetLabel": zod.string(),
+  "annuity": zod.number(),
+  "transactionId": zod.number()
+})),
+  "skipped": zod.array(zod.object({
+  "assetId": zod.number(),
+  "assetLabel": zod.string(),
+  "reason": zod.string()
+}))
+})
+
+

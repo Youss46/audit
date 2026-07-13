@@ -707,6 +707,105 @@ export interface ExportLiasseFiscaleResult {
   logged: boolean;
 }
 
+export type DepreciationType = typeof DepreciationType[keyof typeof DepreciationType];
+
+
+export const DepreciationType = {
+  LINEAIRE: 'LINEAIRE',
+  DEGRESSIF: 'DEGRESSIF',
+} as const;
+
+export type FixedAssetStatus = typeof FixedAssetStatus[keyof typeof FixedAssetStatus];
+
+
+export const FixedAssetStatus = {
+  ACTIF: 'ACTIF',
+  RETIRE: 'RETIRE',
+} as const;
+
+export interface FixedAsset {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  accountNumber: string;
+  label: string;
+  acquisitionDate: string;
+  acquisitionCost: number;
+  depreciationType: DepreciationType;
+  usefulLifeYears: number;
+  salvageValue: number;
+  status: FixedAssetStatus;
+  cumulativeDepreciation: number;
+  netBookValue: number;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FixedAssetInput {
+  clientId: number;
+  /** @minLength 1 */
+  accountNumber: string;
+  /** @minLength 1 */
+  label: string;
+  acquisitionDate: string;
+  /** @minimum 1 */
+  acquisitionCost: number;
+  depreciationType: DepreciationType;
+  /**
+     * @minimum 1
+     * @maximum 50
+     */
+  usefulLifeYears: number;
+  /** @minimum 0 */
+  salvageValue?: number;
+}
+
+export interface FixedAssetUpdate {
+  status?: FixedAssetStatus;
+  /** @minLength 1 */
+  label?: string;
+}
+
+export interface DepreciationRow {
+  year: number;
+  openingVNC: number;
+  depreciableBase: number;
+  rate: number;
+  annuity: number;
+  cumulativeDepreciation: number;
+  closingVNC: number;
+  isProrata: boolean;
+}
+
+export interface DepreciationSchedule {
+  assetId: number;
+  rows: DepreciationRow[];
+}
+
+export type GenerateClosingsResultGeneratedItem = {
+  assetId: number;
+  assetLabel: string;
+  annuity: number;
+  transactionId: number;
+};
+
+export type GenerateClosingsResultSkippedItem = {
+  assetId: number;
+  assetLabel: string;
+  reason: string;
+};
+
+export interface GenerateClosingsResult {
+  clientId: number;
+  year: number;
+  generated: GenerateClosingsResultGeneratedItem[];
+  skipped: GenerateClosingsResultSkippedItem[];
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -766,5 +865,13 @@ year: number;
 export type GetPilotageDashboardParams = {
 clientId: number;
 year: number;
+};
+
+export type ListAssetsParams = {
+clientId: number;
+/**
+ * Fiscal year for cumulative depreciation and VNC (defaults to current year)
+ */
+year?: number;
 };
 

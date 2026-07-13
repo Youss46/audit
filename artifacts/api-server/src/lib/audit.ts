@@ -38,6 +38,10 @@ export const AuditAction = {
   // (changesPayload), and compliance-UI highlighting are wired up now so
   // wiring in the emitter later is a one-line change at the override site.
   AI_OVERRIDE: "AI_OVERRIDE",
+  // Module M17 (Gestion des Immobilisations & Amortissements).
+  FIXED_ASSET_CREATE: "FIXED_ASSET_CREATE",
+  FIXED_ASSET_UPDATE: "FIXED_ASSET_UPDATE",
+  DEPRECIATION_CLOSING_GENERATE: "DEPRECIATION_CLOSING_GENERATE",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

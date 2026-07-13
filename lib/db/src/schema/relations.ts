@@ -8,6 +8,7 @@ import { documentsTable } from "./documents";
 import { auditLogsTable } from "./audit-logs";
 import { transactionsTable, journalLinesTable } from "./accounting";
 import { cashRegistersTable, dailyClosuresTable } from "./caisse";
+import { fixedAssetsTable } from "./fixed-assets";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -118,6 +119,22 @@ export const dailyClosuresRelations = relations(dailyClosuresTable, ({ one }) =>
   }),
   closedBy: one(usersTable, {
     fields: [dailyClosuresTable.closedById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M17 (Gestion des Immobilisations & Amortissements).
+export const fixedAssetsRelations = relations(fixedAssetsTable, ({ one }) => ({
+  firm: one(firmsTable, {
+    fields: [fixedAssetsTable.firmId],
+    references: [firmsTable.id],
+  }),
+  client: one(clientsTable, {
+    fields: [fixedAssetsTable.clientId],
+    references: [clientsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [fixedAssetsTable.createdById],
     references: [usersTable.id],
   }),
 }));

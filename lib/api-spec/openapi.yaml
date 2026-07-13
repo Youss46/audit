@@ -30,6 +30,8 @@ tags:
     description: Caisse Terrain (P5) - physical cash register control, quick offline-capable entries and daily closures
   - name: reporting
     description: Automated financial statements (M3 reporting) and the PME director's pilotage dashboard (P4), computed live from the validated general ledger
+  - name: assets
+    description: Fixed assets & depreciation engine (M17) - SYSCOHADA Class 2 asset registry, straight-line and declining-balance schedules, year-end dotation entries
 paths:
   /healthz:
     get:
@@ -1244,6 +1246,164 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /assets:
+    get:
+      operationId: listAssets
+      tags: [assets]
+      summary: List fixed assets for a client with computed depreciation columns (M17)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: query
+          required: false
+          schema: { type: integer }
+          description: Fiscal year for cumulative depreciation and VNC (defaults to current year)
+      responses:
+        "200":
+          description: List of fixed assets
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FixedAsset"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createAsset
+      tags: [assets]
+      summary: Register a new fixed asset (M17)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FixedAssetInput"
+      responses:
+        "201":
+          description: Asset created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedAsset"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /assets/{id}:
+    get:
+      operationId: getAsset
+      tags: [assets]
+      summary: Get a single fixed asset (M17)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Fixed asset with computed depreciation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedAsset"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateAsset
+      tags: [assets]
+      summary: Update a fixed asset status or label (M17)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FixedAssetUpdate"
+      responses:
+        "200":
+          description: Asset updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FixedAsset"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /assets/{id}/schedule:
+    get:
+      operationId: getAssetDepreciationSchedule
+      tags: [assets]
+      summary: Get full multi-year tableau d'amortissement for an asset (M17)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Full depreciation schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DepreciationSchedule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /assets/generate-closings/{clientId}/{year}:
+    post:
+      operationId: generateDepreciationClosings
+      tags: [assets]
+      summary: Generate year-end depreciation journal entries for all active assets (M17)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Summary of generated dotation entries (one per asset with non-zero annuity)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateClosingsResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -2128,3 +2288,140 @@ components:
       required: [logged]
       properties:
         logged: { type: boolean }
+
+    # -------------------------------------------------------------------------
+    # Module M17 — Fixed Assets & Depreciation Engine
+    # -------------------------------------------------------------------------
+
+    DepreciationType:
+      type: string
+      enum: [LINEAIRE, DEGRESSIF]
+
+    FixedAssetStatus:
+      type: string
+      enum: [ACTIF, RETIRE]
+
+    FixedAsset:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          accountNumber,
+          label,
+          acquisitionDate,
+          acquisitionCost,
+          depreciationType,
+          usefulLifeYears,
+          salvageValue,
+          status,
+          cumulativeDepreciation,
+          netBookValue,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        accountNumber: { type: string }
+        label: { type: string }
+        acquisitionDate: { type: string, format: date-time }
+        acquisitionCost: { type: integer }
+        depreciationType:
+          $ref: "#/components/schemas/DepreciationType"
+        usefulLifeYears: { type: integer }
+        salvageValue: { type: integer }
+        status:
+          $ref: "#/components/schemas/FixedAssetStatus"
+        # Computed fields (as of the requested fiscal year).
+        cumulativeDepreciation: { type: integer }
+        netBookValue: { type: integer }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    FixedAssetInput:
+      type: object
+      required:
+        [clientId, accountNumber, label, acquisitionDate, acquisitionCost, depreciationType, usefulLifeYears]
+      properties:
+        clientId: { type: integer }
+        accountNumber:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        acquisitionDate: { type: string, format: date-time }
+        acquisitionCost:
+          type: integer
+          minimum: 1
+        depreciationType:
+          $ref: "#/components/schemas/DepreciationType"
+        usefulLifeYears:
+          type: integer
+          minimum: 1
+          maximum: 50
+        salvageValue:
+          type: integer
+          minimum: 0
+
+    FixedAssetUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/FixedAssetStatus"
+        label: { type: string, minLength: 1 }
+
+    DepreciationRow:
+      type: object
+      required:
+        [year, openingVNC, depreciableBase, rate, annuity, cumulativeDepreciation, closingVNC, isProrata]
+      properties:
+        year: { type: integer }
+        openingVNC: { type: integer }
+        depreciableBase: { type: integer }
+        rate: { type: number }
+        annuity: { type: integer }
+        cumulativeDepreciation: { type: integer }
+        closingVNC: { type: integer }
+        isProrata: { type: boolean }
+
+    DepreciationSchedule:
+      type: object
+      required: [assetId, rows]
+      properties:
+        assetId: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/DepreciationRow"
+
+    GenerateClosingsResult:
+      type: object
+      required: [clientId, year, generated, skipped]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        generated:
+          type: array
+          items:
+            type: object
+            required: [assetId, assetLabel, annuity, transactionId]
+            properties:
+              assetId: { type: integer }
+              assetLabel: { type: string }
+              annuity: { type: integer }
+              transactionId: { type: integer }
+        skipped:
+          type: array
+          items:
+            type: object
+            required: [assetId, assetLabel, reason]
+            properties:
+              assetId: { type: integer }
+              assetLabel: { type: string }
+              reason: { type: string }
