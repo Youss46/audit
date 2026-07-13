@@ -14,6 +14,7 @@ import {
   FormMessage,
 } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 
 const registerSchema = z.object({
@@ -106,7 +107,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Mot de passe</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} data-testid="input-password" />
+                        <PasswordInput placeholder="••••••••" {...field} data-testid="input-password" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
