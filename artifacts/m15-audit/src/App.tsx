@@ -12,6 +12,8 @@ import ClientDetail from '@/pages/client-detail';
 import ClientNew from '@/pages/client-new';
 import ClientPortal from '@/pages/portal';
 import MissionDetail from '@/pages/mission-detail';
+import Missions from '@/pages/missions';
+import GestionDocumentaire from '@/pages/ged';
 import Users from '@/pages/users';
 import AuditLog from '@/pages/audit-log';
 import NotFound from '@/pages/not-found';
@@ -30,6 +32,8 @@ function Router() {
         <Route path="/clients/new" component={ClientNew} />
         <Route path="/clients/:id" component={ClientDetail} />
         <Route path="/clients/:id/missions/:missionId" component={MissionDetail} />
+        <Route path="/missions" component={Missions} />
+        <Route path="/documents" component={GestionDocumentaire} />
         <Route path="/portal" component={ClientPortal} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

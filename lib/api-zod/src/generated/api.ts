@@ -47,6 +47,7 @@ export const RegisterResponse = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 })
@@ -74,6 +75,7 @@ export const LoginResponse = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 })
@@ -90,6 +92,7 @@ export const GetCurrentUserResponse = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -105,6 +108,7 @@ export const ListUsersResponseItem = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -137,6 +141,7 @@ export const CreateUserResponse = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -167,6 +172,7 @@ export const UpdateUserResponse = zod.object({
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -210,11 +216,13 @@ export const ListAuditLogsResponse = zod.array(ListAuditLogsResponseItem)
 export const GetDashboardSummaryResponse = zod.object({
   "totalClients": zod.number(),
   "totalMissions": zod.number(),
+  "missionsEnCours": zod.number().describe('Missions currently \"en_cours\" or \"anomalie\" (active review work).'),
   "enAttente": zod.number(),
   "enCours": zod.number(),
   "anomalie": zod.number(),
   "valide": zod.number(),
-  "visaEmis": zod.number()
+  "visaEmis": zod.number(),
+  "anomalyAlerts": zod.number().describe('Count of individual checklist items currently flagged \"anomalie\" across all active missions.')
 })
 
 
@@ -379,6 +387,7 @@ export const ListClientDocumentsResponseItem = zod.object({
   "id": zod.number(),
   "firmId": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
@@ -414,6 +423,7 @@ export const UploadClientDocumentResponse = zod.object({
   "id": zod.number(),
   "firmId": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
@@ -422,6 +432,29 @@ export const UploadClientDocumentResponse = zod.object({
   "uploadedByName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
+
+
+/**
+ * @summary List all documents (GED) across every client dossier of the firm
+ */
+export const ListDocumentsQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional()
+})
+
+export const ListDocumentsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "missionId": zod.number().nullish(),
+  "category": zod.string(),
+  "fileName": zod.string(),
+  "mimeType": zod.string(),
+  "fileSize": zod.number(),
+  "uploadedByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListDocumentsResponse = zod.array(ListDocumentsResponseItem)
 
 
 /**
@@ -435,6 +468,7 @@ export const GetDocumentResponse = zod.object({
   "id": zod.number(),
   "firmId": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
@@ -470,11 +504,16 @@ export const ListMissionsResponseItem = zod.object({
   "firmId": zod.number(),
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
+  "clientLegalForm": zod.string().nullish(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "assignedToId": zod.number().nullish(),
+  "assignedToName": zod.string().nullish(),
   "visaStampCode": zod.string().nullish(),
   "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -488,7 +527,8 @@ export const ListMissionsResponse = zod.array(ListMissionsResponseItem)
  */
 export const CreateMissionBody = zod.object({
   "clientId": zod.number(),
-  "fiscalYear": zod.number()
+  "fiscalYear": zod.number(),
+  "assignedToId": zod.number().nullish()
 })
 
 export const CreateMissionResponse = zod.object({
@@ -496,11 +536,16 @@ export const CreateMissionResponse = zod.object({
   "firmId": zod.number(),
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
+  "clientLegalForm": zod.string().nullish(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "assignedToId": zod.number().nullish(),
+  "assignedToName": zod.string().nullish(),
   "visaStampCode": zod.string().nullish(),
   "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -520,11 +565,16 @@ export const GetMissionResponse = zod.object({
   "firmId": zod.number(),
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
+  "clientLegalForm": zod.string().nullish(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "assignedToId": zod.number().nullish(),
+  "assignedToName": zod.string().nullish(),
   "visaStampCode": zod.string().nullish(),
   "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
@@ -550,7 +600,8 @@ export const UpdateMissionParams = zod.object({
 })
 
 export const UpdateMissionBody = zod.object({
-  "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']).optional()
+  "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']).optional(),
+  "assignedToId": zod.number().nullish()
 })
 
 export const UpdateMissionResponse = zod.object({
@@ -558,11 +609,16 @@ export const UpdateMissionResponse = zod.object({
   "firmId": zod.number(),
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
+  "clientLegalForm": zod.string().nullish(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "assignedToId": zod.number().nullish(),
+  "assignedToName": zod.string().nullish(),
   "visaStampCode": zod.string().nullish(),
   "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),

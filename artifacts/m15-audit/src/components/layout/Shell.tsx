@@ -8,10 +8,14 @@ import {
   ActivitySquare, 
   LogOut, 
   Menu,
-  ChevronRight
+  ChevronRight,
+  Stamp,
+  FolderOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
 import { Button } from "@/components/ui/button"
+import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 
@@ -47,7 +51,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Espace PME (client_pme) accounts have their own dedicated portal and
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/users", "/audit-log"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -108,7 +112,27 @@ export function Shell({ children }: { children: React.ReactNode }) {
           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       )} data-testid="link-clients">
         <Building2 className="h-5 w-5" />
-        Dossiers Clients
+        Registre des Clients
+      </Link>
+
+      <Link href="/missions" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/missions") 
+          ? "bg-primary text-primary-foreground" 
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-missions">
+        <Stamp className="h-5 w-5" />
+        Missions de Visa
+      </Link>
+
+      <Link href="/documents" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/documents") 
+          ? "bg-primary text-primary-foreground" 
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-documents">
+        <FolderOpen className="h-5 w-5" />
+        Gestion Documentaire (GED)
       </Link>
       
           <Link href="/users" className={cn(
@@ -143,8 +167,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span className="text-sm font-medium text-sidebar-foreground truncate" data-testid="text-username">
             {user?.fullName}
           </span>
-          <span className="text-xs text-sidebar-foreground/60 truncate capitalize">
-            {user?.role.replace('_', ' ')}
+          <span className="text-xs text-sidebar-foreground/60 truncate">
+            {getRoleLabel(user?.role)}
           </span>
         </div>
         <Button 
@@ -207,6 +231,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        {/* Top Bar: current user, role badge, cabinet/tenant name */}
+        <header className="hidden md:flex items-center justify-between h-16 px-8 border-b bg-card shrink-0" data-testid="header-topbar">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Building2 className="h-4 w-4" />
+            <span className="font-medium text-foreground" data-testid="text-firm-name">
+              {user?.firmName ?? "Cabinet"}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium text-foreground" data-testid="text-topbar-username">
+              {user?.fullName}
+            </span>
+            <Badge variant="outline" className={cn("border-transparent", getRoleBadgeColor(user?.role))} data-testid="badge-topbar-role">
+              {getRoleLabel(user?.role)}
+            </Badge>
+          </div>
+        </header>
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="mx-auto max-w-6xl">
             {children}

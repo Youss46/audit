@@ -5,6 +5,7 @@ import {
   clientsTable,
   db,
   missionsTable,
+  usersTable,
 } from "@workspace/db";
 import {
   ListMissionsQueryParams,
@@ -36,7 +37,11 @@ const router: IRouter = Router();
 
 router.use(requireAuth);
 
-async function withCounts(mission: typeof missionsTable.$inferSelect, clientName?: string | null) {
+async function withCounts(
+  mission: typeof missionsTable.$inferSelect,
+  client?: typeof clientsTable.$inferSelect | null,
+  assignedToName?: string | null,
+) {
   const items = await db.query.checklistItemsTable.findMany({
     where: eq(checklistItemsTable.missionId, mission.id),
   });
@@ -44,12 +49,17 @@ async function withCounts(mission: typeof missionsTable.$inferSelect, clientName
     id: mission.id,
     firmId: mission.firmId,
     clientId: mission.clientId,
-    clientName: clientName ?? null,
+    clientName: client?.name ?? null,
+    clientLegalForm: client?.legalForm ?? null,
+    clientSector: client?.sector ?? null,
+    clientAnnualTurnover: client?.annualTurnover ?? null,
     fiscalYear: mission.fiscalYear,
     accountingSystem: mission.accountingSystem,
     status: mission.status,
     checklistTotal: items.length,
     checklistCompleted: items.filter((i) => i.status === "conforme").length,
+    assignedToId: mission.assignedToId ?? null,
+    assignedToName: assignedToName ?? null,
     visaStampCode: mission.visaStampCode ?? null,
     visaIssuedAt: mission.visaIssuedAt ?? null,
     createdAt: mission.createdAt,
@@ -109,11 +119,11 @@ router.get("/missions", async (req, res) => {
   const missions = await db.query.missionsTable.findMany({
     where: and(...conditions),
     orderBy: (t, { desc }) => [desc(t.createdAt)],
-    with: { client: true },
+    with: { client: true, assignedTo: true },
   });
 
   const results = await Promise.all(
-    missions.map((m) => withCounts(m, m.client?.name)),
+    missions.map((m) => withCounts(m, m.client, m.assignedTo?.fullName)),
   );
 
   res.json(ListMissionsResponse.parse(results));
@@ -143,6 +153,18 @@ router.post(
     return;
   }
 
+  let assignedTo: typeof usersTable.$inferSelect | null = null;
+  if (body.assignedToId != null) {
+    assignedTo =
+      (await db.query.usersTable.findFirst({
+        where: and(eq(usersTable.id, body.assignedToId), eq(usersTable.firmId, req.user!.firmId)),
+      })) ?? null;
+    if (!assignedTo) {
+      res.status(404).json({ error: "Collaborateur assigné introuvable." });
+      return;
+    }
+  }
+
   const accountingSystem = determineAccountingSystem(client.sector, client.annualTurnover);
 
   const [mission] = await db
@@ -154,6 +176,7 @@ router.post(
       accountingSystem,
       status: "en_attente",
       createdById: req.user!.id,
+      assignedToId: assignedTo?.id ?? null,
     })
     .returning();
 
@@ -184,7 +207,9 @@ router.post(
     ipAddress: req.ip,
   });
 
-  res.status(201).json(CreateMissionResponse.parse(await withCounts(mission, client.name)));
+  res
+    .status(201)
+    .json(CreateMissionResponse.parse(await withCounts(mission, client, assignedTo?.fullName)));
 });
 
 router.get("/missions/:id", async (req, res) => {
@@ -192,7 +217,7 @@ router.get("/missions/:id", async (req, res) => {
 
   const mission = await db.query.missionsTable.findFirst({
     where: and(eq(missionsTable.id, id), eq(missionsTable.firmId, req.user!.firmId)),
-    with: { client: true },
+    with: { client: true, assignedTo: true },
   });
   if (!mission) {
     res.status(404).json({ error: "Mission introuvable." });
@@ -205,7 +230,7 @@ router.get("/missions/:id", async (req, res) => {
     orderBy: (t, { asc }) => [asc(t.orderIndex)],
   });
 
-  const counts = await withCounts(mission, mission.client?.name);
+  const counts = await withCounts(mission, mission.client, mission.assignedTo?.fullName);
   res.json(GetMissionResponse.parse({ ...counts, checklist }));
 });
 
@@ -223,6 +248,18 @@ router.patch(
   if (!mission) {
     res.status(404).json({ error: "Mission introuvable." });
     return;
+  }
+
+  let assignedTo: typeof usersTable.$inferSelect | null = null;
+  if (body.assignedToId !== undefined && body.assignedToId !== null) {
+    assignedTo =
+      (await db.query.usersTable.findFirst({
+        where: and(eq(usersTable.id, body.assignedToId), eq(usersTable.firmId, req.user!.firmId)),
+      })) ?? null;
+    if (!assignedTo) {
+      res.status(404).json({ error: "Collaborateur assigné introuvable." });
+      return;
+    }
   }
 
   // Only the Expert-comptable (cabinet owner) may issue the final digital
@@ -277,6 +314,15 @@ router.patch(
       .where(eq(clientsTable.id, mission.clientId));
   }
 
+  const assignedToName =
+    body.assignedToId !== undefined
+      ? assignedTo?.fullName ?? null
+      : (
+          await db.query.usersTable.findFirst({
+            where: eq(usersTable.id, updated.assignedToId ?? -1),
+          })
+        )?.fullName ?? null;
+
   await logAudit({
     firmId: req.user!.firmId,
     userId: req.user!.id,
@@ -289,7 +335,9 @@ router.patch(
     ipAddress: req.ip,
   });
 
-  res.json(UpdateMissionResponse.parse(await withCounts(updated, mission.client?.name)));
+  res.json(
+    UpdateMissionResponse.parse(await withCounts(updated, mission.client, assignedToName)),
+  );
 });
 
 router.get("/missions/:id/checklist", async (req, res) => {

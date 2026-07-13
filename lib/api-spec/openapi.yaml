@@ -397,6 +397,27 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List all documents (GED) across every client dossier of the firm
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of documents (metadata only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+
   /documents/{id}:
     get:
       operationId: getDocument
@@ -648,6 +669,7 @@ components:
         clientId:
           type: ["integer", "null"]
           description: Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+        firmName: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
 
     RegisterInput:
@@ -812,20 +834,28 @@ components:
         [
           totalClients,
           totalMissions,
+          missionsEnCours,
           enAttente,
           enCours,
           anomalie,
           valide,
           visaEmis,
+          anomalyAlerts,
         ]
       properties:
         totalClients: { type: integer }
         totalMissions: { type: integer }
+        missionsEnCours:
+          type: integer
+          description: Missions currently "en_cours" or "anomalie" (active review work).
         enAttente: { type: integer }
         enCours: { type: integer }
         anomalie: { type: integer }
         valide: { type: integer }
         visaEmis: { type: integer }
+        anomalyAlerts:
+          type: integer
+          description: Count of individual checklist items currently flagged "anomalie" across all active missions.
 
     ChecklistItemStatus:
       type: string
@@ -874,6 +904,12 @@ components:
         firmId: { type: integer }
         clientId: { type: integer }
         clientName: { type: ["string", "null"] }
+        clientLegalForm: { type: ["string", "null"] }
+        clientSector:
+          anyOf:
+            - $ref: "#/components/schemas/Sector"
+            - type: "null"
+        clientAnnualTurnover: { type: ["number", "null"] }
         fiscalYear: { type: integer }
         accountingSystem:
           $ref: "#/components/schemas/AccountingSystem"
@@ -881,6 +917,8 @@ components:
           $ref: "#/components/schemas/MissionStatus"
         checklistTotal: { type: integer }
         checklistCompleted: { type: integer }
+        assignedToId: { type: ["integer", "null"] }
+        assignedToName: { type: ["string", "null"] }
         visaStampCode: { type: ["string", "null"] }
         visaIssuedAt: { type: ["string", "null"], format: date-time }
         createdAt: { type: string, format: date-time }
@@ -903,12 +941,14 @@ components:
       properties:
         clientId: { type: integer }
         fiscalYear: { type: integer }
+        assignedToId: { type: ["integer", "null"] }
 
     MissionUpdate:
       type: object
       properties:
         status:
           $ref: "#/components/schemas/MissionStatus"
+        assignedToId: { type: ["integer", "null"] }
 
     DocumentInput:
       type: object
@@ -946,6 +986,7 @@ components:
         id: { type: integer }
         firmId: { type: integer }
         clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
         missionId: { type: ["integer", "null"] }
         category: { type: string }
         fileName: { type: string }

@@ -27,6 +27,10 @@ export const clientsRelations = relations(clientsTable, ({ one, many }) => ({
 export const missionsRelations = relations(missionsTable, ({ one, many }) => ({
   client: one(clientsTable, { fields: [missionsTable.clientId], references: [clientsTable.id] }),
   checklistItems: many(checklistItemsTable),
+  assignedTo: one(usersTable, {
+    fields: [missionsTable.assignedToId],
+    references: [usersTable.id],
+  }),
 }));
 
 export const checklistItemsRelations = relations(checklistItemsTable, ({ one }) => ({

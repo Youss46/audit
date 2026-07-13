@@ -35,6 +35,7 @@ import type {
   HealthStatus,
   ListAuditLogsParams,
   ListClientsParams,
+  ListDocumentsParams,
   ListMissionsParams,
   LoginInput,
   Mission,
@@ -1346,6 +1347,90 @@ export const useUploadClientDocument = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getUploadClientDocumentMutationOptions(options));
     }
+
+export const getListDocumentsUrl = (params?: ListDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/documents?${stringifiedParams}` : `/api/documents`
+}
+
+/**
+ * @summary List all documents (GED) across every client dossier of the firm
+ */
+export const listDocuments = async (params?: ListDocumentsParams, options?: RequestInit): Promise<Document[]> => {
+
+  return customFetch<Document[]>(getListDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDocumentsQueryKey = (params?: ListDocumentsParams,) => {
+    return [
+    `/api/documents`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listDocuments>>, TError = ErrorType<unknown>>(params?: ListDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDocumentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDocuments>>> = ({ signal }) => listDocuments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listDocuments>>>
+export type ListDocumentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all documents (GED) across every client dossier of the firm
+ */
+
+export function useListDocuments<TData = Awaited<ReturnType<typeof listDocuments>>, TError = ErrorType<unknown>>(
+ params?: ListDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDocumentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetDocumentUrl = (id: number,) => {
 

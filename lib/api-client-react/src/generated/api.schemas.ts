@@ -44,6 +44,8 @@ export interface User {
      * @nullable
      */
   clientId?: number | null;
+  /** @nullable */
+  firmName?: string | null;
   createdAt: string;
 }
 
@@ -199,11 +201,15 @@ export interface ClientUpdate {
 export interface DashboardSummary {
   totalClients: number;
   totalMissions: number;
+  /** Missions currently "en_cours" or "anomalie" (active review work). */
+  missionsEnCours: number;
   enAttente: number;
   enCours: number;
   anomalie: number;
   valide: number;
   visaEmis: number;
+  /** Count of individual checklist items currently flagged "anomalie" across all active missions. */
+  anomalyAlerts: number;
 }
 
 export type ChecklistItemStatus = typeof ChecklistItemStatus[keyof typeof ChecklistItemStatus];
@@ -237,11 +243,20 @@ export interface Mission {
   clientId: number;
   /** @nullable */
   clientName?: string | null;
+  /** @nullable */
+  clientLegalForm?: string | null;
+  clientSector?: Sector | null;
+  /** @nullable */
+  clientAnnualTurnover?: number | null;
   fiscalYear: number;
   accountingSystem: AccountingSystem;
   status: MissionStatus;
   checklistTotal: number;
   checklistCompleted: number;
+  /** @nullable */
+  assignedToId?: number | null;
+  /** @nullable */
+  assignedToName?: string | null;
   /** @nullable */
   visaStampCode?: string | null;
   /** @nullable */
@@ -257,10 +272,14 @@ export type MissionDetail = Mission & {
 export interface MissionInput {
   clientId: number;
   fiscalYear: number;
+  /** @nullable */
+  assignedToId?: number | null;
 }
 
 export interface MissionUpdate {
   status?: MissionStatus;
+  /** @nullable */
+  assignedToId?: number | null;
 }
 
 export interface DocumentInput {
@@ -279,6 +298,8 @@ export interface Document {
   id: number;
   firmId: number;
   clientId: number;
+  /** @nullable */
+  clientName?: string | null;
   /** @nullable */
   missionId?: number | null;
   category: string;
@@ -301,6 +322,10 @@ entityType?: string;
 
 export type ListClientsParams = {
 missionStatus?: MissionStatus;
+};
+
+export type ListDocumentsParams = {
+clientId?: number;
 };
 
 export type ListMissionsParams = {

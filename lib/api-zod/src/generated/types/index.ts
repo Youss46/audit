@@ -23,6 +23,7 @@ export * from './errorResponse';
 export * from './healthStatus';
 export * from './listAuditLogsParams';
 export * from './listClientsParams';
+export * from './listDocumentsParams';
 export * from './listMissionsParams';
 export * from './loginInput';
 export * from './mission';

@@ -4,6 +4,8 @@ import { db, clientsTable, documentsTable, missionsTable } from "@workspace/db";
 import {
   ListClientDocumentsParams,
   ListClientDocumentsResponse,
+  ListDocumentsQueryParams,
+  ListDocumentsResponse,
   UploadClientDocumentParams,
   UploadClientDocumentBody,
   UploadClientDocumentResponse,
@@ -24,11 +26,16 @@ router.use(requireAuth);
 const PORTAL_UPLOAD_CATEGORY = "Procédure de Visa";
 const PORTAL_ALLOWED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg"];
 
-function serializeMetadata(doc: typeof documentsTable.$inferSelect, uploadedByName: string | null) {
+function serializeMetadata(
+  doc: typeof documentsTable.$inferSelect,
+  uploadedByName: string | null,
+  clientName?: string | null,
+) {
   return {
     id: doc.id,
     firmId: doc.firmId,
     clientId: doc.clientId,
+    clientName: clientName ?? null,
     missionId: doc.missionId,
     category: doc.category,
     fileName: doc.fileName,
@@ -38,6 +45,35 @@ function serializeMetadata(doc: typeof documentsTable.$inferSelect, uploadedByNa
     createdAt: doc.createdAt,
   };
 }
+
+// Module M6 (GED): firm-wide document library across every client dossier,
+// used by the cabinet's "Gestion Documentaire" screen. Espace PME (client_pme)
+// accounts never reach this route -- the frontend keeps them on their own
+// portal -- but we still scope defensively to their own client just in case.
+router.get("/documents", async (req, res) => {
+  const { clientId } = ListDocumentsQueryParams.parse(req.query);
+
+  if (req.user!.role === "client_pme" && !req.user!.clientId) {
+    res.json(ListDocumentsResponse.parse([]));
+    return;
+  }
+  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+
+  const conditions = [eq(documentsTable.firmId, req.user!.firmId)];
+  if (effectiveClientId) conditions.push(eq(documentsTable.clientId, effectiveClientId));
+
+  const docs = await db.query.documentsTable.findMany({
+    where: and(...conditions),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    with: { uploadedBy: true, client: true },
+  });
+
+  res.json(
+    ListDocumentsResponse.parse(
+      docs.map((d) => serializeMetadata(d, d.uploadedBy?.fullName ?? null, d.client?.name)),
+    ),
+  );
+});
 
 router.get("/clients/:id/documents", async (req, res) => {
   const { id } = ListClientDocumentsParams.parse(req.params);

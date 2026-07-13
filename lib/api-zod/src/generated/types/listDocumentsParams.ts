@@ -6,9 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface MissionInput {
-  clientId: number;
-  fiscalYear: number;
-  /** @nullable */
-  assignedToId?: number | null;
-}
+export type ListDocumentsParams = {
+clientId?: number;
+};

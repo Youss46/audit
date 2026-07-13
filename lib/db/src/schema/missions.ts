@@ -10,6 +10,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { firmsTable } from "./firms";
 import { clientsTable } from "./clients";
+import { usersTable } from "./users";
 import type { AccountingSystem, MissionStatusValue } from "./clients";
 
 // A mission is one fiscal-year visa engagement for a client (module M4/P2).
@@ -36,6 +37,12 @@ export const missionsTable = pgTable(
     visaStampCode: text("visa_stamp_code"),
     visaIssuedAt: timestamp("visa_issued_at", { withTimezone: true }),
     createdById: integer("created_by_id"),
+    // Staff member (collaborateur/stagiaire/expert_comptable) in charge of
+    // reviewing this mission -- shown on the M1 cabinet dashboard so the
+    // firm can see who owns each dossier.
+    assignedToId: integer("assigned_to_id").references(() => usersTable.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

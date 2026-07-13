@@ -22,3 +22,11 @@ export function formatDateTime(date: string | Date) {
     minute: '2-digit'
   }).format(new Date(date))
 }
+
+// SYSCOHADA figures (chiffre d'affaires) are always expressed in FCFA.
+export function formatCurrencyFCFA(amount: number | null | undefined) {
+  if (amount == null) return "—"
+  return new Intl.NumberFormat('fr-FR', {
+    maximumFractionDigits: 0,
+  }).format(amount) + " FCFA"
+}

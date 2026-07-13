@@ -20,5 +20,7 @@ export interface User {
      * @nullable
      */
   clientId?: number | null;
+  /** @nullable */
+  firmName?: string | null;
   createdAt: Date;
 }

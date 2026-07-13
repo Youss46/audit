@@ -9,9 +9,13 @@
 export interface DashboardSummary {
   totalClients: number;
   totalMissions: number;
+  /** Missions currently "en_cours" or "anomalie" (active review work). */
+  missionsEnCours: number;
   enAttente: number;
   enCours: number;
   anomalie: number;
   valide: number;
   visaEmis: number;
+  /** Count of individual checklist items currently flagged "anomalie" across all active missions. */
+  anomalyAlerts: number;
 }

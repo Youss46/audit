@@ -11,6 +11,8 @@ export interface Document {
   firmId: number;
   clientId: number;
   /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
   missionId?: number | null;
   category: string;
   fileName: string;

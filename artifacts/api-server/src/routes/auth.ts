@@ -14,7 +14,7 @@ import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
 
-function serializeUser(user: typeof usersTable.$inferSelect) {
+function serializeUser(user: typeof usersTable.$inferSelect, firmName?: string | null) {
   return {
     id: user.id,
     firmId: user.firmId,
@@ -23,6 +23,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     role: user.role,
     status: user.status,
     clientId: user.clientId ?? null,
+    firmName: firmName ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -79,7 +80,7 @@ router.post("/auth/register", async (req, res) => {
   });
 
   res.status(201).json(
-    RegisterResponse.parse({ token, user: serializeUser(user) }),
+    RegisterResponse.parse({ token, user: serializeUser(user, firm.name) }),
   );
 });
 
@@ -121,7 +122,10 @@ router.post("/auth/login", async (req, res) => {
     clientId: user.clientId,
   });
 
-  res.json(LoginResponse.parse({ token, user: serializeUser(user) }));
+  const firm = await db.query.firmsTable.findFirst({
+    where: eq(firmsTable.id, user.firmId),
+  });
+  res.json(LoginResponse.parse({ token, user: serializeUser(user, firm?.name) }));
 });
 
 router.get("/auth/me", requireAuth, async (req, res) => {
@@ -132,7 +136,10 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Utilisateur introuvable." });
     return;
   }
-  res.json(GetCurrentUserResponse.parse(serializeUser(user)));
+  const firm = await db.query.firmsTable.findFirst({
+    where: eq(firmsTable.id, user.firmId),
+  });
+  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name)));
 });
 
 export default router;

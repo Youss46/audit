@@ -9,4 +9,6 @@ import type { MissionStatus } from './missionStatus';
 
 export interface MissionUpdate {
   status?: MissionStatus;
+  /** @nullable */
+  assignedToId?: number | null;
 }

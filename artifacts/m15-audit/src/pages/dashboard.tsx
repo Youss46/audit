@@ -1,5 +1,6 @@
-import { useGetDashboardSummary } from "@workspace/api-client-react"
+import { useGetDashboardSummary, useListMissions } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
+import { Link } from "wouter"
 import { 
   Building2, 
   Files, 
@@ -8,13 +9,34 @@ import {
   AlertTriangle, 
   Stamp,
   Activity,
-  Users
+  Users,
+  ArrowRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Progress } from "@/components/ui/progress"
+import { Button } from "@/components/ui/button"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { getStatusColor, getStatusLabel } from "@/lib/status"
+import { formatCurrencyFCFA } from "@/lib/utils"
 
 export default function Dashboard() {
   const { user } = useAuth()
   const { data: summary, isLoading } = useGetDashboardSummary()
+  const { data: missions, isLoading: isLoadingMissions } = useListMissions()
+
+  // The control center only tracks dossiers still under review -- a mission
+  // that already reached "visa_emis" moves out of the active tracker.
+  const activeMissions = (missions ?? [])
+    .filter((m) => m.status !== "visa_emis")
+    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
 
   if (isLoading || !summary) {
     return (
@@ -48,9 +70,9 @@ export default function Dashboard() {
       color: "border-l-4 border-l-blue-500",
     },
     {
-      title: "Missions Actives",
-      value: summary.totalMissions,
-      icon: <Files className="h-5 w-5 text-muted-foreground" />,
+      title: "Missions en cours",
+      value: summary.missionsEnCours,
+      icon: <Activity className="h-5 w-5 text-blue-500" />,
       color: "border-l-4 border-l-indigo-500",
     },
     {
@@ -60,8 +82,8 @@ export default function Dashboard() {
       color: "border-l-4 border-l-green-500",
     },
     {
-      title: "En Anomalie",
-      value: summary.anomalie,
+      title: "Alertes Anomalies",
+      value: summary.anomalyAlerts,
       icon: <AlertTriangle className="h-5 w-5 text-destructive" />,
       color: "border-l-4 border-l-destructive",
     }
@@ -179,6 +201,89 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <Card className="shadow-sm" data-testid="card-mission-tracker">
+        <CardHeader>
+          <CardTitle>Suivi des Missions</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Client</TableHead>
+                  <TableHead>Activité</TableHead>
+                  <TableHead>Chiffre d'Affaires</TableHead>
+                  <TableHead>Chargé du dossier</TableHead>
+                  <TableHead>Statut de la Mission</TableHead>
+                  <TableHead className="w-40">Progression</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoadingMissions ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                      Chargement des missions...
+                    </TableCell>
+                  </TableRow>
+                ) : activeMissions.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
+                      <div className="flex flex-col items-center justify-center">
+                        <Stamp className="h-8 w-8 mb-2 opacity-20" />
+                        <p>Aucune mission active pour le moment.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  activeMissions.map((mission) => {
+                    const progress = mission.checklistTotal > 0
+                      ? Math.round((mission.checklistCompleted / mission.checklistTotal) * 100)
+                      : 0
+                    return (
+                      <TableRow key={mission.id} data-testid={`row-mission-${mission.id}`}>
+                        <TableCell>
+                          <div className="font-medium text-foreground">{mission.clientName ?? "—"}</div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            {mission.clientLegalForm ?? "—"} • Exercice {mission.fiscalYear}
+                          </div>
+                        </TableCell>
+                        <TableCell className="capitalize text-sm">{mission.clientSector ?? "—"}</TableCell>
+                        <TableCell className="text-sm">{formatCurrencyFCFA(mission.clientAnnualTurnover)}</TableCell>
+                        <TableCell className="text-sm">
+                          {mission.assignedToName ?? (
+                            <span className="text-muted-foreground italic">Non assigné</span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`border-transparent ${getStatusColor(mission.status)}`}>
+                            {getStatusLabel(mission.status)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Progress value={progress} className="h-2" />
+                            <span className="text-xs text-muted-foreground w-9 shrink-0">{progress}%</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button asChild variant="outline" size="sm">
+                            <Link href={`/clients/${mission.clientId}/missions/${mission.id}`}>
+                              Ouvrir le Dossier
+                              <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }

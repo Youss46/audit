@@ -7,6 +7,7 @@
  */
 import type { AccountingSystem } from './accountingSystem';
 import type { MissionStatus } from './missionStatus';
+import type { Sector } from './sector';
 
 export interface Mission {
   id: number;
@@ -14,11 +15,20 @@ export interface Mission {
   clientId: number;
   /** @nullable */
   clientName?: string | null;
+  /** @nullable */
+  clientLegalForm?: string | null;
+  clientSector?: Sector | null;
+  /** @nullable */
+  clientAnnualTurnover?: number | null;
   fiscalYear: number;
   accountingSystem: AccountingSystem;
   status: MissionStatus;
   checklistTotal: number;
   checklistCompleted: number;
+  /** @nullable */
+  assignedToId?: number | null;
+  /** @nullable */
+  assignedToName?: string | null;
   /** @nullable */
   visaStampCode?: string | null;
   /** @nullable */
