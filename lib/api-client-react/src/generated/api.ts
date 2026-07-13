@@ -47,7 +47,9 @@ import type {
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
   GetCompteDeResultatParams,
+  GetGrandLivreParams,
   GetPilotageDashboardParams,
+  GrandLivreResult,
   HealthStatus,
   ListAuditLogsParams,
   ListCashRegistersParams,
@@ -3435,6 +3437,90 @@ export function useGetCompteDeResultat<TData = Awaited<ReturnType<typeof getComp
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getGetCompteDeResultatQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetGrandLivreUrl = (params: GetGrandLivreParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/grand-livre?${stringifiedParams}` : `/api/reports/grand-livre`
+}
+
+/**
+ * @summary Le Grand Livre: every validated SYSCOHADA account for the given client/fiscal year, grouped with its chronological movements and running balance
+ */
+export const getGrandLivre = async (params: GetGrandLivreParams, options?: RequestInit): Promise<GrandLivreResult> => {
+
+  return customFetch<GrandLivreResult>(getGetGrandLivreUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGrandLivreQueryKey = (params?: GetGrandLivreParams,) => {
+    return [
+    `/api/reports/grand-livre`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetGrandLivreQueryOptions = <TData = Awaited<ReturnType<typeof getGrandLivre>>, TError = ErrorType<ErrorResponse>>(params: GetGrandLivreParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGrandLivre>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGrandLivreQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGrandLivre>>> = ({ signal }) => getGrandLivre(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGrandLivre>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGrandLivreQueryResult = NonNullable<Awaited<ReturnType<typeof getGrandLivre>>>
+export type GetGrandLivreQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Le Grand Livre: every validated SYSCOHADA account for the given client/fiscal year, grouped with its chronological movements and running balance
+ */
+
+export function useGetGrandLivre<TData = Awaited<ReturnType<typeof getGrandLivre>>, TError = ErrorType<ErrorResponse>>(
+ params: GetGrandLivreParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGrandLivre>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGrandLivreQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

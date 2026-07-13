@@ -19,6 +19,9 @@ import AuditLog from '@/pages/audit-log';
 import Compliance from '@/pages/compliance';
 import ComptabilitePme from '@/pages/comptabilite-pme';
 import ComptabiliteCabinet from '@/pages/comptabilite-cabinet';
+import ComptabiliteJournaux from '@/pages/comptabilite-journaux';
+import ComptabiliteGrandLivre from '@/pages/comptabilite-grand-livre';
+import ComptabiliteEtatsFinanciers from '@/pages/comptabilite-etats-financiers';
 import CaisseExpress from '@/pages/caisse-express';
 import Pilotage from '@/pages/pilotage';
 import NotFound from '@/pages/not-found';
@@ -44,6 +47,10 @@ function Router() {
         <Route path="/caisse" component={CaisseExpress} />
         <Route path="/pilotage" component={Pilotage} />
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
+        <Route path="/comptabilite/:clientId/saisie" component={ComptabiliteCabinet} />
+        <Route path="/comptabilite/:clientId/journaux" component={ComptabiliteJournaux} />
+        <Route path="/comptabilite/:clientId/grand-livre" component={ComptabiliteGrandLivre} />
+        <Route path="/comptabilite/:clientId/etats-financiers" component={ComptabiliteEtatsFinanciers} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/cabinet/compliance" component={Compliance} />

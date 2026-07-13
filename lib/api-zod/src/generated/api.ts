@@ -1407,6 +1407,39 @@ export const GetCompteDeResultatResponse = zod.object({
 
 
 /**
+ * @summary Le Grand Livre: every validated SYSCOHADA account for the given client/fiscal year, grouped with its chronological movements and running balance
+ */
+export const GetGrandLivreQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetGrandLivreResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "accounts": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountClass": zod.number(),
+  "initialBalance": zod.number(),
+  "initialBalanceSide": zod.enum(['debiteur', 'crediteur']),
+  "movements": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number(),
+  "runningBalance": zod.number(),
+  "runningBalanceSide": zod.enum(['debiteur', 'crediteur'])
+})),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "finalBalance": zod.number(),
+  "finalBalanceSide": zod.enum(['debiteur', 'crediteur'])
+}))
+})
+
+
+/**
  * @summary Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories
  */
 export const GetPilotageDashboardQueryParams = zod.object({

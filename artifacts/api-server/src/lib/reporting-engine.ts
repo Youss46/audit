@@ -20,6 +20,10 @@ export interface LedgerLine {
   transactionDate: Date;
   transactionType: "recette" | "depense";
   category: string | null;
+  // The journal line's own label if the matching engine set one, otherwise
+  // the parent transaction's plain-language label -- always a display-ready
+  // string for the Grand Livre / Journaux views.
+  label: string;
 }
 
 export type BalanceSide = "debiteur" | "crediteur";
@@ -217,6 +221,108 @@ export function computeCompteDeResultat(
   const totalProduits = produits.reduce((sum, l) => sum + l.amount, 0);
 
   return { charges, produits, totalCharges, totalProduits, resultatNet: totalProduits - totalCharges };
+}
+
+export interface GrandLivreMovement {
+  date: Date;
+  label: string;
+  debitAmount: number;
+  creditAmount: number;
+  runningBalance: number;
+  runningBalanceSide: BalanceSide;
+}
+
+export interface GrandLivreAccount {
+  accountNumber: string;
+  accountName: string;
+  accountClass: number;
+  initialBalance: number;
+  initialBalanceSide: BalanceSide;
+  movements: GrandLivreMovement[];
+  totalDebit: number;
+  totalCredit: number;
+  finalBalance: number;
+  finalBalanceSide: BalanceSide;
+}
+
+// Le Grand Livre: every account touched by a validated entry, grouped with
+// its full chronological history within the fiscal year and a running
+// balance carried forward from the "solde initial" (every validated line
+// dated strictly before yearStart) -- so the accountant can trace exactly
+// how each account reached its closing balance, not just what it is.
+export function computeGrandLivre(
+  lines: LedgerLine[],
+  yearStart: Date,
+  yearEndExclusive: Date,
+): GrandLivreAccount[] {
+  const byAccount = new Map<
+    string,
+    {
+      accountName: string;
+      accountClass: number;
+      initialNet: number;
+      movements: { date: Date; label: string; debitAmount: number; creditAmount: number }[];
+    }
+  >();
+
+  for (const line of lines) {
+    if (line.transactionDate >= yearEndExclusive) continue;
+    let entry = byAccount.get(line.accountNumber);
+    if (!entry) {
+      entry = { accountName: line.accountName, accountClass: line.accountClass, initialNet: 0, movements: [] };
+      byAccount.set(line.accountNumber, entry);
+    }
+    if (line.transactionDate < yearStart) {
+      entry.initialNet += line.debitAmount - line.creditAmount;
+    } else {
+      entry.movements.push({
+        date: line.transactionDate,
+        label: line.label,
+        debitAmount: line.debitAmount,
+        creditAmount: line.creditAmount,
+      });
+    }
+  }
+
+  return Array.from(byAccount.entries())
+    .map(([accountNumber, entry]) => {
+      const initial = signedBalance(Math.max(entry.initialNet, 0), Math.max(-entry.initialNet, 0));
+      const sortedMovements = [...entry.movements].sort((a, b) => a.date.getTime() - b.date.getTime());
+
+      let runningNet = entry.initialNet;
+      let totalDebit = 0;
+      let totalCredit = 0;
+      const movements: GrandLivreMovement[] = sortedMovements.map((m) => {
+        runningNet += m.debitAmount - m.creditAmount;
+        totalDebit += m.debitAmount;
+        totalCredit += m.creditAmount;
+        const running = signedBalance(Math.max(runningNet, 0), Math.max(-runningNet, 0));
+        return {
+          date: m.date,
+          label: m.label,
+          debitAmount: m.debitAmount,
+          creditAmount: m.creditAmount,
+          runningBalance: running.amount,
+          runningBalanceSide: running.side,
+        };
+      });
+
+      const final = signedBalance(Math.max(runningNet, 0), Math.max(-runningNet, 0));
+
+      return {
+        accountNumber,
+        accountName: entry.accountName,
+        accountClass: entry.accountClass,
+        initialBalance: initial.amount,
+        initialBalanceSide: initial.side,
+        movements,
+        totalDebit,
+        totalCredit,
+        finalBalance: final.amount,
+        finalBalanceSide: final.side,
+      };
+    })
+    .sort((a, b) => a.accountNumber.localeCompare(b.accountNumber));
 }
 
 export interface MonthlyRevenuePoint {

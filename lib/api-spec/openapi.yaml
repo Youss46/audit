@@ -1159,6 +1159,36 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /reports/grand-livre:
+    get:
+      operationId: getGrandLivre
+      tags: [reporting]
+      summary: "Le Grand Livre: every validated SYSCOHADA account for the given client/fiscal year, grouped with its chronological movements and running balance"
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Grand livre
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GrandLivreResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/pilotage:
     get:
       operationId: getPilotageDashboard
@@ -1994,6 +2024,61 @@ components:
         totalCharges: { type: integer }
         totalProduits: { type: integer }
         resultatNet: { type: integer }
+
+    GrandLivreMovement:
+      type: object
+      required: [date, label, debitAmount, creditAmount, runningBalance, runningBalanceSide]
+      properties:
+        date: { type: string, format: date-time }
+        label: { type: string }
+        debitAmount: { type: integer }
+        creditAmount: { type: integer }
+        runningBalance: { type: integer }
+        runningBalanceSide:
+          $ref: "#/components/schemas/BalanceSide"
+
+    GrandLivreAccount:
+      type: object
+      required:
+        [
+          accountNumber,
+          accountName,
+          accountClass,
+          initialBalance,
+          initialBalanceSide,
+          movements,
+          totalDebit,
+          totalCredit,
+          finalBalance,
+          finalBalanceSide,
+        ]
+      properties:
+        accountNumber: { type: string }
+        accountName: { type: string }
+        accountClass: { type: integer }
+        initialBalance: { type: integer }
+        initialBalanceSide:
+          $ref: "#/components/schemas/BalanceSide"
+        movements:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrandLivreMovement"
+        totalDebit: { type: integer }
+        totalCredit: { type: integer }
+        finalBalance: { type: integer }
+        finalBalanceSide:
+          $ref: "#/components/schemas/BalanceSide"
+
+    GrandLivreResult:
+      type: object
+      required: [clientId, year, accounts]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        accounts:
+          type: array
+          items:
+            $ref: "#/components/schemas/GrandLivreAccount"
 
     MonthlyRevenuePoint:
       type: object

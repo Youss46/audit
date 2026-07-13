@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useRoute } from "wouter"
 import {
   useListTransactions,
   getListTransactionsQueryKey,
@@ -9,6 +10,7 @@ import {
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
+import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
 import { formatDate, formatDateTime } from "@/lib/utils"
 import {
   getTransactionStatusColor,
@@ -46,6 +48,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export default function ComptabiliteCabinet() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  // This page doubles as the unscoped "all clients" queue (/comptabilite)
+  // and the per-client Flux de Saisie tab (/comptabilite/:clientId/saisie).
+  const [, scopedParams] = useRoute<{ clientId: string }>("/comptabilite/:clientId/saisie")
+  const clientId = scopedParams?.clientId ? Number(scopedParams.clientId) : null
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "ALL">("a_valider")
   // Module M8: "Smart Filter" -- lets the accountant narrow the review
   // queue down to only the entries the anomaly detector flagged.
@@ -58,9 +64,10 @@ export default function ComptabiliteCabinet() {
   // accountant adjust the 4111/4011 mapping before final validation).
   const [editingAccounts, setEditingAccounts] = useState<Record<number, Record<number, string>>>({})
 
-  const { data: transactions, isLoading } = useListTransactions(
-    statusFilter === "ALL" ? undefined : { status: statusFilter },
-  )
+  const { data: transactions, isLoading } = useListTransactions({
+    ...(statusFilter === "ALL" ? {} : { status: statusFilter }),
+    ...(clientId ? { clientId } : {}),
+  })
 
   const invalidateList = () =>
     queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() })
@@ -160,6 +167,8 @@ export default function ComptabiliteCabinet() {
           grand livre SYSCOHADA.
         </p>
       </div>
+
+      <ClientAccountingNav activeTab="saisie" />
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto pb-2">

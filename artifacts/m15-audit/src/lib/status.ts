@@ -133,6 +133,29 @@ export function getPaymentTypeLabel(type: PaymentType | string | null | undefine
   return type === 'cash' ? 'Immédiat (Au comptant)' : type === 'credit' ? 'Plus tard (À crédit)' : '—'
 }
 
+// Simplified journal-code classification (Journaux view): SYSCOHADA firms
+// typically split the general ledger into auxiliary journals -- here
+// derived from the payment method / operation type actually recorded,
+// since this MVP's matching engine doesn't book to a dedicated journal
+// column. HA (Achats), VT (Ventes), BQ (Banque), CA (Caisse).
+export function getJournalCode(entry: {
+  type: TransactionType | string
+  paymentMethod?: PaymentMethod | string | null
+}): "HA" | "VT" | "BQ" | "CA" {
+  if (entry.paymentMethod === "especes") return "CA"
+  if (entry.paymentMethod === "virement" || entry.paymentMethod === "cheque" || entry.paymentMethod === "mobile_money") return "BQ"
+  return entry.type === "recette" ? "VT" : "HA"
+}
+
+export function getJournalCodeLabel(code: "HA" | "VT" | "BQ" | "CA") {
+  switch (code) {
+    case "HA": return "HA — Achats"
+    case "VT": return "VT — Ventes"
+    case "BQ": return "BQ — Banque"
+    case "CA": return "CA — Caisse"
+  }
+}
+
 export function getTransactionSourceLabel(source: TransactionSource | string | null | undefined) {
   switch (source) {
     case 'settlement': return 'Règlement de facture'

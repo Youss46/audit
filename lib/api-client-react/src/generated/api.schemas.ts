@@ -635,6 +635,34 @@ export interface CompteDeResultatResult {
   resultatNet: number;
 }
 
+export interface GrandLivreMovement {
+  date: string;
+  label: string;
+  debitAmount: number;
+  creditAmount: number;
+  runningBalance: number;
+  runningBalanceSide: BalanceSide;
+}
+
+export interface GrandLivreAccount {
+  accountNumber: string;
+  accountName: string;
+  accountClass: number;
+  initialBalance: number;
+  initialBalanceSide: BalanceSide;
+  movements: GrandLivreMovement[];
+  totalDebit: number;
+  totalCredit: number;
+  finalBalance: number;
+  finalBalanceSide: BalanceSide;
+}
+
+export interface GrandLivreResult {
+  clientId: number;
+  year: number;
+  accounts: GrandLivreAccount[];
+}
+
 export interface MonthlyRevenuePoint {
   year: number;
   /**
@@ -726,6 +754,11 @@ year: number;
 };
 
 export type GetCompteDeResultatParams = {
+clientId: number;
+year: number;
+};
+
+export type GetGrandLivreParams = {
 clientId: number;
 year: number;
 };

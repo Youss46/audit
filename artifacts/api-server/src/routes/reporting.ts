@@ -14,6 +14,8 @@ import {
   GetBilanSimplifieResponse,
   GetCompteDeResultatQueryParams,
   GetCompteDeResultatResponse,
+  GetGrandLivreQueryParams,
+  GetGrandLivreResponse,
   GetPilotageDashboardQueryParams,
   GetPilotageDashboardResponse,
   ExportLiasseFiscaleBody,
@@ -26,6 +28,7 @@ import {
   computeBalanceDesComptes,
   computeBilanSimplifie,
   computeCompteDeResultat,
+  computeGrandLivre,
   computePilotageAggregates,
   type LedgerLine,
 } from "../lib/reporting-engine";
@@ -65,6 +68,8 @@ async function fetchValidatedLedgerLines(clientId: number, firmId: number): Prom
       transactionDate: transactionsTable.date,
       transactionType: transactionsTable.type,
       category: transactionsTable.category,
+      lineLabel: journalLinesTable.label,
+      transactionLabel: transactionsTable.label,
     })
     .from(journalLinesTable)
     .innerJoin(transactionsTable, eq(journalLinesTable.transactionId, transactionsTable.id))
@@ -96,6 +101,7 @@ async function fetchValidatedLedgerLines(clientId: number, firmId: number): Prom
       transactionDate: row.transactionDate,
       transactionType: row.transactionType,
       category: row.category,
+      label: row.lineLabel ?? row.transactionLabel,
     };
   });
 }
@@ -161,6 +167,26 @@ router.get("/reports/compte-resultat", async (req, res) => {
   const compteResultat = computeCompteDeResultat(lines, yearStart, yearEndExclusive);
 
   res.json(GetCompteDeResultatResponse.parse({ clientId, year, ...compteResultat }));
+});
+
+// Module M3 reporting: "Le Grand Livre" -- every SYSCOHADA account grouped
+// with its chronological movements and running balance.
+router.get("/reports/grand-livre", async (req, res) => {
+  const { clientId, year } = GetGrandLivreQueryParams.parse(req.query);
+  if (!requireOwnClient(req, res, clientId)) return;
+
+  const client = await findAuthorizedClient(req, clientId);
+  if (!client) {
+    res.status(404).json({ error: "Client introuvable." });
+    return;
+  }
+
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
+  const accounts = computeGrandLivre(lines, yearStart, yearEndExclusive);
+
+  res.json(GetGrandLivreResponse.parse({ clientId, year, accounts }));
 });
 
 // Module P4 (Pilotage Dirigeant): plain-language dashboard for the PME
