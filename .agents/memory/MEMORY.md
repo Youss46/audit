@@ -6,3 +6,4 @@
 - [Accrual (à crédit) settlement flow design](accrual-settlement-flow.md) — settlement is a new, separately-approved transaction, never an in-place edit of the original.
 - [Caisse Terrain (P5) design decisions](caisse-terrain-p5-design.md) — register balance updates at entry not approval; closure resets balance to physical count; écart booked as separate reviewable transaction.
 - [SYSCOHADA automated financial statements design](syscohada-reporting-engine-design.md) — class-level Bilan aggregation, no fiscal-year schema, résultat net folded into Passif to auto-balance.
+- [Anthropic AI integration blocked without phone verification](anthropic-integration-phone-verification-blocker.md) — Replit AI Integrations setup for Anthropic can require account phone verification; have a fallback ready.
