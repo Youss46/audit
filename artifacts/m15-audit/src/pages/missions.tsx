@@ -3,7 +3,9 @@ import { Link } from "wouter"
 import {
   useListMissions,
   useListUsers,
+  useListClients,
   useUpdateMission,
+  useCreateMission,
   getListMissionsQueryKey,
   MissionStatus,
 } from "@workspace/api-client-react"
@@ -11,13 +13,15 @@ import { useAuth } from "@/hooks/use-auth"
 import { useQueryClient } from "@tanstack/react-query"
 import { getStatusColor, getStatusLabel } from "@/lib/status"
 import { formatCurrencyFCFA } from "@/lib/utils"
-import { Stamp, Search, ArrowRight } from "lucide-react"
+import { Stamp, Search, ArrowRight, Plus } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Card, CardContent } from "@/components/ui/card"
+import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -33,19 +37,34 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
 
 const UNASSIGNED = "unassigned"
 
 export default function Missions() {
   const { user } = useAuth()
+  const { toast } = useToast()
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState<MissionStatus | "ALL">("ALL")
+  const [isNewMissionOpen, setIsNewMissionOpen] = useState(false)
+  const [newMissionClientId, setNewMissionClientId] = useState<string>("")
+  const [newMissionFiscalYear, setNewMissionFiscalYear] = useState<number>(new Date().getFullYear())
 
   const { data: missions, isLoading } = useListMissions()
   const { data: staff } = useListUsers()
+  const { data: clients } = useListClients()
 
   const canAssign = user?.role === "expert_comptable" || user?.role === "collaborateur"
+  const canCreate = canAssign
 
   const assignMutation = useUpdateMission({
     mutation: {
@@ -54,6 +73,35 @@ export default function Missions() {
       },
     },
   })
+
+  const createMissionMutation = useCreateMission({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Mission créée avec succès" })
+        setIsNewMissionOpen(false)
+        setNewMissionClientId("")
+        queryClient.invalidateQueries({ queryKey: getListMissionsQueryKey() })
+      },
+      onError: (error) => {
+        toast({
+          title: "Erreur",
+          description: error.data?.error || "Impossible de créer la mission",
+          variant: "destructive",
+        })
+      },
+    },
+  })
+
+  const handleCreateMission = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!newMissionClientId) return
+    createMissionMutation.mutate({
+      data: {
+        clientId: parseInt(newMissionClientId),
+        fiscalYear: newMissionFiscalYear,
+      },
+    })
+  }
 
   // Cabinet staff eligible to be put in charge of a dossier review --
   // Espace PME (client_pme) accounts are never assignees.
@@ -66,11 +114,75 @@ export default function Missions() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Missions de Visa</h1>
-        <p className="text-muted-foreground mt-1">
-          Toutes les missions de visa SYSCOHADA du cabinet, tous clients confondus.
-        </p>
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Missions de Visa</h1>
+          <p className="text-muted-foreground mt-1">
+            Toutes les missions de visa SYSCOHADA du cabinet, tous clients confondus.
+          </p>
+        </div>
+
+        {canCreate && (
+          <Dialog open={isNewMissionOpen} onOpenChange={setIsNewMissionOpen}>
+            <DialogTrigger asChild>
+              <Button data-testid="button-new-mission">
+                <Plus className="mr-2 h-4 w-4" />
+                Nouvelle Mission
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Créer une mission de visa</DialogTitle>
+                <DialogDescription>
+                  Sélectionnez le client et l'exercice fiscal. La checklist SYSCOHADA sera générée
+                  automatiquement selon la taille (CA) et le secteur d'activité du client.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleCreateMission} className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="client">Client</Label>
+                  <Select value={newMissionClientId} onValueChange={setNewMissionClientId}>
+                    <SelectTrigger id="client" data-testid="select-new-mission-client">
+                      <SelectValue placeholder="Sélectionner un client..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(clients ?? []).map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year">Exercice fiscal</Label>
+                  <Input
+                    id="year"
+                    type="number"
+                    min={2000}
+                    max={2100}
+                    value={newMissionFiscalYear}
+                    onChange={(e) => setNewMissionFiscalYear(parseInt(e.target.value))}
+                    required
+                  />
+                </div>
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsNewMissionOpen(false)}
+                    disabled={createMissionMutation.isPending}
+                  >
+                    Annuler
+                  </Button>
+                  <Button type="submit" disabled={createMissionMutation.isPending || !newMissionClientId}>
+                    {createMissionMutation.isPending ? "Création..." : "Générer la mission"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       <div className="flex flex-col sm:flex-row gap-4 items-center bg-card p-4 rounded-lg border shadow-sm">
