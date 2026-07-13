@@ -11,4 +11,5 @@
 - [M17 fixed assets & depreciation engine design](m17-fixed-assets-design.md) — generate-closings does a direct DB insert (bypassing createTransactionEntry); query hooks require explicit queryKey alongside enabled.
 - [M18 financial assets & loans design](m18-financial-assets-loans-design.md) — schedule computed on-the-fly; `installmentsPosted` counter is the anti-double-post boundary; per-client batch generate-entries.
 - [M19 closing engine design](m19-closing-engine-design.md) — 4-step engine: dotations+échéances → net result (131/139) → period lock → à-nouveaux; closing bypasses API lock via direct DB insert.
+- [M20 Ivorian payroll design](m20-payroll-design.md) — classical IS+CN+ITS/quotient-familial breakdown (not post-2024 unified ITS); postedTransactionId is the anti-double-post boundary.
 - [pdfmake esbuild externalize](pdfmake-esbuild-externalize.md) — pdfmake must be externalized + loaded via createRequire, never top-level ESM default import.
