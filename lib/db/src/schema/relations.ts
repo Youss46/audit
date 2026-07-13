@@ -12,6 +12,7 @@ import { fixedAssetsTable } from "./fixed-assets";
 import { financialAssetsLoansTable } from "./financial-assets-loans";
 import { fiscalYearClosingsTable } from "./closing";
 import { employeesTable, payslipsTable } from "./payroll";
+import { vatDeclarationsTable } from "./vat";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -198,6 +199,23 @@ export const payslipsRelations = relations(payslipsTable, ({ one }) => ({
   }),
   createdBy: one(usersTable, {
     fields: [payslipsTable.createdById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M21 (Télédéclaration TVA - Formulaire D-201/VA).
+export const vatDeclarationsRelations = relations(vatDeclarationsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [vatDeclarationsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, {
+    fields: [vatDeclarationsTable.clientId],
+    references: [clientsTable.id],
+  }),
+  postedTransaction: one(transactionsTable, {
+    fields: [vatDeclarationsTable.postedTransactionId],
+    references: [transactionsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [vatDeclarationsTable.createdById],
     references: [usersTable.id],
   }),
 }));

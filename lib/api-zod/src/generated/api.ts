@@ -2205,3 +2205,108 @@ export const ClosePeriodResponse = zod.object({
 })
 
 
+/**
+ * @summary Compute the D-201/VA VAT declaration (Sections A/B/C) live from the validated ledger (M21)
+ */
+export const GetVatDeclarationParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().describe('Declaration period, format YYYY-MM')
+})
+
+export const GetVatDeclarationResponse = zod.object({
+  "clientId": zod.number(),
+  "period": zod.string(),
+  "sectionA": zod.object({
+  "caHt18": zod.number(),
+  "caHt9": zod.number(),
+  "caExoneree": zod.number(),
+  "caExport": zod.number(),
+  "tvaCollectee18": zod.number(),
+  "tvaCollectee9": zod.number()
+}),
+  "sectionB": zod.object({
+  "tvaDeductibleImmo": zod.number(),
+  "tvaDeductibleBiensServices": zod.number()
+}),
+  "sectionC": zod.object({
+  "tvaCollecteeTotale": zod.number(),
+  "tvaDeductibleTotale": zod.number(),
+  "creditAnterieurReporte": zod.number(),
+  "tvaNetteAPayer": zod.number(),
+  "creditATNouveauReporter": zod.number()
+})
+})
+
+
+/**
+ * @summary Detailed deductible-VAT annex (État Annexé) - one row per purchase invoice (M21)
+ */
+export const GetVatAnnexParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().describe('Declaration period, format YYYY-MM')
+})
+
+export const GetVatAnnexResponseItem = zod.object({
+  "transactionId": zod.number(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "supplierName": zod.string().nullable(),
+  "supplierNcc": zod.string().nullable(),
+  "invoiceNumber": zod.string().nullable(),
+  "baseHt": zod.number(),
+  "tvaDeductible": zod.number(),
+  "tauxTva": zod.number(),
+  "missingNcc": zod.boolean()
+})
+export const GetVatAnnexResponse = zod.array(GetVatAnnexResponseItem)
+
+
+/**
+ * @summary Fill in or correct a purchase transaction's supplier name, NCC and invoice number (M21)
+ */
+export const UpdateVatSupplierInfoParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateVatSupplierInfoBody = zod.object({
+  "supplierName": zod.string().nullish(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish()
+})
+
+export const UpdateVatSupplierInfoResponse = zod.object({
+  "transactionId": zod.number(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "supplierName": zod.string().nullable(),
+  "supplierNcc": zod.string().nullable(),
+  "invoiceNumber": zod.string().nullable(),
+  "baseHt": zod.number(),
+  "tvaDeductible": zod.number(),
+  "tauxTva": zod.number(),
+  "missingNcc": zod.boolean()
+})
+
+
+/**
+ * @summary Post the balanced VAT liquidation OD entry (débit 443, crédit 445/444) for a period (M21)
+ */
+export const PostVatLiquidationParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().describe('Declaration period, format YYYY-MM')
+})
+
+export const PostVatLiquidationResponse = zod.object({
+  "transactionId": zod.number(),
+  "clientId": zod.number(),
+  "period": zod.string(),
+  "sectionC": zod.object({
+  "tvaCollecteeTotale": zod.number(),
+  "tvaDeductibleTotale": zod.number(),
+  "creditAnterieurReporte": zod.number(),
+  "tvaNetteAPayer": zod.number(),
+  "creditATNouveauReporter": zod.number()
+})
+})
+
+

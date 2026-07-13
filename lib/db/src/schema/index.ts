@@ -11,4 +11,5 @@ export * from "./fixed-assets";
 export * from "./financial-assets-loans";
 export * from "./closing";
 export * from "./payroll";
+export * from "./vat";
 export * from "./relations";

@@ -87,6 +87,7 @@ import type {
   Payslip,
   PilotageDashboardResult,
   PostPayrollLedgerResult,
+  PostVatLiquidationResult,
   RegisterInput,
   TransactionCategoryOption,
   TransactionDetail,
@@ -96,7 +97,10 @@ import type {
   UpdateJournalLinesInput,
   User,
   UserInput,
-  UserUpdate
+  UserUpdate,
+  VatAnnexRow,
+  VatDeclaration,
+  VatSupplierInfoInput
 } from './api.schemas';
 
 import { customFetch } from '../custom-fetch';
@@ -5305,5 +5309,314 @@ export const useClosePeriod = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getClosePeriodMutationOptions(options));
+    }
+
+export const getGetVatDeclarationUrl = (clientId: number,
+    period: string,) => {
+
+
+
+
+  return `/api/tax/vat-declaration/${clientId}/${period}`
+}
+
+/**
+ * @summary Compute the D-201/VA VAT declaration (Sections A/B/C) live from the validated ledger (M21)
+ */
+export const getVatDeclaration = async (clientId: number,
+    period: string, options?: RequestInit): Promise<VatDeclaration> => {
+
+  return customFetch<VatDeclaration>(getGetVatDeclarationUrl(clientId,period),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVatDeclarationQueryKey = (clientId: number,
+    period: string,) => {
+    return [
+    `/api/tax/vat-declaration/${clientId}/${period}`
+    ] as const;
+    }
+
+
+export const getGetVatDeclarationQueryOptions = <TData = Awaited<ReturnType<typeof getVatDeclaration>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    period: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVatDeclaration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVatDeclarationQueryKey(clientId,period);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVatDeclaration>>> = ({ signal }) => getVatDeclaration(clientId,period, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && period !== null && period !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVatDeclaration>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVatDeclarationQueryResult = NonNullable<Awaited<ReturnType<typeof getVatDeclaration>>>
+export type GetVatDeclarationQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Compute the D-201/VA VAT declaration (Sections A/B/C) live from the validated ledger (M21)
+ */
+
+export function useGetVatDeclaration<TData = Awaited<ReturnType<typeof getVatDeclaration>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    period: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVatDeclaration>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVatDeclarationQueryOptions(clientId,period,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetVatAnnexUrl = (clientId: number,
+    period: string,) => {
+
+
+
+
+  return `/api/tax/vat-annex/${clientId}/${period}`
+}
+
+/**
+ * @summary Detailed deductible-VAT annex (État Annexé) - one row per purchase invoice (M21)
+ */
+export const getVatAnnex = async (clientId: number,
+    period: string, options?: RequestInit): Promise<VatAnnexRow[]> => {
+
+  return customFetch<VatAnnexRow[]>(getGetVatAnnexUrl(clientId,period),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetVatAnnexQueryKey = (clientId: number,
+    period: string,) => {
+    return [
+    `/api/tax/vat-annex/${clientId}/${period}`
+    ] as const;
+    }
+
+
+export const getGetVatAnnexQueryOptions = <TData = Awaited<ReturnType<typeof getVatAnnex>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    period: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVatAnnex>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetVatAnnexQueryKey(clientId,period);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getVatAnnex>>> = ({ signal }) => getVatAnnex(clientId,period, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && period !== null && period !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getVatAnnex>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetVatAnnexQueryResult = NonNullable<Awaited<ReturnType<typeof getVatAnnex>>>
+export type GetVatAnnexQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Detailed deductible-VAT annex (État Annexé) - one row per purchase invoice (M21)
+ */
+
+export function useGetVatAnnex<TData = Awaited<ReturnType<typeof getVatAnnex>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    period: string, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getVatAnnex>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetVatAnnexQueryOptions(clientId,period,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateVatSupplierInfoUrl = (id: number,) => {
+
+
+
+
+  return `/api/tax/transactions/${id}/supplier-info`
+}
+
+/**
+ * @summary Fill in or correct a purchase transaction's supplier name, NCC and invoice number (M21)
+ */
+export const updateVatSupplierInfo = async (id: number,
+    vatSupplierInfoInput: VatSupplierInfoInput, options?: RequestInit): Promise<VatAnnexRow> => {
+
+  return customFetch<VatAnnexRow>(getUpdateVatSupplierInfoUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(vatSupplierInfoInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateVatSupplierInfoMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateVatSupplierInfo>>, TError,{id: number;data: BodyType<VatSupplierInfoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateVatSupplierInfo>>, TError,{id: number;data: BodyType<VatSupplierInfoInput>}, TContext> => {
+
+const mutationKey = ['updateVatSupplierInfo'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateVatSupplierInfo>>, {id: number;data: BodyType<VatSupplierInfoInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateVatSupplierInfo(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateVatSupplierInfoMutationResult = NonNullable<Awaited<ReturnType<typeof updateVatSupplierInfo>>>
+    export type UpdateVatSupplierInfoMutationBody = BodyType<VatSupplierInfoInput>
+    export type UpdateVatSupplierInfoMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Fill in or correct a purchase transaction's supplier name, NCC and invoice number (M21)
+ */
+export const useUpdateVatSupplierInfo = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateVatSupplierInfo>>, TError,{id: number;data: BodyType<VatSupplierInfoInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateVatSupplierInfo>>,
+        TError,
+        {id: number;data: BodyType<VatSupplierInfoInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateVatSupplierInfoMutationOptions(options));
+    }
+
+export const getPostVatLiquidationUrl = (clientId: number,
+    period: string,) => {
+
+
+
+
+  return `/api/tax/vat-liquidation/${clientId}/${period}`
+}
+
+/**
+ * @summary Post the balanced VAT liquidation OD entry (débit 443, crédit 445/444) for a period (M21)
+ */
+export const postVatLiquidation = async (clientId: number,
+    period: string, options?: RequestInit): Promise<PostVatLiquidationResult> => {
+
+  return customFetch<PostVatLiquidationResult>(getPostVatLiquidationUrl(clientId,period),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getPostVatLiquidationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postVatLiquidation>>, TError,{clientId: number;period: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof postVatLiquidation>>, TError,{clientId: number;period: string}, TContext> => {
+
+const mutationKey = ['postVatLiquidation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof postVatLiquidation>>, {clientId: number;period: string}> = (props) => {
+          const {clientId,period} = props ?? {};
+
+          return  postVatLiquidation(clientId,period,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PostVatLiquidationMutationResult = NonNullable<Awaited<ReturnType<typeof postVatLiquidation>>>
+
+    export type PostVatLiquidationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Post the balanced VAT liquidation OD entry (débit 443, crédit 445/444) for a period (M21)
+ */
+export const usePostVatLiquidation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof postVatLiquidation>>, TError,{clientId: number;period: string}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof postVatLiquidation>>,
+        TError,
+        {clientId: number;period: string},
+        TContext
+      > => {
+      return useMutation(getPostVatLiquidationMutationOptions(options));
     }
 

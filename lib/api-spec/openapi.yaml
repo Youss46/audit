@@ -34,6 +34,10 @@ tags:
     description: Fixed assets & depreciation engine (M17) - SYSCOHADA Class 2 asset registry, straight-line and declining-balance schedules, year-end dotation entries
   - name: closing
     description: Fiscal year-end closing (M19) — official period lock, net result computation (Résultat net 131/139), and Journal des À-nouveaux generation for year+1
+  - name: payroll
+    description: Ivorian payroll (M20) - CNPS, IS, CN, ITS and aggregated ledger posting
+  - name: tax
+    description: Télédéclaration TVA (M21) - Formulaire D-201/VA computation, deductible-VAT annex (État Annexé), and liquidation posting
 paths:
   /healthz:
     get:
@@ -1861,6 +1865,149 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /tax/vat-declaration/{clientId}/{period}:
+    get:
+      operationId: getVatDeclaration
+      tags: [tax]
+      summary: Compute the D-201/VA VAT declaration (Sections A/B/C) live from the validated ledger (M21)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: "Declaration period, format YYYY-MM"
+      responses:
+        "200":
+          description: Computed VAT declaration
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VatDeclaration"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tax/vat-annex/{clientId}/{period}:
+    get:
+      operationId: getVatAnnex
+      tags: [tax]
+      summary: Detailed deductible-VAT annex (État Annexé) - one row per purchase invoice (M21)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: "Declaration period, format YYYY-MM"
+      responses:
+        "200":
+          description: Deductible-VAT annex rows
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VatAnnexRow"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tax/transactions/{id}/supplier-info:
+    patch:
+      operationId: updateVatSupplierInfo
+      tags: [tax]
+      summary: Fill in or correct a purchase transaction's supplier name, NCC and invoice number (M21)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VatSupplierInfoInput"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VatAnnexRow"
+        "400":
+          description: Transaction has no deductible-VAT line
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /tax/vat-liquidation/{clientId}/{period}:
+    post:
+      operationId: postVatLiquidation
+      tags: [tax]
+      summary: Post the balanced VAT liquidation OD entry (débit 443, crédit 445/444) for a period (M21)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: "Declaration period, format YYYY-MM"
+      responses:
+        "200":
+          description: Liquidation posting summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostVatLiquidationResult"
+        "400":
+          description: No VAT activity found for this period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Fiscal period is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Period already posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -3277,3 +3424,81 @@ components:
         totalCredit422: { type: integer }
         totalCredit431: { type: integer }
         totalCredit447: { type: integer }
+
+    # -------------------------------------------------------------------------
+    # Module M21 — Télédéclaration TVA (Formulaire D-201/VA)
+    # -------------------------------------------------------------------------
+
+    VatSectionA:
+      type: object
+      required: [caHt18, caHt9, caExoneree, caExport, tvaCollectee18, tvaCollectee9]
+      properties:
+        caHt18: { type: integer }
+        caHt9: { type: integer }
+        caExoneree: { type: integer }
+        caExport: { type: integer }
+        tvaCollectee18: { type: integer }
+        tvaCollectee9: { type: integer }
+
+    VatSectionB:
+      type: object
+      required: [tvaDeductibleImmo, tvaDeductibleBiensServices]
+      properties:
+        tvaDeductibleImmo: { type: integer }
+        tvaDeductibleBiensServices: { type: integer }
+
+    VatSectionC:
+      type: object
+      required:
+        [tvaCollecteeTotale, tvaDeductibleTotale, creditAnterieurReporte, tvaNetteAPayer, creditATNouveauReporter]
+      properties:
+        tvaCollecteeTotale: { type: integer }
+        tvaDeductibleTotale: { type: integer }
+        creditAnterieurReporte: { type: integer }
+        tvaNetteAPayer: { type: integer }
+        creditATNouveauReporter: { type: integer }
+
+    VatDeclaration:
+      type: object
+      required: [clientId, period, sectionA, sectionB, sectionC]
+      properties:
+        clientId: { type: integer }
+        period: { type: string }
+        sectionA:
+          $ref: "#/components/schemas/VatSectionA"
+        sectionB:
+          $ref: "#/components/schemas/VatSectionB"
+        sectionC:
+          $ref: "#/components/schemas/VatSectionC"
+
+    VatAnnexRow:
+      type: object
+      required: [transactionId, date, label, supplierName, supplierNcc, invoiceNumber, baseHt, tvaDeductible, tauxTva, missingNcc]
+      properties:
+        transactionId: { type: integer }
+        date: { type: string, format: date-time }
+        label: { type: string }
+        supplierName: { type: ["string", "null"] }
+        supplierNcc: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        baseHt: { type: integer }
+        tvaDeductible: { type: integer }
+        tauxTva: { type: number }
+        missingNcc: { type: boolean }
+
+    VatSupplierInfoInput:
+      type: object
+      properties:
+        supplierName: { type: ["string", "null"] }
+        supplierNcc: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+
+    PostVatLiquidationResult:
+      type: object
+      required: [transactionId, clientId, period, sectionC]
+      properties:
+        transactionId: { type: integer }
+        clientId: { type: integer }
+        period: { type: string }
+        sectionC:
+          $ref: "#/components/schemas/VatSectionC"

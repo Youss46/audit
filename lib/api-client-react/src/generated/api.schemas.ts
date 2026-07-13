@@ -1125,6 +1125,68 @@ export interface PostPayrollLedgerResult {
   totalCredit447: number;
 }
 
+export interface VatSectionA {
+  caHt18: number;
+  caHt9: number;
+  caExoneree: number;
+  caExport: number;
+  tvaCollectee18: number;
+  tvaCollectee9: number;
+}
+
+export interface VatSectionB {
+  tvaDeductibleImmo: number;
+  tvaDeductibleBiensServices: number;
+}
+
+export interface VatSectionC {
+  tvaCollecteeTotale: number;
+  tvaDeductibleTotale: number;
+  creditAnterieurReporte: number;
+  tvaNetteAPayer: number;
+  creditATNouveauReporter: number;
+}
+
+export interface VatDeclaration {
+  clientId: number;
+  period: string;
+  sectionA: VatSectionA;
+  sectionB: VatSectionB;
+  sectionC: VatSectionC;
+}
+
+export interface VatAnnexRow {
+  transactionId: number;
+  date: string;
+  label: string;
+  /** @nullable */
+  supplierName: string | null;
+  /** @nullable */
+  supplierNcc: string | null;
+  /** @nullable */
+  invoiceNumber: string | null;
+  baseHt: number;
+  tvaDeductible: number;
+  tauxTva: number;
+  missingNcc: boolean;
+}
+
+export interface VatSupplierInfoInput {
+  /** @nullable */
+  supplierName?: string | null;
+  /** @nullable */
+  supplierNcc?: string | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+}
+
+export interface PostVatLiquidationResult {
+  transactionId: number;
+  clientId: number;
+  period: string;
+  sectionC: VatSectionC;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;

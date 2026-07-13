@@ -379,6 +379,144 @@ export async function generateBalanceExcel(
 }
 
 // ---------------------------------------------------------------------------
+// Module M21 — État Annexé (TVA déductible) – Excel
+// ---------------------------------------------------------------------------
+
+export interface VatAnnexExcelRow {
+  date: Date;
+  label: string;
+  supplierName: string | null;
+  supplierNcc: string | null;
+  invoiceNumber: string | null;
+  baseHt: number;
+  tvaDeductible: number;
+  tauxTva: number;
+  missingNcc: boolean;
+}
+
+export async function generateVatAnnexExcel(
+  clientName: string,
+  period: string,
+  rows: VatAnnexExcelRow[],
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "M15-AUDIT";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("État Annexé TVA", {
+    pageSetup: { paperSize: 9, orientation: "landscape" },
+  });
+
+  ws.mergeCells("A1:H1");
+  ws.getCell("A1").value = clientName;
+  ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A5F" } };
+
+  ws.mergeCells("A2:H2");
+  ws.getCell("A2").value = `État Annexé — TVA Déductible — Période ${period} — Formulaire D-201/VA`;
+  ws.getCell("A2").font = { size: 11, color: { argb: "FF2E6DA4" } };
+
+  ws.mergeCells("A3:H3");
+  ws.getCell("A3").value = "Devise : Francs CFA (XOF)";
+  ws.getCell("A3").font = { size: 9, italic: true, color: { argb: "FF555555" } };
+
+  ws.addRow([]);
+
+  const HEADERS = [
+    "Date",
+    "Libellé",
+    "Fournisseur",
+    "N° CC Fournisseur",
+    "N° Facture",
+    "Base HT",
+    "Taux",
+    "TVA Déductible",
+  ];
+  const headerRow = ws.addRow(HEADERS);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = { bottom: { style: "medium", color: { argb: "FF2E6DA4" } } };
+  });
+  headerRow.height = 22;
+
+  const COL_WIDTHS = [12, 34, 26, 18, 16, 16, 8, 16];
+  COL_WIDTHS.forEach((w, i) => {
+    ws.getColumn(i + 1).width = w;
+  });
+
+  const NUM_FMT = "#,##0";
+  let baseTotal = 0;
+  let tvaTotal = 0;
+
+  rows.forEach((r, idx) => {
+    const isEven = idx % 2 === 0;
+    const row = ws.addRow([
+      r.date.toLocaleDateString("fr-FR"),
+      r.label,
+      r.supplierName ?? "—",
+      r.missingNcc ? "MANQUANT" : r.supplierNcc,
+      r.invoiceNumber ?? "—",
+      r.baseHt,
+      `${r.tauxTva}%`,
+      r.tvaDeductible,
+    ]);
+
+    row.getCell(1).font = { size: 9 };
+    row.getCell(2).font = { size: 9 };
+    row.getCell(3).font = { size: 9 };
+    row.getCell(4).font = r.missingNcc
+      ? { size: 9, bold: true, color: { argb: "FFC0392B" } }
+      : { size: 9, name: "Courier New" };
+    row.getCell(5).font = { size: 9, name: "Courier New" };
+    row.getCell(7).alignment = { horizontal: "center" };
+
+    [6, 8].forEach((col) => {
+      const cell = row.getCell(col);
+      cell.numFmt = NUM_FMT;
+      cell.font = { name: "Courier New", size: 9 };
+      cell.alignment = { horizontal: "right" };
+    });
+
+    if (isEven) {
+      row.eachCell((cell) => {
+        if (!cell.fill) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+        }
+      });
+    }
+    if (r.missingNcc) {
+      row.getCell(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFDECEA" } };
+    }
+
+    baseTotal += r.baseHt;
+    tvaTotal += r.tvaDeductible;
+  });
+
+  ws.addRow([]);
+  const totalRow = ws.addRow(["TOTAUX", "", "", "", "", baseTotal, "", tvaTotal]);
+  totalRow.getCell(1).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+  [6, 8].forEach((col) => {
+    const cell = totalRow.getCell(col);
+    cell.numFmt = NUM_FMT;
+    cell.font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    cell.alignment = { horizontal: "right" };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    cell.border = {
+      top: { style: "medium", color: { argb: "FF1E3A5F" } },
+      bottom: { style: "double", color: { argb: "FF1E3A5F" } },
+    };
+  });
+
+  ws.addRow([]);
+  const genRow = ws.addRow([`Généré le ${new Date().toLocaleDateString("fr-FR")} par M15-AUDIT`]);
+  genRow.getCell(1).font = { italic: true, size: 8, color: { argb: "FF888888" } };
+  ws.mergeCells(`A${genRow.number}:H${genRow.number}`);
+
+  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+}
+
+// ---------------------------------------------------------------------------
 // États Financiers (Bilan + Compte de Résultat) – PDF
 // ---------------------------------------------------------------------------
 
