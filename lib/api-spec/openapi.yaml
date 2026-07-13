@@ -32,6 +32,8 @@ tags:
     description: Automated financial statements (M3 reporting) and the PME director's pilotage dashboard (P4), computed live from the validated general ledger
   - name: assets
     description: Fixed assets & depreciation engine (M17) - SYSCOHADA Class 2 asset registry, straight-line and declining-balance schedules, year-end dotation entries
+  - name: closing
+    description: Fiscal year-end closing (M19) — official period lock, net result computation (Résultat net 131/139), and Journal des À-nouveaux generation for year+1
 paths:
   /healthz:
     get:
@@ -1564,6 +1566,75 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /ledger/closing-status/{clientId}/{year}:
+    get:
+      operationId: getClosingStatus
+      tags: [closing]
+      summary: Get the fiscal year closing status for a client
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Closing status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClosingStatus"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /ledger/close-period/{clientId}/{year}:
+    post:
+      operationId: closePeriod
+      tags: [closing]
+      summary: Lock a fiscal year (Clôturer définitivement)
+      description: >
+        Runs the full 4-step SYSCOHADA year-end closing routine:
+        (1) generate and auto-validate pending depreciation dotations and financial installments,
+        (2) compute net result from Class 6/7 balances and post the clearing entry to account 131 or 139,
+        (3) lock the period so no further ledger entries are accepted for this client/year,
+        (4) generate the Journal des À-nouveaux carrying forward Class 1-5 balances to year+1.
+        Restricted to expert_comptable.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Period closed and locked successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClosePeriodResult"
+        "403":
+          description: Period already locked or insufficient role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -2737,3 +2808,57 @@ components:
               itemId: { type: integer }
               itemLabel: { type: string }
               reason: { type: string }
+
+    # -------------------------------------------------------------------------
+    # Module M19 — Clôture d'Exercice Comptable
+    # -------------------------------------------------------------------------
+
+    FiscalYearClosingStatus:
+      type: string
+      enum: [OPEN, LOCKED]
+
+    ClosingStatus:
+      type: object
+      required: [clientId, year, status, openingBalanceGenerated]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        status:
+          $ref: "#/components/schemas/FiscalYearClosingStatus"
+        netResult: { type: ["integer", "null"] }
+        netResultAccount: { type: ["string", "null"] }
+        openingBalanceGenerated: { type: boolean }
+        lockedAt: { type: ["string", "null"], format: date-time }
+        lockedByName: { type: ["string", "null"] }
+
+    ClosePeriodResult:
+      type: object
+      required: [clientId, year, step1, step2, lockedAt, step4]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        step1:
+          type: object
+          required:
+            [depreciationEntriesGenerated, depreciationEntriesSkipped, financeEntriesGenerated, financeEntriesSkipped]
+          properties:
+            depreciationEntriesGenerated: { type: integer }
+            depreciationEntriesSkipped: { type: integer }
+            financeEntriesGenerated: { type: integer }
+            financeEntriesSkipped: { type: integer }
+        step2:
+          type: object
+          required: [totalClass6Debits, totalClass7Credits, netResult, resultAccount, closingTransactionId]
+          properties:
+            totalClass6Debits: { type: integer }
+            totalClass7Credits: { type: integer }
+            netResult: { type: integer }
+            resultAccount: { type: string }
+            closingTransactionId: { type: integer }
+        lockedAt: { type: string, format: date-time }
+        step4:
+          type: object
+          required: [accountsCarriedForward]
+          properties:
+            accountsCarriedForward: { type: integer }
+            openingTransactionId: { type: ["integer", "null"] }

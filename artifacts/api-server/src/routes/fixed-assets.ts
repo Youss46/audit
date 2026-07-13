@@ -31,6 +31,7 @@ import {
   deriveAmortissementAccount,
   deriveDotationAccount,
 } from "../lib/depreciation-engine";
+import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
 
@@ -205,6 +206,14 @@ router.post(
     });
     if (!client) {
       res.status(404).json({ error: "Client introuvable." });
+      return;
+    }
+
+    // M19: block dotation generation for a locked fiscal year.
+    if (await isPeriodLocked(req.user!.firmId, clientId, year)) {
+      res.status(403).json({
+        error: `L'exercice ${year} est définitivement clôturé. Les dotations aux amortissements ne peuvent plus y être générées manuellement.`,
+      });
       return;
     }
 

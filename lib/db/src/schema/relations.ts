@@ -10,6 +10,7 @@ import { transactionsTable, journalLinesTable } from "./accounting";
 import { cashRegistersTable, dailyClosuresTable } from "./caisse";
 import { fixedAssetsTable } from "./fixed-assets";
 import { financialAssetsLoansTable } from "./financial-assets-loans";
+import { fiscalYearClosingsTable } from "./closing";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -152,6 +153,22 @@ export const financialAssetsLoansRelations = relations(financialAssetsLoansTable
   }),
   createdBy: one(usersTable, {
     fields: [financialAssetsLoansTable.createdById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M19 (Clôture d'Exercice Comptable).
+export const fiscalYearClosingsRelations = relations(fiscalYearClosingsTable, ({ one }) => ({
+  firm: one(firmsTable, {
+    fields: [fiscalYearClosingsTable.firmId],
+    references: [firmsTable.id],
+  }),
+  client: one(clientsTable, {
+    fields: [fiscalYearClosingsTable.clientId],
+    references: [clientsTable.id],
+  }),
+  lockedBy: one(usersTable, {
+    fields: [fiscalYearClosingsTable.lockedById],
     references: [usersTable.id],
   }),
 }));

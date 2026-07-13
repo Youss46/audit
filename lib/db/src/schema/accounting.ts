@@ -60,11 +60,18 @@ export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 // paid (module P3 "Factures en attente" -> "Marquer comme payé").
 // "caisse_closure" is the écart de caisse (cash discrepancy) adjustment
 // automatically generated when a Module P5 daily closure doesn't balance.
+// "closing_result" is the year-end result-clearing entry that zeroes Class 6
+// and 7 accounts and books the net profit/loss to 131 or 139 -- generated
+// automatically by the M19 fiscal-year closing engine.
+// "a_nouveaux" is the opening-balance transfer entry created for year+1 by
+// the M19 closing engine, carrying forward the Class 1-5 balances.
 export const TRANSACTION_SOURCES = [
   "pme_entry",
   "manual_cabinet",
   "settlement",
   "caisse_closure",
+  "closing_result",
+  "a_nouveaux",
 ] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 

@@ -9,4 +9,5 @@ export * from "./caisse";
 export * from "./audit-logs";
 export * from "./fixed-assets";
 export * from "./financial-assets-loans";
+export * from "./closing";
 export * from "./relations";

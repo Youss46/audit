@@ -43,6 +43,7 @@ import {
   listCategoriesForType,
 } from "../lib/accounting-engine";
 import { detectAnomalies } from "../lib/anomaly-detector";
+import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
 
@@ -148,6 +149,15 @@ async function createTransactionEntry(
     where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
   });
   if (!client) throw new HttpError(404, "Client introuvable.");
+
+  // M19: block entries for a locked fiscal year.
+  const txYear = new Date(body.date instanceof Date ? body.date : String(body.date)).getFullYear();
+  if (await isPeriodLocked(req.user!.firmId, body.clientId, txYear)) {
+    throw new HttpError(
+      403,
+      `L'exercice ${txYear} est définitivement clôturé. Aucune écriture ne peut y être ajoutée.`,
+    );
+  }
 
   if (body.documentId != null) {
     const doc = await db.query.documentsTable.findFirst({

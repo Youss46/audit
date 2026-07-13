@@ -1871,3 +1871,56 @@ export const GenerateFinanceJournalEntriesResponse = zod.object({
 })
 
 
+/**
+ * @summary Get the fiscal year closing status for a client
+ */
+export const GetClosingStatusParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetClosingStatusResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "status": zod.enum(['OPEN', 'LOCKED']),
+  "netResult": zod.number().nullish(),
+  "netResultAccount": zod.string().nullish(),
+  "openingBalanceGenerated": zod.boolean(),
+  "lockedAt": zod.coerce.date().nullish(),
+  "lockedByName": zod.string().nullish()
+})
+
+
+/**
+ * Runs the full 4-step SYSCOHADA year-end closing routine: (1) generate and auto-validate pending depreciation dotations and financial installments, (2) compute net result from Class 6/7 balances and post the clearing entry to account 131 or 139, (3) lock the period so no further ledger entries are accepted for this client/year, (4) generate the Journal des À-nouveaux carrying forward Class 1-5 balances to year+1. Restricted to expert_comptable.
+ * @summary Lock a fiscal year (Clôturer définitivement)
+ */
+export const ClosePeriodParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const ClosePeriodResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "step1": zod.object({
+  "depreciationEntriesGenerated": zod.number(),
+  "depreciationEntriesSkipped": zod.number(),
+  "financeEntriesGenerated": zod.number(),
+  "financeEntriesSkipped": zod.number()
+}),
+  "step2": zod.object({
+  "totalClass6Debits": zod.number(),
+  "totalClass7Credits": zod.number(),
+  "netResult": zod.number(),
+  "resultAccount": zod.string(),
+  "closingTransactionId": zod.number()
+}),
+  "lockedAt": zod.coerce.date(),
+  "step4": zod.object({
+  "accountsCarriedForward": zod.number(),
+  "openingTransactionId": zod.number().nullish()
+})
+})
+
+

@@ -920,6 +920,59 @@ export interface GenerateFinanceJournalEntriesResult {
   skipped: GenerateFinanceJournalEntriesResultSkippedItem[];
 }
 
+export type FiscalYearClosingStatus = typeof FiscalYearClosingStatus[keyof typeof FiscalYearClosingStatus];
+
+
+export const FiscalYearClosingStatus = {
+  OPEN: 'OPEN',
+  LOCKED: 'LOCKED',
+} as const;
+
+export interface ClosingStatus {
+  clientId: number;
+  year: number;
+  status: FiscalYearClosingStatus;
+  /** @nullable */
+  netResult?: number | null;
+  /** @nullable */
+  netResultAccount?: string | null;
+  openingBalanceGenerated: boolean;
+  /** @nullable */
+  lockedAt?: string | null;
+  /** @nullable */
+  lockedByName?: string | null;
+}
+
+export type ClosePeriodResultStep1 = {
+  depreciationEntriesGenerated: number;
+  depreciationEntriesSkipped: number;
+  financeEntriesGenerated: number;
+  financeEntriesSkipped: number;
+};
+
+export type ClosePeriodResultStep2 = {
+  totalClass6Debits: number;
+  totalClass7Credits: number;
+  netResult: number;
+  resultAccount: string;
+  closingTransactionId: number;
+};
+
+export type ClosePeriodResultStep4 = {
+  accountsCarriedForward: number;
+  /** @nullable */
+  openingTransactionId?: number | null;
+};
+
+export interface ClosePeriodResult {
+  clientId: number;
+  year: number;
+  step1: ClosePeriodResultStep1;
+  step2: ClosePeriodResultStep2;
+  lockedAt: string;
+  step4: ClosePeriodResultStep4;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;

@@ -36,6 +36,8 @@ import type {
   ClientUpdate,
   CloseDailyClosureInput,
   CloseDailyClosureResult,
+  ClosePeriodResult,
+  ClosingStatus,
   CompteDeResultatResult,
   DailyClosure,
   DashboardSummary,
@@ -4604,5 +4606,161 @@ export const useGenerateFinanceJournalEntries = <TError = ErrorType<ErrorRespons
         TContext
       > => {
       return useMutation(getGenerateFinanceJournalEntriesMutationOptions(options));
+    }
+
+export const getGetClosingStatusUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/ledger/closing-status/${clientId}/${year}`
+}
+
+/**
+ * @summary Get the fiscal year closing status for a client
+ */
+export const getClosingStatus = async (clientId: number,
+    year: number, options?: RequestInit): Promise<ClosingStatus> => {
+
+  return customFetch<ClosingStatus>(getGetClosingStatusUrl(clientId,year),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetClosingStatusQueryKey = (clientId: number,
+    year: number,) => {
+    return [
+    `/api/ledger/closing-status/${clientId}/${year}`
+    ] as const;
+    }
+
+
+export const getGetClosingStatusQueryOptions = <TData = Awaited<ReturnType<typeof getClosingStatus>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClosingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetClosingStatusQueryKey(clientId,year);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getClosingStatus>>> = ({ signal }) => getClosingStatus(clientId,year, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && year !== null && year !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getClosingStatus>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetClosingStatusQueryResult = NonNullable<Awaited<ReturnType<typeof getClosingStatus>>>
+export type GetClosingStatusQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the fiscal year closing status for a client
+ */
+
+export function useGetClosingStatus<TData = Awaited<ReturnType<typeof getClosingStatus>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getClosingStatus>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetClosingStatusQueryOptions(clientId,year,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getClosePeriodUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/ledger/close-period/${clientId}/${year}`
+}
+
+/**
+ * Runs the full 4-step SYSCOHADA year-end closing routine: (1) generate and auto-validate pending depreciation dotations and financial installments, (2) compute net result from Class 6/7 balances and post the clearing entry to account 131 or 139, (3) lock the period so no further ledger entries are accepted for this client/year, (4) generate the Journal des À-nouveaux carrying forward Class 1-5 balances to year+1. Restricted to expert_comptable.
+ * @summary Lock a fiscal year (Clôturer définitivement)
+ */
+export const closePeriod = async (clientId: number,
+    year: number, options?: RequestInit): Promise<ClosePeriodResult> => {
+
+  return customFetch<ClosePeriodResult>(getClosePeriodUrl(clientId,year),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getClosePeriodMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closePeriod>>, TError,{clientId: number;year: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof closePeriod>>, TError,{clientId: number;year: number}, TContext> => {
+
+const mutationKey = ['closePeriod'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof closePeriod>>, {clientId: number;year: number}> = (props) => {
+          const {clientId,year} = props ?? {};
+
+          return  closePeriod(clientId,year,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ClosePeriodMutationResult = NonNullable<Awaited<ReturnType<typeof closePeriod>>>
+
+    export type ClosePeriodMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Lock a fiscal year (Clôturer définitivement)
+ */
+export const useClosePeriod = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof closePeriod>>, TError,{clientId: number;year: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof closePeriod>>,
+        TError,
+        {clientId: number;year: number},
+        TContext
+      > => {
+      return useMutation(getClosePeriodMutationOptions(options));
     }
 

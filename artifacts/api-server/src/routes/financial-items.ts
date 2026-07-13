@@ -29,6 +29,7 @@ import {
   getDueUnpostedInstallments,
   buildInstallmentJournalLines,
 } from "../lib/loan-amortization-engine";
+import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
 
