@@ -14,6 +14,7 @@ import {
   Wallet,
   BookOpenCheck,
   Banknote,
+  Gauge,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -84,7 +85,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       !isLoading &&
       user &&
       user.role !== "client_pme" &&
-      (location.startsWith("/mes-operations") || location.startsWith("/caisse"))
+      (location.startsWith("/mes-operations") || location.startsWith("/caisse") || location.startsWith("/pilotage"))
     ) {
       setLocation("/dashboard")
     }
@@ -108,7 +109,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (user.role === "client_pme" && isCabinetOnlyRoute) {
     return <div className="min-h-screen bg-background" />
   }
-  if (user.role !== "client_pme" && (location.startsWith("/mes-operations") || location.startsWith("/caisse"))) {
+  if (user.role !== "client_pme" && (location.startsWith("/mes-operations") || location.startsWith("/caisse") || location.startsWith("/pilotage"))) {
     return <div className="min-h-screen bg-background" />
   }
 
@@ -144,6 +145,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )} data-testid="link-caisse-express">
             <Banknote className="h-5 w-5" />
             Caisse Terrain
+          </Link>
+
+          <Link href="/pilotage" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/pilotage")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-pilotage">
+            <Gauge className="h-5 w-5" />
+            Pilotage
           </Link>
         </>
       ) : (

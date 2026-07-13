@@ -22,8 +22,10 @@ import type {
 import type {
   AuditLog,
   AuthResponse,
+  BalanceDesComptesResult,
   BatchCreateTransactionsInput,
   BatchCreateTransactionsResult,
+  BilanSimplifieResult,
   CashRegister,
   CashRegisterInput,
   ChecklistItem,
@@ -33,12 +35,19 @@ import type {
   ClientUpdate,
   CloseDailyClosureInput,
   CloseDailyClosureResult,
+  CompteDeResultatResult,
   DailyClosure,
   DashboardSummary,
   Document,
   DocumentDetail,
   DocumentInput,
   ErrorResponse,
+  ExportLiasseFiscaleInput,
+  ExportLiasseFiscaleResult,
+  GetBalanceDesComptesParams,
+  GetBilanSimplifieParams,
+  GetCompteDeResultatParams,
+  GetPilotageDashboardParams,
   HealthStatus,
   ListAuditLogsParams,
   ListCashRegistersParams,
@@ -52,6 +61,7 @@ import type {
   MissionDetail,
   MissionInput,
   MissionUpdate,
+  PilotageDashboardResult,
   RegisterInput,
   TransactionCategoryOption,
   TransactionDetail,
@@ -3183,5 +3193,412 @@ export const useCloseDailyClosure = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCloseDailyClosureMutationOptions(options));
+    }
+
+export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/balance?${stringifiedParams}` : `/api/reports/balance`
+}
+
+/**
+ * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
+ */
+export const getBalanceDesComptes = async (params: GetBalanceDesComptesParams, options?: RequestInit): Promise<BalanceDesComptesResult> => {
+
+  return customFetch<BalanceDesComptesResult>(getGetBalanceDesComptesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBalanceDesComptesQueryKey = (params?: GetBalanceDesComptesParams,) => {
+    return [
+    `/api/reports/balance`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBalanceDesComptesQueryOptions = <TData = Awaited<ReturnType<typeof getBalanceDesComptes>>, TError = ErrorType<ErrorResponse>>(params: GetBalanceDesComptesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBalanceDesComptes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBalanceDesComptesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBalanceDesComptes>>> = ({ signal }) => getBalanceDesComptes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBalanceDesComptes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBalanceDesComptesQueryResult = NonNullable<Awaited<ReturnType<typeof getBalanceDesComptes>>>
+export type GetBalanceDesComptesQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
+ */
+
+export function useGetBalanceDesComptes<TData = Awaited<ReturnType<typeof getBalanceDesComptes>>, TError = ErrorType<ErrorResponse>>(
+ params: GetBalanceDesComptesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBalanceDesComptes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBalanceDesComptesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetBilanSimplifieUrl = (params: GetBilanSimplifieParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/bilan?${stringifiedParams}` : `/api/reports/bilan`
+}
+
+/**
+ * @summary Le Bilan Simplifié: Actif / Passif aggregated from SYSCOHADA classes 1 to 5 (plus the fiscal year's résultat net) for the given client/fiscal year
+ */
+export const getBilanSimplifie = async (params: GetBilanSimplifieParams, options?: RequestInit): Promise<BilanSimplifieResult> => {
+
+  return customFetch<BilanSimplifieResult>(getGetBilanSimplifieUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetBilanSimplifieQueryKey = (params?: GetBilanSimplifieParams,) => {
+    return [
+    `/api/reports/bilan`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetBilanSimplifieQueryOptions = <TData = Awaited<ReturnType<typeof getBilanSimplifie>>, TError = ErrorType<ErrorResponse>>(params: GetBilanSimplifieParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBilanSimplifie>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetBilanSimplifieQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getBilanSimplifie>>> = ({ signal }) => getBilanSimplifie(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getBilanSimplifie>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetBilanSimplifieQueryResult = NonNullable<Awaited<ReturnType<typeof getBilanSimplifie>>>
+export type GetBilanSimplifieQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Le Bilan Simplifié: Actif / Passif aggregated from SYSCOHADA classes 1 to 5 (plus the fiscal year's résultat net) for the given client/fiscal year
+ */
+
+export function useGetBilanSimplifie<TData = Awaited<ReturnType<typeof getBilanSimplifie>>, TError = ErrorType<ErrorResponse>>(
+ params: GetBilanSimplifieParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getBilanSimplifie>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetBilanSimplifieQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCompteDeResultatUrl = (params: GetCompteDeResultatParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/compte-resultat?${stringifiedParams}` : `/api/reports/compte-resultat`
+}
+
+/**
+ * @summary Le Compte de Résultat Simplifié: charges (classe 6) vs produits (classe 7) for the given client/fiscal year, netting to the résultat net
+ */
+export const getCompteDeResultat = async (params: GetCompteDeResultatParams, options?: RequestInit): Promise<CompteDeResultatResult> => {
+
+  return customFetch<CompteDeResultatResult>(getGetCompteDeResultatUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCompteDeResultatQueryKey = (params?: GetCompteDeResultatParams,) => {
+    return [
+    `/api/reports/compte-resultat`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCompteDeResultatQueryOptions = <TData = Awaited<ReturnType<typeof getCompteDeResultat>>, TError = ErrorType<ErrorResponse>>(params: GetCompteDeResultatParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompteDeResultat>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCompteDeResultatQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCompteDeResultat>>> = ({ signal }) => getCompteDeResultat(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCompteDeResultat>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCompteDeResultatQueryResult = NonNullable<Awaited<ReturnType<typeof getCompteDeResultat>>>
+export type GetCompteDeResultatQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Le Compte de Résultat Simplifié: charges (classe 6) vs produits (classe 7) for the given client/fiscal year, netting to the résultat net
+ */
+
+export function useGetCompteDeResultat<TData = Awaited<ReturnType<typeof getCompteDeResultat>>, TError = ErrorType<ErrorResponse>>(
+ params: GetCompteDeResultatParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCompteDeResultat>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCompteDeResultatQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetPilotageDashboardUrl = (params: GetPilotageDashboardParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/reports/pilotage?${stringifiedParams}` : `/api/reports/pilotage`
+}
+
+/**
+ * @summary Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories
+ */
+export const getPilotageDashboard = async (params: GetPilotageDashboardParams, options?: RequestInit): Promise<PilotageDashboardResult> => {
+
+  return customFetch<PilotageDashboardResult>(getGetPilotageDashboardUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPilotageDashboardQueryKey = (params?: GetPilotageDashboardParams,) => {
+    return [
+    `/api/reports/pilotage`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPilotageDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getPilotageDashboard>>, TError = ErrorType<ErrorResponse>>(params: GetPilotageDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPilotageDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPilotageDashboardQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPilotageDashboard>>> = ({ signal }) => getPilotageDashboard(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPilotageDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPilotageDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getPilotageDashboard>>>
+export type GetPilotageDashboardQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories
+ */
+
+export function useGetPilotageDashboard<TData = Awaited<ReturnType<typeof getPilotageDashboard>>, TError = ErrorType<ErrorResponse>>(
+ params: GetPilotageDashboardParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPilotageDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPilotageDashboardQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getExportLiasseFiscaleUrl = () => {
+
+
+
+
+  return `/api/reports/export-liasse`
+}
+
+/**
+ * @summary Records an M9 audit trail entry for a liasse fiscale (PDF) export request. Module M3 reporting export is a mocked action in this MVP -- no PDF is generated -- but every export attempt must still be auditable.
+ */
+export const exportLiasseFiscale = async (exportLiasseFiscaleInput: ExportLiasseFiscaleInput, options?: RequestInit): Promise<ExportLiasseFiscaleResult> => {
+
+  return customFetch<ExportLiasseFiscaleResult>(getExportLiasseFiscaleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(exportLiasseFiscaleInput)
+  }
+);}
+
+
+
+
+
+export const getExportLiasseFiscaleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportLiasseFiscale>>, TError,{data: BodyType<ExportLiasseFiscaleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof exportLiasseFiscale>>, TError,{data: BodyType<ExportLiasseFiscaleInput>}, TContext> => {
+
+const mutationKey = ['exportLiasseFiscale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof exportLiasseFiscale>>, {data: BodyType<ExportLiasseFiscaleInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  exportLiasseFiscale(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ExportLiasseFiscaleMutationResult = NonNullable<Awaited<ReturnType<typeof exportLiasseFiscale>>>
+    export type ExportLiasseFiscaleMutationBody = BodyType<ExportLiasseFiscaleInput>
+    export type ExportLiasseFiscaleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Records an M9 audit trail entry for a liasse fiscale (PDF) export request. Module M3 reporting export is a mocked action in this MVP -- no PDF is generated -- but every export attempt must still be auditable.
+ */
+export const useExportLiasseFiscale = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof exportLiasseFiscale>>, TError,{data: BodyType<ExportLiasseFiscaleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof exportLiasseFiscale>>,
+        TError,
+        {data: BodyType<ExportLiasseFiscaleInput>},
+        TContext
+      > => {
+      return useMutation(getExportLiasseFiscaleMutationOptions(options));
     }
 

@@ -27,6 +27,7 @@ export const AuditAction = {
   CASH_REGISTER_CREATE: "CASH_REGISTER_CREATE",
   DAILY_CLOSURE_CLOSE: "DAILY_CLOSURE_CLOSE",
   CASH_ENTRIES_SYNC: "CASH_ENTRIES_SYNC",
+  LIASSE_FISCALE_EXPORT: "LIASSE_FISCALE_EXPORT",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

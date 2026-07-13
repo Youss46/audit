@@ -1313,3 +1313,124 @@ export const CloseDailyClosureResponse = zod.object({
 })
 
 
+/**
+ * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
+ */
+export const GetBalanceDesComptesQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetBalanceDesComptesResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "rows": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "accountClass": zod.number(),
+  "initialBalance": zod.number(),
+  "totalDebit": zod.number(),
+  "totalCredit": zod.number(),
+  "finalBalance": zod.number(),
+  "finalBalanceSide": zod.enum(['debiteur', 'crediteur'])
+}))
+})
+
+
+/**
+ * @summary Le Bilan Simplifié: Actif / Passif aggregated from SYSCOHADA classes 1 to 5 (plus the fiscal year's résultat net) for the given client/fiscal year
+ */
+export const GetBilanSimplifieQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetBilanSimplifieResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "actif": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "amount": zod.number()
+})),
+  "passif": zod.array(zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "amount": zod.number()
+})),
+  "totalActif": zod.number(),
+  "totalPassif": zod.number()
+})
+
+
+/**
+ * @summary Le Compte de Résultat Simplifié: charges (classe 6) vs produits (classe 7) for the given client/fiscal year, netting to the résultat net
+ */
+export const GetCompteDeResultatQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetCompteDeResultatResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "charges": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "amount": zod.number()
+})),
+  "produits": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "amount": zod.number()
+})),
+  "totalCharges": zod.number(),
+  "totalProduits": zod.number(),
+  "resultatNet": zod.number()
+})
+
+
+/**
+ * @summary Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories
+ */
+export const GetPilotageDashboardQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const getPilotageDashboardResponseChiffreAffairesParMoisItemMonthMax = 12;
+
+
+
+export const GetPilotageDashboardResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "tresorerieNette": zod.number(),
+  "chiffreAffairesParMois": zod.array(zod.object({
+  "year": zod.number(),
+  "month": zod.number().min(1).max(getPilotageDashboardResponseChiffreAffairesParMoisItemMonthMax),
+  "label": zod.string(),
+  "total": zod.number()
+})),
+  "topDepenses": zod.array(zod.object({
+  "categoryKey": zod.string(),
+  "label": zod.string(),
+  "total": zod.number()
+}))
+})
+
+
+/**
+ * @summary Records an M9 audit trail entry for a liasse fiscale (PDF) export request. Module M3 reporting export is a mocked action in this MVP -- no PDF is generated -- but every export attempt must still be auditable.
+ */
+export const ExportLiasseFiscaleBody = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "reportType": zod.enum(['balance', 'bilan', 'compte_resultat'])
+})
+
+export const ExportLiasseFiscaleResponse = zod.object({
+  "logged": zod.boolean()
+})
+
+

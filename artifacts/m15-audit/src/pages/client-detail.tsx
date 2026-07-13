@@ -66,6 +66,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { EtatsFinanciers } from "@/components/reporting/etats-financiers"
 import {
   Select,
   SelectContent,
@@ -424,6 +425,7 @@ export default function ClientDetail() {
           <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
           <TabsTrigger value="missions">Missions de Visa</TabsTrigger>
           <TabsTrigger value="documents">Portail Documentaire</TabsTrigger>
+          <TabsTrigger value="etats-financiers" data-testid="tab-etats-financiers">États Financiers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
@@ -776,6 +778,10 @@ export default function ClientDetail() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="etats-financiers" className="mt-0">
+          <EtatsFinanciers clientId={clientId} />
         </TabsContent>
       </Tabs>
 

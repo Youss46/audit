@@ -555,6 +555,106 @@ export interface UpdateJournalLinesInput {
   lines: UpdateJournalLinesInputLinesItem[];
 }
 
+export type BalanceSide = typeof BalanceSide[keyof typeof BalanceSide];
+
+
+export const BalanceSide = {
+  debiteur: 'debiteur',
+  crediteur: 'crediteur',
+} as const;
+
+export interface BalanceRow {
+  accountNumber: string;
+  accountName: string;
+  accountClass: number;
+  initialBalance: number;
+  totalDebit: number;
+  totalCredit: number;
+  finalBalance: number;
+  finalBalanceSide: BalanceSide;
+}
+
+export interface BalanceDesComptesResult {
+  clientId: number;
+  year: number;
+  rows: BalanceRow[];
+}
+
+export interface BilanLine {
+  key: string;
+  label: string;
+  amount: number;
+}
+
+export interface BilanSimplifieResult {
+  clientId: number;
+  year: number;
+  actif: BilanLine[];
+  passif: BilanLine[];
+  totalActif: number;
+  totalPassif: number;
+}
+
+export interface CompteResultatLine {
+  accountNumber: string;
+  label: string;
+  amount: number;
+}
+
+export interface CompteDeResultatResult {
+  clientId: number;
+  year: number;
+  charges: CompteResultatLine[];
+  produits: CompteResultatLine[];
+  totalCharges: number;
+  totalProduits: number;
+  resultatNet: number;
+}
+
+export interface MonthlyRevenuePoint {
+  year: number;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  month: number;
+  label: string;
+  total: number;
+}
+
+export interface ExpenseBreakdownEntry {
+  categoryKey: string;
+  label: string;
+  total: number;
+}
+
+export interface PilotageDashboardResult {
+  clientId: number;
+  year: number;
+  tresorerieNette: number;
+  chiffreAffairesParMois: MonthlyRevenuePoint[];
+  topDepenses: ExpenseBreakdownEntry[];
+}
+
+export type ExportLiasseFiscaleInputReportType = typeof ExportLiasseFiscaleInputReportType[keyof typeof ExportLiasseFiscaleInputReportType];
+
+
+export const ExportLiasseFiscaleInputReportType = {
+  balance: 'balance',
+  bilan: 'bilan',
+  compte_resultat: 'compte_resultat',
+} as const;
+
+export interface ExportLiasseFiscaleInput {
+  clientId: number;
+  year: number;
+  reportType: ExportLiasseFiscaleInputReportType;
+}
+
+export interface ExportLiasseFiscaleResult {
+  logged: boolean;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 };
@@ -583,5 +683,25 @@ status?: TransactionStatus;
 
 export type ListCashRegistersParams = {
 clientId?: number;
+};
+
+export type GetBalanceDesComptesParams = {
+clientId: number;
+year: number;
+};
+
+export type GetBilanSimplifieParams = {
+clientId: number;
+year: number;
+};
+
+export type GetCompteDeResultatParams = {
+clientId: number;
+year: number;
+};
+
+export type GetPilotageDashboardParams = {
+clientId: number;
+year: number;
 };
 

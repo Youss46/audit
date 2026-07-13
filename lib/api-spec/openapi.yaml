@@ -28,6 +28,8 @@ tags:
     description: Comptabilité simplifiée (P3) & Comptabilité et travaux (M3) - SYSCOHADA ledger
   - name: caisse
     description: Caisse Terrain (P5) - physical cash register control, quick offline-capable entries and daily closures
+  - name: reporting
+    description: Automated financial statements (M3 reporting) and the PME director's pilotage dashboard (P4), computed live from the validated general ledger
 paths:
   /healthz:
     get:
@@ -1051,6 +1053,151 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /reports/balance:
+    get:
+      operationId: getBalanceDesComptes
+      tags: [reporting]
+      summary: "La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance"
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Balance des comptes
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BalanceDesComptesResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/bilan:
+    get:
+      operationId: getBilanSimplifie
+      tags: [reporting]
+      summary: "Le Bilan Simplifié: Actif / Passif aggregated from SYSCOHADA classes 1 to 5 (plus the fiscal year's résultat net) for the given client/fiscal year"
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Bilan simplifié
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BilanSimplifieResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/compte-resultat:
+    get:
+      operationId: getCompteDeResultat
+      tags: [reporting]
+      summary: "Le Compte de Résultat Simplifié: charges (classe 6) vs produits (classe 7) for the given client/fiscal year, netting to the résultat net"
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Compte de résultat simplifié
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompteDeResultatResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/pilotage:
+    get:
+      operationId: getPilotageDashboard
+      tags: [reporting]
+      summary: "Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories"
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: year
+          in: query
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pilotage dashboard aggregates
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PilotageDashboardResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /reports/export-liasse:
+    post:
+      operationId: exportLiasseFiscale
+      tags: [reporting]
+      summary: "Records an M9 audit trail entry for a liasse fiscale (PDF) export request. Module M3 reporting export is a mocked action in this MVP -- no PDF is generated -- but every export attempt must still be auditable."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ExportLiasseFiscaleInput"
+      responses:
+        "200":
+          description: Export request logged
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExportLiasseFiscaleResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1725,3 +1872,142 @@ components:
               accountNumber:
                 type: string
                 minLength: 1
+
+    BalanceSide:
+      type: string
+      enum: [debiteur, crediteur]
+
+    BalanceRow:
+      type: object
+      required:
+        [
+          accountNumber,
+          accountName,
+          accountClass,
+          initialBalance,
+          totalDebit,
+          totalCredit,
+          finalBalance,
+          finalBalanceSide,
+        ]
+      properties:
+        accountNumber: { type: string }
+        accountName: { type: string }
+        accountClass: { type: integer }
+        initialBalance: { type: integer }
+        totalDebit: { type: integer }
+        totalCredit: { type: integer }
+        finalBalance: { type: integer }
+        finalBalanceSide:
+          $ref: "#/components/schemas/BalanceSide"
+
+    BalanceDesComptesResult:
+      type: object
+      required: [clientId, year, rows]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/BalanceRow"
+
+    BilanLine:
+      type: object
+      required: [key, label, amount]
+      properties:
+        key: { type: string }
+        label: { type: string }
+        amount: { type: integer }
+
+    BilanSimplifieResult:
+      type: object
+      required: [clientId, year, actif, passif, totalActif, totalPassif]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        actif:
+          type: array
+          items:
+            $ref: "#/components/schemas/BilanLine"
+        passif:
+          type: array
+          items:
+            $ref: "#/components/schemas/BilanLine"
+        totalActif: { type: integer }
+        totalPassif: { type: integer }
+
+    CompteResultatLine:
+      type: object
+      required: [accountNumber, label, amount]
+      properties:
+        accountNumber: { type: string }
+        label: { type: string }
+        amount: { type: integer }
+
+    CompteDeResultatResult:
+      type: object
+      required: [clientId, year, charges, produits, totalCharges, totalProduits, resultatNet]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        charges:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompteResultatLine"
+        produits:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompteResultatLine"
+        totalCharges: { type: integer }
+        totalProduits: { type: integer }
+        resultatNet: { type: integer }
+
+    MonthlyRevenuePoint:
+      type: object
+      required: [year, month, label, total]
+      properties:
+        year: { type: integer }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        label: { type: string }
+        total: { type: integer }
+
+    ExpenseBreakdownEntry:
+      type: object
+      required: [categoryKey, label, total]
+      properties:
+        categoryKey: { type: string }
+        label: { type: string }
+        total: { type: integer }
+
+    PilotageDashboardResult:
+      type: object
+      required: [clientId, year, tresorerieNette, chiffreAffairesParMois, topDepenses]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        tresorerieNette: { type: integer }
+        chiffreAffairesParMois:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyRevenuePoint"
+        topDepenses:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExpenseBreakdownEntry"
+
+    ExportLiasseFiscaleInput:
+      type: object
+      required: [clientId, year, reportType]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        reportType:
+          type: string
+          enum: [balance, bilan, compte_resultat]
+
+    ExportLiasseFiscaleResult:
+      type: object
+      required: [logged]
+      properties:
+        logged: { type: boolean }
