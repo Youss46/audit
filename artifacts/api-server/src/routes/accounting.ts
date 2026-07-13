@@ -215,6 +215,21 @@ async function createTransactionEntry(
     throw err;
   }
 
+  // A client dossier marked non-assujetti (isVatRegistered = false) must
+  // never have a line posted to a VAT account (443 TVA Collectée / 445 TVA
+  // Déductible) -- the full TTC amount belongs entirely on the class 6/2
+  // counterpart. Defensive, in addition to the same guard on the manual
+  // journal-line edit route below: if a future category or import path ever
+  // produces a VAT line, it is still blocked here at the single point where
+  // every transaction's initial journal lines get written.
+  if (!client.isVatRegistered) {
+    const blocked = journalLines.some((line) => isVatAccount(line.accountNumber));
+    if (blocked) {
+      const err = new ClientNotVatRegisteredError();
+      throw new HttpError(err.statusCode, err.message);
+    }
+  }
+
   const source = req.user!.role === "client_pme" ? "pme_entry" : "manual_cabinet";
 
   // Module M8: run the rule-based anomaly/duplicate detector before this

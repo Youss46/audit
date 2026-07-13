@@ -13,3 +13,4 @@
 - [M19 closing engine design](m19-closing-engine-design.md) — 4-step engine: dotations+échéances → net result (131/139) → period lock → à-nouveaux; closing bypasses API lock via direct DB insert.
 - [M20 Ivorian payroll design](m20-payroll-design.md) — classical IS+CN+ITS/quotient-familial breakdown (not post-2024 unified ITS); postedTransactionId is the anti-double-post boundary.
 - [pdfmake esbuild externalize](pdfmake-esbuild-externalize.md) — pdfmake must be externalized + loaded via createRequire, never top-level ESM default import.
+- [M21 VAT-exemption (non-assujetti) handling](m21-vat-exemption-design.md) — taxRegime/isVatRegistered already exist end-to-end; check before assuming a "VAT exemption" request is unimplemented.
