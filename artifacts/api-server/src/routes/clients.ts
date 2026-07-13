@@ -55,9 +55,11 @@ router.post("/clients", requireRole("expert_comptable", "collaborateur"), async 
       ? determineAccountingSystem(body.sector, body.annualTurnover)
       : null;
 
+  // missionStatus stays null (no default) until an actual mission is opened
+  // for this client -- see the note on clientsTable.missionStatus.
   const [client] = await db
     .insert(clientsTable)
-    .values({ ...body, accountingSystem, firmId: req.user!.firmId })
+    .values({ ...body, accountingSystem, firmId: req.user!.firmId, missionStatus: null })
     .returning();
 
   await logAudit({

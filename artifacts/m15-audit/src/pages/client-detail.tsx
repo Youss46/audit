@@ -75,18 +75,19 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 
-function getStatusLabel(status: MissionStatus) {
+// `status` is null when no mission has been opened for this client yet.
+function getStatusLabel(status: MissionStatus | null | undefined) {
   switch (status) {
     case 'en_attente': return 'En attente'
     case 'en_cours': return 'En cours'
     case 'anomalie': return 'Anomalie'
     case 'valide': return 'Validé'
     case 'visa_emis': return 'Visa émis'
-    default: return status
+    default: return 'Aucune mission'
   }
 }
 
-function getStatusColor(status: MissionStatus) {
+function getStatusColor(status: MissionStatus | null | undefined) {
   switch (status) {
     case 'en_attente': return 'bg-orange-100 text-orange-800'
     case 'en_cours': return 'bg-blue-100 text-blue-800'

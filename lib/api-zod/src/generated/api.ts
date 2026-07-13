@@ -247,7 +247,7 @@ export const ListClientsResponseItem = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
-  "missionStatus": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
+  "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -288,7 +288,7 @@ export const CreateClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
-  "missionStatus": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
+  "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -315,7 +315,7 @@ export const GetClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
-  "missionStatus": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
+  "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -360,7 +360,7 @@ export const UpdateClientResponse = zod.object({
   "contactName": zod.string().nullish(),
   "annualTurnover": zod.number().nullish(),
   "accountingSystem": zod.union([zod.enum(['SMT', 'ALLEGE', 'NORMAL']),zod.null()]).optional(),
-  "missionStatus": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
+  "missionStatus": zod.union([zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),zod.null()]).optional(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

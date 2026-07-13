@@ -47,10 +47,12 @@ export const clientsTable = pgTable(
     contactName: text("contact_name"),
     annualTurnover: doublePrecision("annual_turnover"),
     accountingSystem: text("accounting_system").$type<AccountingSystem>(),
-    missionStatus: text("mission_status")
-      .notNull()
-      .$type<MissionStatusValue>()
-      .default("en_attente"),
+    // Denormalized cache of the client's most recent mission status, kept in
+    // sync by the missions routes. Null means no mission has ever been
+    // opened for this client -- do NOT default this to "en_attente", or the
+    // client list falsely implies a pending mission exists (module M1 bug:
+    // clients showed "En attente" while "Missions de Visa" was empty).
+    missionStatus: text("mission_status").$type<MissionStatusValue>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

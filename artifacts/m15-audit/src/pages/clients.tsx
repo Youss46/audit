@@ -3,6 +3,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useState } from "react"
 import { Link } from "wouter"
 import { formatDateTime } from "@/lib/utils"
+import { getStatusColor, getStatusLabel } from "@/lib/status"
 import { 
   Building2, 
   Search, 
@@ -43,36 +44,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 
-function getStatusColor(status: MissionStatus) {
-  switch (status) {
-    case 'en_attente': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
-    case 'en_cours': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-    case 'anomalie': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-    case 'valide': return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
-    case 'visa_emis': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-  }
-}
-
-function getStatusLabel(status: MissionStatus) {
-  switch (status) {
-    case 'en_attente': return 'En attente'
-    case 'en_cours': return 'En cours'
-    case 'anomalie': return 'Anomalie'
-    case 'valide': return 'Validé'
-    case 'visa_emis': return 'Visa émis'
-    default: return status
-  }
-}
-
 export default function Clients() {
   const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState<MissionStatus | "ALL">("ALL")
+  const [statusFilter, setStatusFilter] = useState<MissionStatus | "ALL" | "NONE">("ALL")
   const [clientToDelete, setClientToDelete] = useState<number | null>(null)
   
+  // "NONE" (Sans mission) has no server-side equivalent -- the API can only
+  // filter by a concrete MissionStatus -- so it's applied client-side below.
   const { data: clients, isLoading, refetch } = useListClients(
-    statusFilter !== "ALL" ? { missionStatus: statusFilter } : undefined
+    statusFilter !== "ALL" && statusFilter !== "NONE" ? { missionStatus: statusFilter } : undefined
   )
   
   const deleteMutation = useDeleteClient({
@@ -85,8 +66,9 @@ export default function Clients() {
   })
 
   const filteredClients = clients?.filter(client => 
-    client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    client.rccm?.toLowerCase().includes(searchTerm.toLowerCase())
+    (client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    client.rccm?.toLowerCase().includes(searchTerm.toLowerCase())) &&
+    (statusFilter !== "NONE" || client.missionStatus == null)
   ) || []
 
   return (
@@ -128,6 +110,13 @@ export default function Clients() {
             onClick={() => setStatusFilter("ALL")}
           >
             Tous
+          </Badge>
+          <Badge 
+            variant={statusFilter === "NONE" ? "default" : "outline"}
+            className="cursor-pointer whitespace-nowrap"
+            onClick={() => setStatusFilter("NONE")}
+          >
+            Sans mission
           </Badge>
           {(Object.keys(MissionStatus) as Array<keyof typeof MissionStatus>).map((status) => (
             <Badge 

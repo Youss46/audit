@@ -162,7 +162,7 @@ export interface Client {
   /** @nullable */
   annualTurnover?: number | null;
   accountingSystem?: AccountingSystem | null;
-  missionStatus: MissionStatus;
+  missionStatus?: MissionStatus | null;
   createdAt: string;
   updatedAt: string;
 }

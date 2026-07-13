@@ -768,7 +768,6 @@ components:
           name,
           legalForm,
           sector,
-          missionStatus,
           createdAt,
           updatedAt,
         ]
@@ -790,8 +789,11 @@ components:
           oneOf:
             - $ref: "#/components/schemas/AccountingSystem"
             - type: "null"
+        # Null means no mission has ever been opened for this client yet.
         missionStatus:
-          $ref: "#/components/schemas/MissionStatus"
+          oneOf:
+            - $ref: "#/components/schemas/MissionStatus"
+            - type: "null"
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
