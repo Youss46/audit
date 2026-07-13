@@ -896,6 +896,13 @@ export const ApproveTransactionResponse = zod.object({
   "debitAmount": zod.number(),
   "creditAmount": zod.number()
 }))
+})).and(zod.object({
+  "autoCreatedAssets": zod.array(zod.object({
+  "id": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "acquisitionCost": zod.number()
+})).optional().describe('Fixed-asset stubs automatically created for every Class 2 debit line (accounts 20x–26x, 28x–29x) detected in the validated transaction. Empty array when no Class 2 lines are present.\n')
 }))
 
 
@@ -1500,10 +1507,12 @@ export const ListAssetsResponseItem = zod.object({
   "label": zod.string(),
   "acquisitionDate": zod.coerce.date(),
   "acquisitionCost": zod.number(),
-  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
-  "usefulLifeYears": zod.number(),
+  "depreciationType": zod.union([zod.enum(['LINEAIRE', 'DEGRESSIF']),zod.null()]),
+  "usefulLifeYears": zod.number().nullable(),
   "salvageValue": zod.number(),
   "status": zod.enum(['ACTIF', 'RETIRE']),
+  "syncedFromTransactionId": zod.number().nullish(),
+  "pendingSetup": zod.boolean(),
   "cumulativeDepreciation": zod.number(),
   "netBookValue": zod.number(),
   "createdByName": zod.string().nullish(),
@@ -1545,10 +1554,12 @@ export const CreateAssetResponse = zod.object({
   "label": zod.string(),
   "acquisitionDate": zod.coerce.date(),
   "acquisitionCost": zod.number(),
-  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
-  "usefulLifeYears": zod.number(),
+  "depreciationType": zod.union([zod.enum(['LINEAIRE', 'DEGRESSIF']),zod.null()]),
+  "usefulLifeYears": zod.number().nullable(),
   "salvageValue": zod.number(),
   "status": zod.enum(['ACTIF', 'RETIRE']),
+  "syncedFromTransactionId": zod.number().nullish(),
+  "pendingSetup": zod.boolean(),
   "cumulativeDepreciation": zod.number(),
   "netBookValue": zod.number(),
   "createdByName": zod.string().nullish(),
@@ -1573,10 +1584,12 @@ export const GetAssetResponse = zod.object({
   "label": zod.string(),
   "acquisitionDate": zod.coerce.date(),
   "acquisitionCost": zod.number(),
-  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
-  "usefulLifeYears": zod.number(),
+  "depreciationType": zod.union([zod.enum(['LINEAIRE', 'DEGRESSIF']),zod.null()]),
+  "usefulLifeYears": zod.number().nullable(),
   "salvageValue": zod.number(),
   "status": zod.enum(['ACTIF', 'RETIRE']),
+  "syncedFromTransactionId": zod.number().nullish(),
+  "pendingSetup": zod.boolean(),
   "cumulativeDepreciation": zod.number(),
   "netBookValue": zod.number(),
   "createdByName": zod.string().nullish(),
@@ -1593,11 +1606,18 @@ export const UpdateAssetParams = zod.object({
 })
 
 
+export const updateAssetBodyUsefulLifeYearsOneMax = 50;
+
+export const updateAssetBodySalvageValueMin = 0;
+
 
 
 export const UpdateAssetBody = zod.object({
   "status": zod.enum(['ACTIF', 'RETIRE']).optional(),
-  "label": zod.string().min(1).optional()
+  "label": zod.string().min(1).optional(),
+  "depreciationType": zod.union([zod.enum(['LINEAIRE', 'DEGRESSIF']),zod.null()]).optional(),
+  "usefulLifeYears": zod.union([zod.number().min(1).max(updateAssetBodyUsefulLifeYearsOneMax),zod.null()]).optional(),
+  "salvageValue": zod.number().min(updateAssetBodySalvageValueMin).optional()
 })
 
 export const UpdateAssetResponse = zod.object({
@@ -1609,10 +1629,12 @@ export const UpdateAssetResponse = zod.object({
   "label": zod.string(),
   "acquisitionDate": zod.coerce.date(),
   "acquisitionCost": zod.number(),
-  "depreciationType": zod.enum(['LINEAIRE', 'DEGRESSIF']),
-  "usefulLifeYears": zod.number(),
+  "depreciationType": zod.union([zod.enum(['LINEAIRE', 'DEGRESSIF']),zod.null()]),
+  "usefulLifeYears": zod.number().nullable(),
   "salvageValue": zod.number(),
   "status": zod.enum(['ACTIF', 'RETIRE']),
+  "syncedFromTransactionId": zod.number().nullish(),
+  "pendingSetup": zod.boolean(),
   "cumulativeDepreciation": zod.number(),
   "netBookValue": zod.number(),
   "createdByName": zod.string().nullish(),

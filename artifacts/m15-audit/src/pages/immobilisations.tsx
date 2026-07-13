@@ -24,6 +24,8 @@ import {
   AlertTriangle,
   Loader2,
   RefreshCw,
+  Wrench,
+  Zap,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -113,6 +115,15 @@ export default function Immobilisations() {
 
   const [scheduleAssetId, setScheduleAssetId] = useState<number | null>(null)
   const [showSchedule, setShowSchedule] = useState(false)
+  // Configure dialog: lets the accountant complete the depreciation parameters
+  // of auto-synced pending-setup assets (created from validated Class 2 transactions).
+  const [configureTarget, setConfigureTarget] = useState<number | null>(null)
+  const [configureForm, setConfigureForm] = useState({
+    depreciationType: "LINEAIRE" as "LINEAIRE" | "DEGRESSIF",
+    usefulLifeYears: "",
+    salvageValue: "0",
+  })
+  const [configureError, setConfigureError] = useState<string | null>(null)
 
   // -------------------------------------------------------------------------
   // Queries
@@ -256,6 +267,7 @@ export default function Immobilisations() {
   // -------------------------------------------------------------------------
 
   const activeAssets = assets?.filter((a) => a.status === "ACTIF") ?? []
+  const pendingAssets = assets?.filter((a) => a.pendingSetup) ?? []
   const totalOriginalCost = (assets ?? []).reduce((s, a) => s + a.acquisitionCost, 0)
   const totalVNC = (assets ?? []).reduce((s, a) => s + a.netBookValue, 0)
   const totalCumulative = (assets ?? []).reduce((s, a) => s + a.cumulativeDepreciation, 0)
@@ -412,6 +424,28 @@ export default function Immobilisations() {
       )}
 
       {/* ------------------------------------------------------------------ */}
+      {/* Pending-setup callout: assets auto-synced from validated Class 2   */}
+      {/* transactions that still need depreciation parameters configured.   */}
+      {/* ------------------------------------------------------------------ */}
+      {pendingAssets.length > 0 && (
+        <div className="flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+          <Zap className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <span className="font-semibold text-amber-800">
+              {pendingAssets.length === 1
+                ? "1 immobilisation synchronisée automatiquement"
+                : `${pendingAssets.length} immobilisations synchronisées automatiquement`}
+            </span>
+            <span className="text-amber-700">
+              {" "}nécessite{pendingAssets.length > 1 ? "nt" : ""} la saisie des paramètres
+              d'amortissement avant la prochaine clôture d'exercice. Cliquez sur{" "}
+              <strong>Configurer</strong> sur chaque ligne concernée.
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------ */}
       {/* Asset registry table                                                */}
       {/* ------------------------------------------------------------------ */}
       <Card>
@@ -450,8 +484,21 @@ export default function Immobilisations() {
                   {assets.map((asset) => (
                     <TableRow
                       key={asset.id}
-                      className="cursor-pointer hover:bg-muted/40 transition-colors"
-                      onClick={() => openSchedule(asset.id)}
+                      className={cn(
+                        "hover:bg-muted/40 transition-colors",
+                        asset.pendingSetup
+                          ? "cursor-pointer bg-amber-50/50 dark:bg-amber-950/20 border-l-4 border-l-amber-400"
+                          : "cursor-pointer",
+                      )}
+                      onClick={() => {
+                        if (asset.pendingSetup) {
+                          setConfigureTarget(asset.id)
+                          setConfigureForm({ depreciationType: "LINEAIRE", usefulLifeYears: "", salvageValue: "0" })
+                          setConfigureError(null)
+                        } else {
+                          openSchedule(asset.id)
+                        }
+                      }}
                     >
                       <TableCell className="pl-6 font-mono text-sm">{asset.accountNumber}</TableCell>
                       <TableCell className="font-medium max-w-[200px] truncate" title={asset.label}>
@@ -464,7 +511,21 @@ export default function Immobilisations() {
                         {asset.acquisitionCost.toLocaleString("fr-FR")}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
-                        {getDepreciationTypeLabel(asset.depreciationType)} / {asset.usefulLifeYears}&nbsp;ans
+                        {asset.pendingSetup ? (
+                          <Badge
+                            variant="outline"
+                            className="border-amber-400 bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400 text-xs gap-1"
+                          >
+                            <Wrench className="h-3 w-3" />
+                            À configurer
+                          </Badge>
+                        ) : (
+                          <>
+                            {getDepreciationTypeLabel(asset.depreciationType as "LINEAIRE" | "DEGRESSIF")}
+                            {" / "}
+                            {asset.usefulLifeYears}&nbsp;ans
+                          </>
+                        )}
                       </TableCell>
                       <TableCell className="text-right tabular-nums text-orange-600 dark:text-orange-400">
                         {asset.cumulativeDepreciation.toLocaleString("fr-FR")}
@@ -484,9 +545,24 @@ export default function Immobilisations() {
                         </Badge>
                       </TableCell>
                       <TableCell
-                        className="pr-6 text-right"
+                        className="pr-6 text-right space-x-1"
                         onClick={(e) => e.stopPropagation()}
                       >
+                        {asset.pendingSetup && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="border-amber-400 text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-950/40 gap-1 text-xs h-7"
+                            onClick={() => {
+                              setConfigureTarget(asset.id)
+                              setConfigureForm({ depreciationType: "LINEAIRE", usefulLifeYears: "", salvageValue: "0" })
+                              setConfigureError(null)
+                            }}
+                          >
+                            <Wrench className="h-3 w-3" />
+                            Configurer
+                          </Button>
+                        )}
                         {asset.status === "ACTIF" && (
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
@@ -658,6 +734,118 @@ export default function Immobilisations() {
             <Button onClick={handleAddSubmit} disabled={createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Enregistrer
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Configure depreciation parameters dialog (for auto-synced stubs)   */}
+      {/* ------------------------------------------------------------------ */}
+      <Dialog open={configureTarget !== null} onOpenChange={(open) => !open && setConfigureTarget(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wrench className="h-4 w-4 text-amber-600" />
+              Paramètres d'amortissement
+            </DialogTitle>
+            <DialogDescription>
+              Cette immobilisation a été synchronisée automatiquement depuis le flux de
+              saisie. Complétez les paramètres pour activer le tableau d'amortissement.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {configureError && (
+              <div className="flex items-start gap-2 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                {configureError}
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <Label htmlFor="cfg-depreciationType">
+                Type d'amortissement <span className="text-destructive">*</span>
+              </Label>
+              <Select
+                value={configureForm.depreciationType}
+                onValueChange={(v) =>
+                  setConfigureForm((f) => ({ ...f, depreciationType: v as "LINEAIRE" | "DEGRESSIF" }))
+                }
+              >
+                <SelectTrigger id="cfg-depreciationType">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="LINEAIRE">Linéaire</SelectItem>
+                  <SelectItem value="DEGRESSIF">Dégressif (SYSCOHADA)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="cfg-usefulLifeYears">
+                  Durée de vie (années) <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="cfg-usefulLifeYears"
+                  type="number"
+                  min={1}
+                  max={50}
+                  placeholder="5"
+                  value={configureForm.usefulLifeYears}
+                  onChange={(e) =>
+                    setConfigureForm((f) => ({ ...f, usefulLifeYears: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="cfg-salvageValue">Valeur résiduelle (FCFA)</Label>
+                <Input
+                  id="cfg-salvageValue"
+                  type="number"
+                  min={0}
+                  value={configureForm.salvageValue}
+                  onChange={(e) =>
+                    setConfigureForm((f) => ({ ...f, salvageValue: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfigureTarget(null)}>
+              Annuler
+            </Button>
+            <Button
+              disabled={updateMutation.isPending}
+              onClick={() => {
+                const years = parseInt(configureForm.usefulLifeYears, 10)
+                if (!years || years < 1 || years > 50) {
+                  setConfigureError("Veuillez saisir une durée d'utilisation valide (1–50 ans).")
+                  return
+                }
+                setConfigureError(null)
+                updateMutation.mutate(
+                  {
+                    id: configureTarget!,
+                    data: {
+                      depreciationType: configureForm.depreciationType,
+                      usefulLifeYears: years,
+                      salvageValue: parseInt(configureForm.salvageValue, 10) || 0,
+                    } as Parameters<typeof updateMutation.mutate>[0]["data"],
+                  },
+                  {
+                    onSuccess: () => setConfigureTarget(null),
+                    onError: () => setConfigureError("Une erreur est survenue. Veuillez réessayer."),
+                  },
+                )
+              }}
+            >
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Enregistrer les paramètres
             </Button>
           </DialogFooter>
         </DialogContent>

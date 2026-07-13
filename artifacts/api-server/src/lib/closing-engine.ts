@@ -108,6 +108,12 @@ async function runDepreciationAdjustments(
       skipped++;
       continue;
     }
+    // Pending-setup assets (auto-synced stubs) have null depreciation params —
+    // skip them until the accountant completes their configuration.
+    if (asset.depreciationType === null || asset.usefulLifeYears === null) {
+      skipped++;
+      continue;
+    }
     const annuity = getAnnuityForYear(
       {
         acquisitionDate: asset.acquisitionDate,

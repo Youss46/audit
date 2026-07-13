@@ -756,11 +756,11 @@ paths:
             type: integer
       responses:
         "200":
-          description: Approved transaction
+          description: Approved transaction, with optional auto-synced fixed asset stubs
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/TransactionDetail"
+                $ref: "#/components/schemas/ApproveTransactionResult"
         "404":
           description: Transaction not found
           content:
@@ -2153,6 +2153,31 @@ components:
               items:
                 $ref: "#/components/schemas/JournalLine"
 
+    # Approve endpoint response: extends TransactionDetail with the list of
+    # fixed-asset stubs that were auto-created from Class 2 debit lines.
+    AutoCreatedAssetRef:
+      type: object
+      required: [id, accountNumber, label, acquisitionCost]
+      properties:
+        id: { type: integer }
+        accountNumber: { type: string }
+        label: { type: string }
+        acquisitionCost: { type: integer }
+
+    ApproveTransactionResult:
+      allOf:
+        - $ref: "#/components/schemas/TransactionDetail"
+        - type: object
+          properties:
+            autoCreatedAssets:
+              description: >
+                Fixed-asset stubs automatically created for every Class 2 debit
+                line (accounts 20x–26x, 28x–29x) detected in the validated
+                transaction. Empty array when no Class 2 lines are present.
+              type: array
+              items:
+                $ref: "#/components/schemas/AutoCreatedAssetRef"
+
     TransactionInput:
       type: object
       required: [clientId, date, label, amount, type, category, paymentType]
@@ -2547,6 +2572,7 @@ components:
           usefulLifeYears,
           salvageValue,
           status,
+          pendingSetup,
           cumulativeDepreciation,
           netBookValue,
           createdAt,
@@ -2562,11 +2588,19 @@ components:
         acquisitionDate: { type: string, format: date-time }
         acquisitionCost: { type: integer }
         depreciationType:
-          $ref: "#/components/schemas/DepreciationType"
-        usefulLifeYears: { type: integer }
+          anyOf:
+            - $ref: "#/components/schemas/DepreciationType"
+            - type: "null"
+        usefulLifeYears: { type: ["integer", "null"] }
         salvageValue: { type: integer }
         status:
           $ref: "#/components/schemas/FixedAssetStatus"
+        # Auto-sync: if this asset was created from a validated Class 2 transaction,
+        # records the source transaction id for traceability.
+        syncedFromTransactionId: { type: ["integer", "null"] }
+        # True when depreciationType or usefulLifeYears has not yet been filled in
+        # by the accountant. The depreciation schedule is not computed for these.
+        pendingSetup: { type: boolean }
         # Computed fields (as of the requested fiscal year).
         cumulativeDepreciation: { type: integer }
         netBookValue: { type: integer }
@@ -2606,6 +2640,18 @@ components:
         status:
           $ref: "#/components/schemas/FixedAssetStatus"
         label: { type: string, minLength: 1 }
+        # Completing the setup for auto-synced pending-setup assets.
+        depreciationType:
+          anyOf:
+            - $ref: "#/components/schemas/DepreciationType"
+            - type: "null"
+        usefulLifeYears:
+          anyOf:
+            - type: integer
+              minimum: 1
+              maximum: 50
+            - type: "null"
+        salvageValue: { type: integer, minimum: 0 }
 
     DepreciationRow:
       type: object

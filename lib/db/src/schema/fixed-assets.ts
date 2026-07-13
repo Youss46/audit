@@ -49,16 +49,19 @@ export const fixedAssetsTable = pgTable(
     // SYSCOHADA coefficients and automatic switch to linear when linear
     // gives a higher annuity.
     depreciationType: text("depreciation_type")
-      .notNull()
-      .$type<DepreciationType>()
+      .$type<DepreciationType | null>()
       .default("LINEAIRE"),
     // Durée d'utilisation économique (e.g. 5 for rolling stock, 20 for
     // buildings). Determines the annual linear rate and the schedule length.
-    usefulLifeYears: integer("useful_life_years").notNull(),
+    usefulLifeYears: integer("useful_life_years"),
     // Valeur résiduelle estimée en fin de vie (FCFA). Depreciation stops
     // when VNC reaches this floor. Default is 0 (fully depreciated).
     salvageValue: integer("salvage_value").notNull().default(0),
     status: text("status").notNull().$type<FixedAssetStatus>().default("ACTIF"),
+    // Auto-sync provenance: when a validated accounting transaction contains a
+    // Class 2 debit line, a pending stub is created and linked to that entry
+    // so the accountant can trace the origin and complete the parameters.
+    syncedFromTransactionId: integer("synced_from_transaction_id"),
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),

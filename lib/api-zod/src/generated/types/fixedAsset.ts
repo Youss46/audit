@@ -18,10 +18,14 @@ export interface FixedAsset {
   label: string;
   acquisitionDate: Date;
   acquisitionCost: number;
-  depreciationType: DepreciationType;
-  usefulLifeYears: number;
+  depreciationType: DepreciationType | null;
+  /** @nullable */
+  usefulLifeYears: number | null;
   salvageValue: number;
   status: FixedAssetStatus;
+  /** @nullable */
+  syncedFromTransactionId?: number | null;
+  pendingSetup: boolean;
   cumulativeDepreciation: number;
   netBookValue: number;
   /** @nullable */

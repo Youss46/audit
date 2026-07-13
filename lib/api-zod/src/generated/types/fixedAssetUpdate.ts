@@ -5,10 +5,15 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { DepreciationType } from './depreciationType';
 import type { FixedAssetStatus } from './fixedAssetStatus';
 
 export interface FixedAssetUpdate {
   status?: FixedAssetStatus;
   /** @minLength 1 */
   label?: string;
+  depreciationType?: DepreciationType | null;
+  usefulLifeYears?: number | null;
+  /** @minimum 0 */
+  salvageValue?: number;
 }

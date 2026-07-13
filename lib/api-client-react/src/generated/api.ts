@@ -21,6 +21,7 @@ import type {
 
 import type {
   AmortizationSchedule,
+  ApproveTransactionResult,
   AuditLog,
   AuthResponse,
   BalanceDesComptesResult,
@@ -2404,9 +2405,9 @@ export const getApproveTransactionUrl = (id: number,) => {
 /**
  * @summary Approuver & Comptabiliser: locks the transaction permanently into the general ledger (module M3)
  */
-export const approveTransaction = async (id: number, options?: RequestInit): Promise<TransactionDetail> => {
+export const approveTransaction = async (id: number, options?: RequestInit): Promise<ApproveTransactionResult> => {
 
-  return customFetch<TransactionDetail>(getApproveTransactionUrl(id),
+  return customFetch<ApproveTransactionResult>(getApproveTransactionUrl(id),
   {
     ...options,
     method: 'POST'

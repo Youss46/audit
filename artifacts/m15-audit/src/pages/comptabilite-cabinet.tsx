@@ -6,6 +6,7 @@ import {
   useApproveTransaction,
   useRejectTransaction,
   useUpdateTransactionJournalLines,
+  getListAssetsQueryKey,
   TransactionStatus,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -74,8 +75,19 @@ export default function ComptabiliteCabinet() {
 
   const approveMutation = useApproveTransaction({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         toast({ title: "Opération comptabilisée", description: "Elle est désormais verrouillée dans le grand livre." })
+        // Auto-sync: if Class 2 debit lines were detected, stub assets were
+        // automatically created in the fixed assets registry for accountant review.
+        const result = data as { autoCreatedAssets?: { id: number; accountNumber: string; label: string }[] }
+        if (result.autoCreatedAssets && result.autoCreatedAssets.length > 0) {
+          const count = result.autoCreatedAssets.length
+          toast({
+            title: count === 1 ? "Immobilisation détectée" : `${count} immobilisations détectées`,
+            description: `Ajoutée${count > 1 ? "s" : ""} automatiquement au registre des actifs. Veuillez compléter les paramètres d'amortissement.`,
+          })
+          queryClient.invalidateQueries({ queryKey: getListAssetsQueryKey() })
+        }
         invalidateList()
       },
       onError: (error) => {

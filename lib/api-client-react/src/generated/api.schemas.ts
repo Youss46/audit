@@ -448,6 +448,18 @@ export type TransactionDetail = Transaction & {
   journalLines: JournalLine[];
 };
 
+export interface AutoCreatedAssetRef {
+  id: number;
+  accountNumber: string;
+  label: string;
+  acquisitionCost: number;
+}
+
+export type ApproveTransactionResult = TransactionDetail & {
+  /** Fixed-asset stubs automatically created for every Class 2 debit line (accounts 20x–26x, 28x–29x) detected in the validated transaction. Empty array when no Class 2 lines are present. */
+  autoCreatedAssets?: AutoCreatedAssetRef[];
+};
+
 export interface TransactionInput {
   clientId: number;
   date: string;
@@ -733,10 +745,14 @@ export interface FixedAsset {
   label: string;
   acquisitionDate: string;
   acquisitionCost: number;
-  depreciationType: DepreciationType;
-  usefulLifeYears: number;
+  depreciationType: DepreciationType | null;
+  /** @nullable */
+  usefulLifeYears: number | null;
   salvageValue: number;
   status: FixedAssetStatus;
+  /** @nullable */
+  syncedFromTransactionId?: number | null;
+  pendingSetup: boolean;
   cumulativeDepreciation: number;
   netBookValue: number;
   /** @nullable */
@@ -768,6 +784,10 @@ export interface FixedAssetUpdate {
   status?: FixedAssetStatus;
   /** @minLength 1 */
   label?: string;
+  depreciationType?: DepreciationType | null;
+  usefulLifeYears?: number | null;
+  /** @minimum 0 */
+  salvageValue?: number;
 }
 
 export interface DepreciationRow {

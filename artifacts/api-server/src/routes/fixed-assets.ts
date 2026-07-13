@@ -46,16 +46,22 @@ function serializeAsset(
   fiscalYear: number,
   extra: { clientName?: string | null; createdByName?: string | null } = {},
 ) {
-  const cumulative = getCumulativeDepreciation(
-    {
-      acquisitionDate: asset.acquisitionDate,
-      acquisitionCost: asset.acquisitionCost,
-      depreciationType: asset.depreciationType,
-      usefulLifeYears: asset.usefulLifeYears,
-      salvageValue: asset.salvageValue,
-    },
-    fiscalYear,
-  );
+  // Auto-synced stubs created from validated Class 2 transactions have null
+  // depreciationType / usefulLifeYears until the accountant completes them.
+  // Guard the schedule engine to avoid division-by-zero or invalid input.
+  const pendingSetup = asset.usefulLifeYears === null || asset.depreciationType === null;
+  const cumulative = pendingSetup
+    ? 0
+    : getCumulativeDepreciation(
+        {
+          acquisitionDate: asset.acquisitionDate,
+          acquisitionCost: asset.acquisitionCost,
+          depreciationType: asset.depreciationType!,
+          usefulLifeYears: asset.usefulLifeYears!,
+          salvageValue: asset.salvageValue,
+        },
+        fiscalYear,
+      );
   return {
     id: asset.id,
     firmId: asset.firmId,
@@ -69,6 +75,8 @@ function serializeAsset(
     usefulLifeYears: asset.usefulLifeYears,
     salvageValue: asset.salvageValue,
     status: asset.status,
+    syncedFromTransactionId: asset.syncedFromTransactionId ?? null,
+    pendingSetup,
     cumulativeDepreciation: cumulative,
     netBookValue: asset.acquisitionCost - cumulative,
     createdByName: extra.createdByName ?? null,
@@ -244,6 +252,16 @@ router.post(
         continue;
       }
 
+      // Pending-setup assets have null depreciation params — skip them.
+      if (asset.depreciationType === null || asset.usefulLifeYears === null) {
+        skipped.push({
+          assetId: asset.id,
+          assetLabel: asset.label,
+          reason: "Paramètres d'amortissement manquants (immobilisation en attente de configuration).",
+        });
+        continue;
+      }
+
       const annuity = getAnnuityForYear(
         {
           acquisitionDate: asset.acquisitionDate,
@@ -380,9 +398,19 @@ router.patch(
       return;
     }
 
-    const updatePayload: Partial<typeof fixedAssetsTable.$inferInsert> = {};
+    // Drizzle's $inferInsert doesn't expose null in the union for nullable
+    // columns by default, so we widen the type explicitly for the fields that
+    // the accountant sets when completing a pending-setup asset stub.
+    const updatePayload: Partial<typeof fixedAssetsTable.$inferInsert> & {
+      depreciationType?: import("@workspace/db").DepreciationType | null;
+      usefulLifeYears?: number | null;
+    } = {};
     if (body.status !== undefined) updatePayload.status = body.status;
     if (body.label !== undefined) updatePayload.label = body.label;
+    // Allow completing the depreciation parameters for auto-synced pending assets.
+    if (body.depreciationType !== undefined) updatePayload.depreciationType = body.depreciationType;
+    if (body.usefulLifeYears !== undefined) updatePayload.usefulLifeYears = body.usefulLifeYears;
+    if (body.salvageValue !== undefined) updatePayload.salvageValue = body.salvageValue;
 
     const [updated] = await db
       .update(fixedAssetsTable)
@@ -433,6 +461,12 @@ router.get("/assets/:id/schedule", async (req, res) => {
   });
   if (!asset) {
     res.status(404).json({ error: "Immobilisation introuvable." });
+    return;
+  }
+
+  // Cannot compute a schedule for a pending-setup asset with null params.
+  if (asset.depreciationType === null || asset.usefulLifeYears === null) {
+    res.json(GetAssetDepreciationScheduleResponse.parse({ assetId: id, rows: [] }));
     return;
   }
 

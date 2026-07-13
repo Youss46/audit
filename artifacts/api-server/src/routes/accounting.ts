@@ -8,6 +8,7 @@ import {
   journalLinesTable,
   usersTable,
   cashRegistersTable,
+  fixedAssetsTable,
 } from "@workspace/db";
 import {
   ListTransactionCategoriesQueryParams,
@@ -487,15 +488,79 @@ router.post(
       ipAddress: req.ip,
     });
 
+    // -----------------------------------------------------------------------
+    // Auto-sync (M17 bridge): detect Class 2 debit lines in the validated
+    // transaction and create pending fixed-asset stubs in the registry.
+    // Accounts 27x (Avances et acomptes versés) are intentionally excluded —
+    // they are balance-sheet receivables, not depreciable assets.
+    // -----------------------------------------------------------------------
+    const journalLines = await db.query.journalLinesTable.findMany({
+      where: eq(journalLinesTable.transactionId, id),
+    });
+
+    const class2DebitLines = journalLines.filter(
+      (line) =>
+        line.debitAmount > 0 &&
+        line.accountNumber.startsWith("2") &&
+        !line.accountNumber.startsWith("27"),
+    );
+
+    const autoCreatedAssets: {
+      id: number;
+      accountNumber: string;
+      label: string;
+      acquisitionCost: number;
+    }[] = [];
+
+    for (const line of class2DebitLines) {
+      const [newAsset] = await db
+        .insert(fixedAssetsTable)
+        .values({
+          firmId: req.user!.firmId,
+          clientId: tx.clientId,
+          accountNumber: line.accountNumber,
+          label: line.label || tx.label,
+          acquisitionDate: tx.date,
+          acquisitionCost: line.debitAmount,
+          depreciationType: null,   // accountant must complete
+          usefulLifeYears: null,    // accountant must complete
+          salvageValue: 0,
+          status: "ACTIF",
+          syncedFromTransactionId: tx.id,
+          createdById: req.user!.id,
+        })
+        .returning();
+
+      autoCreatedAssets.push({
+        id: newAsset.id,
+        accountNumber: newAsset.accountNumber,
+        label: newAsset.label,
+        acquisitionCost: newAsset.acquisitionCost,
+      });
+
+      await logAudit({
+        firmId: req.user!.firmId,
+        userId: req.user!.id,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: AuditAction.FIXED_ASSET_CREATE,
+        entityType: "fixed_asset",
+        entityId: newAsset.id,
+        details: `Immobilisation synchronisée depuis transaction #${tx.id} : "${newAsset.label}" (compte ${newAsset.accountNumber}, ${newAsset.acquisitionCost.toLocaleString("fr")} FCFA) — paramètres d'amortissement à configurer.`,
+        ipAddress: req.ip,
+      });
+    }
+
     res.json(
-      ApproveTransactionResponse.parse(
-        await withJournalLines(updated, {
+      ApproveTransactionResponse.parse({
+        ...(await withJournalLines(updated, {
           clientName: tx.client?.name,
           documentFileName: tx.document?.fileName,
           createdByName: tx.createdBy?.fullName,
           validatedByName: req.user!.fullName,
-        }),
-      ),
+        })),
+        autoCreatedAssets,
+      }),
     );
   },
 );
