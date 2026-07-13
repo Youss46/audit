@@ -52,26 +52,29 @@ function getAccountingSystemBadgeClass(system: AccountingSystem | string | null 
 // ---------------------------------------------------------------------------
 // Module M3 (Comptabilité & Travaux): the per-client accounting views share
 // this header — pick a client, then switch between the ledger views, the
-// fixed-asset registry, and the year-end closing workspace.
+// fixed-asset registry, financial management, and the year-end closing
+// workspace.
 //
 // URL routing per tab:
 //   saisie / journaux / grand-livre / etats-financiers
 //     → /comptabilite/:id/<slug>
 //   immobilisations  → /cabinet/client/:id/immobilisations
+//   finance          → /cabinet/client/:id/finance
 //   cloture          → /cabinet/client/:id/cloture
 // ---------------------------------------------------------------------------
 
 const TABS = [
-  { slug: "saisie",           label: "Flux de Saisie"   },
-  { slug: "journaux",         label: "Journaux"          },
-  { slug: "grand-livre",      label: "Grand Livre"       },
-  { slug: "etats-financiers", label: "États Financiers"  },
-  { slug: "immobilisations",  label: "Immobilisations"   },
-  { slug: "cloture",          label: "Clôture Annuelle"  },
+  { slug: "saisie",           label: "Flux de Saisie"      },
+  { slug: "journaux",         label: "Journaux"             },
+  { slug: "grand-livre",      label: "Grand Livre"          },
+  { slug: "etats-financiers", label: "États Financiers"     },
+  { slug: "immobilisations",  label: "Immobilisations"      },
+  { slug: "finance",          label: "Financements & Dettes" },
+  { slug: "cloture",          label: "Clôture Annuelle"     },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
-const CABINET_TABS = new Set<string>(["immobilisations", "cloture"])
+const CABINET_TABS = new Set<string>(["immobilisations", "finance", "cloture"])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
 
@@ -79,10 +82,11 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, setLocation] = useLocation()
 
   // Detect clientId from all possible URL patterns this nav appears on.
-  const [, comptaParams] = useRoute<{ clientId: string }>("/comptabilite/:clientId/:tab")
+  const [, comptaParams]  = useRoute<{ clientId: string }>("/comptabilite/:clientId/:tab")
   const [, clotureParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/cloture")
-  const [, immobParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/immobilisations")
-  const params   = comptaParams ?? clotureParams ?? immobParams
+  const [, immobParams]   = useRoute<{ clientId: string }>("/cabinet/client/:clientId/immobilisations")
+  const [, financeParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/finance")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.
@@ -97,8 +101,7 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
     },
   })
 
-  // Pending-operations count for the Saisie tab badge — only fetched when
-  // a client is selected so we never fire a firm-wide query here.
+  // Pending-operations count for the Saisie tab badge.
   const { data: pendingTransactions } = useListTransactions(
     { clientId: clientId ?? 0, status: "a_valider" },
     {
@@ -118,8 +121,6 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   }
 
   const handleClientChange = (value: string) => {
-    // Keep the current tab when switching clients — preserves the accountant's
-    // workflow context (e.g. stays on Journaux while comparing two clients).
     setLocation(tabUrl(activeTab, value))
   }
 
@@ -163,7 +164,7 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
             </Select>
           </div>
 
-          {/* ---- Client context header (visible once a client is chosen) ---- */}
+          {/* ---- Client context header ---- */}
           {selectedClient && (
             <div className="flex items-center gap-2 flex-wrap text-sm pl-1">
               <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
@@ -194,7 +195,7 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
           )}
         </div>
 
-        {/* ---- Sub-navigation tabs (shown only when a client is selected) ---- */}
+        {/* ---- Sub-navigation tabs ---- */}
         {clientId && (
           <Tabs value={activeTab} onValueChange={handleTabChange}>
             <TabsList className="flex-wrap h-auto">
@@ -206,7 +207,6 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
                   className="relative"
                 >
                   {tab.label}
-                  {/* Pending-operations badge on Saisie tab */}
                   {tab.slug === "saisie" && pendingCount > 0 && (
                     <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                       {pendingCount}

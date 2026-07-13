@@ -1,26 +1,42 @@
 ---
-name: M18 Financial Assets & Loans (Financements & Dettes) design
-description: Design decisions for the financial fixed-assets/loans amortization module (Immobilisations Financières & Emprunts) — read before touching amortization, loan, or financing-related features.
+name: M18 financial assets & loans design
+description: Key design decisions for the financial fixed assets & loans module (M18)
 ---
 
-## Core model
-A single table holds both directions of a financing relationship: `EMPRUNT_BANCAIRE` (we owe a bank) and `IMMOBILISATION_FINANCIERE` (someone owes us — deposits, financial loans granted). Same shape, same engine, opposite journal-entry direction.
+# M18 Financial Assets & Loans (Financements & Dettes)
 
-## No stored schedule rows
-The amortization schedule is never persisted. It's recomputed on every read from 5 core params (principal, annual rate, start date, term in months, payment frequency), using constant-annuity (French/bank) amortization — degenerating to equal-principal split when rate = 0. This mirrors the M17 fixed-assets/depreciation pattern in this codebase: compute-on-read beats storing derived rows.
+## Rule
+Schedule computed on-the-fly from 5 params; `installmentsPosted` counter is the
+anti-double-post boundary — getDueUnpostedInstallments filters on installmentNumber > installmentsPosted.
 
-**Why:** keeps the table tiny and avoids any schedule/DB drift; the only thing that can go stale is the single `installmentsPosted` counter.
+**Why:** Storing schedule rows would require re-generation whenever the user edits parameters.
+On-the-fly computation is deterministic and avoids stale cached schedules.
 
-## `installmentsPosted` is the anti-double-post boundary
-The only persisted mutable state is an integer counter of how many installments have been booked to the ledger. "Due and unposted" = installments whose due date has passed AND whose installment number > `installmentsPosted`. Posting a batch increments the counter by however many were generated. Calling generate-entries again with nothing newly due returns an explicit "skipped" result — never fails silently and never double-books.
+## Generate-entries pattern
+Direct DB insert into transactionsTable + journalLinesTable (same as M17/M19 closings),
+never through createTransactionEntry. Status = "a_valider" so accountant reviews in M3 queue.
 
-## Generate-entries endpoint is per-client, not per-item
-`POST /finance/generate-journal-entries/:clientId` iterates every ACTIF item (both types) for that client, computing due-and-unposted installments per item and posting one transaction per due installment. Same batching shape as M17's `generate-closings`, just keyed by due-date-crossed instead of fiscal-year-crossed.
+**Why:** createTransactionEntry enforces payment-category rules that don't apply to
+pre-computed bank installment movements.
 
-## Journal account derivation (SYSCOHADA)
-- `EMPRUNT_BANCAIRE` (we owe): Debit item's own account (161x, capital portion) + 671 (interest expense) / Credit 52 (Banque, treasury default).
-- `IMMOBILISATION_FINANCIERE` (owed to us): Debit 52 / Credit item's own account (27x, capital) + 771 (interest income).
-- Entries are inserted directly into the transactions/journal-lines tables, bypassing the category-driven `accounting-engine.ts` — same bypass M17 uses for pre-computed treasury postings that aren't PME-category driven.
+## ClientAccountingNav integration
+Finance tab routes to /cabinet/client/:id/finance (CABINET_TABS set).
+Four useRoute() calls needed: comptabilite, cloture, immobilisations, finance — first non-null wins.
 
-## Verified behavior (2026-07-13)
-End-to-end tested via direct API calls: created a 1,200,000 FCFA / 6%/an / 12-month monthly loan starting in the past, called generate-journal-entries, got 6 due installments posted as 6 separate balanced transactions (capital+interest debit = treasury credit), counter incremented correctly, and a repeat call correctly skipped with "Aucune échéance due à ce jour" instead of re-posting.
+## SYSCOHADA account picker
+Two catalogues: LOAN_ACCOUNTS (Classe 16: 161100–168000) and
+FINANCIAL_ASSET_ACCOUNTS (Classe 27: 271000–276000). Switching type resets form
+(emptyForm(type)) and accountPickerMode → catalogue.
+
+## Schedule drawer summary
+scheduleSummary derived via useMemo from schedule.rows:
+postedCount/pendingCount, progressPct, totalAnnuity, totalInterest, pendingAnnuity.
+Progress bar also shown inline in registry table (installmentsPosted / totalInstallments).
+
+## Journal accounts
+EMPRUNT_BANCAIRE: Debit loan account (161x) + 671 (interest), Credit 52 (Banque).
+IMMOBILISATION_FINANCIERE: Debit 52 (Banque), Credit 27x account (principal) + 771 (interest).
+Interest line omitted when interestAmount === 0 (zero-rate deposits/advances).
+
+**How to apply:** Any new cabinet-only tab must be added to CABINET_TABS in ClientAccountingNav.
+The four-useRoute pattern is the standard detection approach for all cabinet tabs.
