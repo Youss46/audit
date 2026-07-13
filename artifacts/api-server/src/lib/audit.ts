@@ -19,6 +19,9 @@ export const AuditAction = {
   USER_CREATE: "USER_CREATE",
   USER_UPDATE: "USER_UPDATE",
   USER_DELETE: "USER_DELETE",
+  TRANSACTION_CREATE: "TRANSACTION_CREATE",
+  TRANSACTION_APPROVE: "TRANSACTION_APPROVE",
+  TRANSACTION_REJECT: "TRANSACTION_REJECT",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

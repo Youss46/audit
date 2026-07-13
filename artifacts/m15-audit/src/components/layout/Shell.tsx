@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Stamp,
   FolderOpen,
+  Wallet,
+  BookOpenCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -62,7 +64,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Espace PME (client_pme) accounts have their own dedicated portal and
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -70,6 +72,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
       (location === "/" || CABINET_ONLY_PREFIXES.some((p) => location.startsWith(p)))
     ) {
       setLocation("/portal")
+    }
+  }, [isLoading, user, location, setLocation])
+
+  // "Mes Opérations" (module P3) is the Espace PME's own entry screen --
+  // cabinet staff have no client context there and use "/comptabilite" instead.
+  React.useEffect(() => {
+    if (!isLoading && user && user.role !== "client_pme" && location.startsWith("/mes-operations")) {
+      setLocation("/dashboard")
     }
   }, [isLoading, user, location, setLocation])
 
@@ -91,19 +101,34 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (user.role === "client_pme" && isCabinetOnlyRoute) {
     return <div className="min-h-screen bg-background" />
   }
+  if (user.role !== "client_pme" && location.startsWith("/mes-operations")) {
+    return <div className="min-h-screen bg-background" />
+  }
 
   const NavItems = () => (
     <nav className="space-y-1 mt-6 px-3" data-testid="nav-menu">
       {user?.role === 'client_pme' ? (
-        <Link href="/portal" className={cn(
-          "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-          location.startsWith("/portal")
-            ? "bg-primary text-primary-foreground"
-            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-        )} data-testid="link-portal">
-          <Building2 className="h-5 w-5" />
-          Espace PME
-        </Link>
+        <>
+          <Link href="/portal" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location === "/portal"
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-portal">
+            <Building2 className="h-5 w-5" />
+            Espace PME
+          </Link>
+
+          <Link href="/mes-operations" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/mes-operations")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-comptabilite-pme">
+            <Wallet className="h-5 w-5" />
+            Mes Opérations
+          </Link>
+        </>
       ) : (
         <>
       <Link href="/dashboard" className={cn(
@@ -144,6 +169,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )} data-testid="link-documents">
         <FolderOpen className="h-5 w-5" />
         Gestion Documentaire (GED)
+      </Link>
+
+      <Link href="/comptabilite" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/comptabilite") 
+          ? "bg-primary text-primary-foreground" 
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-comptabilite-cabinet">
+        <BookOpenCheck className="h-5 w-5" />
+        Comptabilité &amp; Travaux
       </Link>
       
           <Link href="/users" className={cn(

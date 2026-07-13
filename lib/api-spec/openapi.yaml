@@ -24,6 +24,8 @@ tags:
     description: Document management (GED)
   - name: dashboard
     description: Dashboard aggregates
+  - name: accounting
+    description: Comptabilité simplifiée (P3) & Comptabilité et travaux (M3) - SYSCOHADA ledger
 paths:
   /healthz:
     get:
@@ -622,6 +624,169 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /accounting/categories:
+    get:
+      operationId: listTransactionCategories
+      tags: [accounting]
+      summary: List the plain-language PME categories available for a given operation type, with their matching engine mapping
+      parameters:
+        - name: type
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/TransactionType"
+      responses:
+        "200":
+          description: Available categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransactionCategoryOption"
+
+  /transactions:
+    get:
+      operationId: listTransactions
+      tags: [accounting]
+      summary: List journal entries (module P3/M3). Espace PME accounts only ever see their own client's entries.
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/TransactionStatus"
+      responses:
+        "200":
+          description: List of transactions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TransactionDetail"
+    post:
+      operationId: createTransaction
+      tags: [accounting]
+      summary: Declare a new plain-language cash entry (module P3). The matching engine computes its SYSCOHADA journal lines and saves it as "à valider".
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionInput"
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /transactions/{id}:
+    get:
+      operationId: getTransaction
+      tags: [accounting]
+      summary: Get a transaction's detail including its computed journal lines
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transaction detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /transactions/{id}/approve:
+    post:
+      operationId: approveTransaction
+      tags: [accounting]
+      summary: "Approuver & Comptabiliser: locks the transaction permanently into the general ledger (module M3)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Approved transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transaction is not in a state that can be approved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /transactions/{id}/reject:
+    post:
+      operationId: rejectTransaction
+      tags: [accounting]
+      summary: "Invalider: sends the transaction back to the PME with a clarification note (module M3)"
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionRejectInput"
+      responses:
+        "200":
+          description: Rejected transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transaction is not in a state that can be rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1006,3 +1171,133 @@ components:
             fileData:
               type: string
               description: Base64-encoded file content
+
+    TransactionType:
+      type: string
+      enum:
+        - recette
+        - depense
+
+    TransactionStatus:
+      type: string
+      enum:
+        - a_valider
+        - valide
+        - anomalie
+
+    TransactionSource:
+      type: string
+      enum:
+        - pme_entry
+        - manual_cabinet
+
+    PaymentMethod:
+      type: string
+      enum:
+        - especes
+        - mobile_money
+        - cheque
+        - virement
+
+    TransactionCategoryOption:
+      type: object
+      required: [key, label]
+      properties:
+        key: { type: string }
+        label: { type: string }
+
+    JournalLine:
+      type: object
+      required: [id, transactionId, accountNumber, debitAmount, creditAmount]
+      properties:
+        id: { type: integer }
+        transactionId: { type: integer }
+        accountNumber: { type: string }
+        label: { type: ["string", "null"] }
+        debitAmount: { type: integer }
+        creditAmount: { type: integer }
+
+    Transaction:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          date,
+          label,
+          amount,
+          type,
+          status,
+          source,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        date: { type: string, format: date-time }
+        label: { type: string }
+        amount: { type: integer }
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        category: { type: ["string", "null"] }
+        categoryLabel: { type: ["string", "null"] }
+        paymentMethod:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        status:
+          $ref: "#/components/schemas/TransactionStatus"
+        source:
+          $ref: "#/components/schemas/TransactionSource"
+        documentId: { type: ["integer", "null"] }
+        documentFileName: { type: ["string", "null"] }
+        clarificationNote: { type: ["string", "null"] }
+        createdByName: { type: ["string", "null"] }
+        validatedByName: { type: ["string", "null"] }
+        validatedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    TransactionDetail:
+      allOf:
+        - $ref: "#/components/schemas/Transaction"
+        - type: object
+          required: [journalLines]
+          properties:
+            journalLines:
+              type: array
+              items:
+                $ref: "#/components/schemas/JournalLine"
+
+    TransactionInput:
+      type: object
+      required: [clientId, date, label, amount, type, category, paymentMethod]
+      properties:
+        clientId: { type: integer }
+        date: { type: string, format: date-time }
+        label:
+          type: string
+          minLength: 1
+        amount:
+          type: integer
+          minimum: 1
+        type:
+          $ref: "#/components/schemas/TransactionType"
+        category:
+          type: string
+          minLength: 1
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        documentId: { type: ["integer", "null"] }
+
+    TransactionRejectInput:
+      type: object
+      required: [clarificationNote]
+      properties:
+        clarificationNote:
+          type: string
+          minLength: 1

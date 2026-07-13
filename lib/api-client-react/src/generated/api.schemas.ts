@@ -316,6 +316,113 @@ export type DocumentDetail = Document & {
   fileData: string;
 };
 
+export type TransactionType = typeof TransactionType[keyof typeof TransactionType];
+
+
+export const TransactionType = {
+  recette: 'recette',
+  depense: 'depense',
+} as const;
+
+export type TransactionStatus = typeof TransactionStatus[keyof typeof TransactionStatus];
+
+
+export const TransactionStatus = {
+  a_valider: 'a_valider',
+  valide: 'valide',
+  anomalie: 'anomalie',
+} as const;
+
+export type TransactionSource = typeof TransactionSource[keyof typeof TransactionSource];
+
+
+export const TransactionSource = {
+  pme_entry: 'pme_entry',
+  manual_cabinet: 'manual_cabinet',
+} as const;
+
+export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
+
+
+export const PaymentMethod = {
+  especes: 'especes',
+  mobile_money: 'mobile_money',
+  cheque: 'cheque',
+  virement: 'virement',
+} as const;
+
+export interface TransactionCategoryOption {
+  key: string;
+  label: string;
+}
+
+export interface JournalLine {
+  id: number;
+  transactionId: number;
+  accountNumber: string;
+  /** @nullable */
+  label?: string | null;
+  debitAmount: number;
+  creditAmount: number;
+}
+
+export interface Transaction {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  date: string;
+  label: string;
+  amount: number;
+  type: TransactionType;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  categoryLabel?: string | null;
+  paymentMethod?: PaymentMethod | null;
+  status: TransactionStatus;
+  source: TransactionSource;
+  /** @nullable */
+  documentId?: number | null;
+  /** @nullable */
+  documentFileName?: string | null;
+  /** @nullable */
+  clarificationNote?: string | null;
+  /** @nullable */
+  createdByName?: string | null;
+  /** @nullable */
+  validatedByName?: string | null;
+  /** @nullable */
+  validatedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TransactionDetail = Transaction & {
+  journalLines: JournalLine[];
+};
+
+export interface TransactionInput {
+  clientId: number;
+  date: string;
+  /** @minLength 1 */
+  label: string;
+  /** @minimum 1 */
+  amount: number;
+  type: TransactionType;
+  /** @minLength 1 */
+  category: string;
+  paymentMethod: PaymentMethod;
+  /** @nullable */
+  documentId?: number | null;
+}
+
+export interface TransactionRejectInput {
+  /** @minLength 1 */
+  clarificationNote: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 };
@@ -331,5 +438,14 @@ clientId?: number;
 export type ListMissionsParams = {
 clientId?: number;
 status?: MissionStatus;
+};
+
+export type ListTransactionCategoriesParams = {
+type: TransactionType;
+};
+
+export type ListTransactionsParams = {
+clientId?: number;
+status?: TransactionStatus;
 };
 

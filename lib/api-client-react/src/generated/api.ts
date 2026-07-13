@@ -37,12 +37,18 @@ import type {
   ListClientsParams,
   ListDocumentsParams,
   ListMissionsParams,
+  ListTransactionCategoriesParams,
+  ListTransactionsParams,
   LoginInput,
   Mission,
   MissionDetail,
   MissionInput,
   MissionUpdate,
   RegisterInput,
+  TransactionCategoryOption,
+  TransactionDetail,
+  TransactionInput,
+  TransactionRejectInput,
   User,
   UserInput,
   UserUpdate
@@ -2033,5 +2039,464 @@ export const useUpdateMissionChecklistItem = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getUpdateMissionChecklistItemMutationOptions(options));
+    }
+
+export const getListTransactionCategoriesUrl = (params: ListTransactionCategoriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/accounting/categories?${stringifiedParams}` : `/api/accounting/categories`
+}
+
+/**
+ * @summary List the plain-language PME categories available for a given operation type, with their matching engine mapping
+ */
+export const listTransactionCategories = async (params: ListTransactionCategoriesParams, options?: RequestInit): Promise<TransactionCategoryOption[]> => {
+
+  return customFetch<TransactionCategoryOption[]>(getListTransactionCategoriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransactionCategoriesQueryKey = (params?: ListTransactionCategoriesParams,) => {
+    return [
+    `/api/accounting/categories`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransactionCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listTransactionCategories>>, TError = ErrorType<unknown>>(params: ListTransactionCategoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionCategoriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactionCategories>>> = ({ signal }) => listTransactionCategories(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransactionCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransactionCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listTransactionCategories>>>
+export type ListTransactionCategoriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the plain-language PME categories available for a given operation type, with their matching engine mapping
+ */
+
+export function useListTransactionCategories<TData = Awaited<ReturnType<typeof listTransactionCategories>>, TError = ErrorType<unknown>>(
+ params: ListTransactionCategoriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactionCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransactionCategoriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListTransactionsUrl = (params?: ListTransactionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/transactions?${stringifiedParams}` : `/api/transactions`
+}
+
+/**
+ * @summary List journal entries (module P3/M3). Espace PME accounts only ever see their own client's entries.
+ */
+export const listTransactions = async (params?: ListTransactionsParams, options?: RequestInit): Promise<TransactionDetail[]> => {
+
+  return customFetch<TransactionDetail[]>(getListTransactionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTransactionsQueryKey = (params?: ListTransactionsParams,) => {
+    return [
+    `/api/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<unknown>>(params?: ListTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTransactionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTransactions>>> = ({ signal }) => listTransactions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listTransactions>>>
+export type ListTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List journal entries (module P3/M3). Espace PME accounts only ever see their own client's entries.
+ */
+
+export function useListTransactions<TData = Awaited<ReturnType<typeof listTransactions>>, TError = ErrorType<unknown>>(
+ params?: ListTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTransactionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTransactionUrl = () => {
+
+
+
+
+  return `/api/transactions`
+}
+
+/**
+ * @summary Declare a new plain-language cash entry (module P3). The matching engine computes its SYSCOHADA journal lines and saves it as "à valider".
+ */
+export const createTransaction = async (transactionInput: TransactionInput, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getCreateTransactionUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransaction>>, TError,{data: BodyType<TransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTransaction>>, TError,{data: BodyType<TransactionInput>}, TContext> => {
+
+const mutationKey = ['createTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTransaction>>, {data: BodyType<TransactionInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTransaction(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof createTransaction>>>
+    export type CreateTransactionMutationBody = BodyType<TransactionInput>
+    export type CreateTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Declare a new plain-language cash entry (module P3). The matching engine computes its SYSCOHADA journal lines and saves it as "à valider".
+ */
+export const useCreateTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTransaction>>, TError,{data: BodyType<TransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTransaction>>,
+        TError,
+        {data: BodyType<TransactionInput>},
+        TContext
+      > => {
+      return useMutation(getCreateTransactionMutationOptions(options));
+    }
+
+export const getGetTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}`
+}
+
+/**
+ * @summary Get a transaction's detail including its computed journal lines
+ */
+export const getTransaction = async (id: number, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getGetTransactionUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTransactionQueryKey = (id: number,) => {
+    return [
+    `/api/transactions/${id}`
+    ] as const;
+    }
+
+
+export const getGetTransactionQueryOptions = <TData = Awaited<ReturnType<typeof getTransaction>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTransactionQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTransaction>>> = ({ signal }) => getTransaction(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetTransactionQueryResult = NonNullable<Awaited<ReturnType<typeof getTransaction>>>
+export type GetTransactionQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a transaction's detail including its computed journal lines
+ */
+
+export function useGetTransaction<TData = Awaited<ReturnType<typeof getTransaction>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getTransaction>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetTransactionQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getApproveTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}/approve`
+}
+
+/**
+ * @summary Approuver & Comptabiliser: locks the transaction permanently into the general ledger (module M3)
+ */
+export const approveTransaction = async (id: number, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getApproveTransactionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getApproveTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof approveTransaction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['approveTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof approveTransaction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  approveTransaction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ApproveTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof approveTransaction>>>
+
+    export type ApproveTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Approuver & Comptabiliser: locks the transaction permanently into the general ledger (module M3)
+ */
+export const useApproveTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof approveTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof approveTransaction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getApproveTransactionMutationOptions(options));
+    }
+
+export const getRejectTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}/reject`
+}
+
+/**
+ * @summary Invalider: sends the transaction back to the PME with a clarification note (module M3)
+ */
+export const rejectTransaction = async (id: number,
+    transactionRejectInput: TransactionRejectInput, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getRejectTransactionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionRejectInput)
+  }
+);}
+
+
+
+
+
+export const getRejectTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectTransaction>>, TError,{id: number;data: BodyType<TransactionRejectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof rejectTransaction>>, TError,{id: number;data: BodyType<TransactionRejectInput>}, TContext> => {
+
+const mutationKey = ['rejectTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof rejectTransaction>>, {id: number;data: BodyType<TransactionRejectInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  rejectTransaction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RejectTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof rejectTransaction>>>
+    export type RejectTransactionMutationBody = BodyType<TransactionRejectInput>
+    export type RejectTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Invalider: sends the transaction back to the PME with a clarification note (module M3)
+ */
+export const useRejectTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof rejectTransaction>>, TError,{id: number;data: BodyType<TransactionRejectInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof rejectTransaction>>,
+        TError,
+        {id: number;data: BodyType<TransactionRejectInput>},
+        TContext
+      > => {
+      return useMutation(getRejectTransactionMutationOptions(options));
     }
 

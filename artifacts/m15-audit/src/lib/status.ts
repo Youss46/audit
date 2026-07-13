@@ -1,4 +1,4 @@
-import type { MissionStatus, UserRole } from "@workspace/api-client-react"
+import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, TransactionType } from "@workspace/api-client-react"
 
 // Shared French labels/colors for the mission workflow state machine and the
 // RBAC role badges, so every screen (dashboard, clients, missions, GED, team)
@@ -51,4 +51,43 @@ export function getRoleBadgeColor(role: UserRole | string | null | undefined) {
     case 'client_pme': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   }
+}
+
+// Modules P3/M3 (Comptabilité simplifiée & Comptabilité et travaux): shared
+// French labels/colors for the journal-entry (transaction) workflow.
+export function getTransactionStatusLabel(status: TransactionStatus | string | null | undefined) {
+  switch (status) {
+    case 'a_valider': return 'À valider'
+    case 'valide': return 'Validé'
+    case 'anomalie': return 'Anomalie'
+    default: return status ?? '—'
+  }
+}
+
+export function getTransactionStatusColor(status: TransactionStatus | string | null | undefined) {
+  switch (status) {
+    case 'a_valider': return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300'
+    case 'valide': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+    case 'anomalie': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
+
+export function getTransactionTypeLabel(type: TransactionType | string | null | undefined) {
+  return type === 'recette' ? 'Recette' : type === 'depense' ? 'Dépense' : '—'
+}
+
+export function getPaymentMethodLabel(method: PaymentMethod | string | null | undefined) {
+  switch (method) {
+    case 'especes': return 'Espèces'
+    case 'mobile_money': return 'Wave / Orange Money'
+    case 'cheque': return 'Chèque'
+    case 'virement': return 'Virement'
+    default: return '—'
+  }
+}
+
+export function formatFcfa(amount: number | null | undefined) {
+  if (amount == null) return '—'
+  return `${amount.toLocaleString('fr-FR')} FCFA`
 }

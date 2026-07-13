@@ -6,6 +6,7 @@ import { missionsTable } from "./missions";
 import { checklistItemsTable } from "./checklist-items";
 import { documentsTable } from "./documents";
 import { auditLogsTable } from "./audit-logs";
+import { transactionsTable, journalLinesTable } from "./accounting";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -22,6 +23,7 @@ export const clientsRelations = relations(clientsTable, ({ one, many }) => ({
   missions: many(missionsTable),
   documents: many(documentsTable),
   portalUsers: many(usersTable),
+  transactions: many(transactionsTable),
 }));
 
 export const missionsRelations = relations(missionsTable, ({ one, many }) => ({
@@ -54,4 +56,31 @@ export const documentsRelations = relations(documentsTable, ({ one }) => ({
 
 export const auditLogsRelations = relations(auditLogsTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [auditLogsTable.firmId], references: [firmsTable.id] }),
+}));
+
+export const transactionsRelations = relations(transactionsTable, ({ one, many }) => ({
+  client: one(clientsTable, {
+    fields: [transactionsTable.clientId],
+    references: [clientsTable.id],
+  }),
+  document: one(documentsTable, {
+    fields: [transactionsTable.documentId],
+    references: [documentsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [transactionsTable.createdById],
+    references: [usersTable.id],
+  }),
+  validatedBy: one(usersTable, {
+    fields: [transactionsTable.validatedById],
+    references: [usersTable.id],
+  }),
+  journalLines: many(journalLinesTable),
+}));
+
+export const journalLinesRelations = relations(journalLinesTable, ({ one }) => ({
+  transaction: one(transactionsTable, {
+    fields: [journalLinesTable.transactionId],
+    references: [transactionsTable.id],
+  }),
 }));
