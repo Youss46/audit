@@ -15,6 +15,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { logAudit } from "../lib/audit";
+import { determineAccountingSystem } from "../lib/visa-engine";
 
 const router: IRouter = Router();
 
@@ -39,9 +40,16 @@ router.get("/clients", async (req, res) => {
 router.post("/clients", async (req, res) => {
   const body = CreateClientBody.parse(req.body);
 
+  // Compute the applicable SYSCOHADA system immediately if the turnover is
+  // already known, so the dossier reflects it from the moment of creation.
+  const accountingSystem =
+    body.annualTurnover != null
+      ? determineAccountingSystem(body.sector, body.annualTurnover)
+      : null;
+
   const [client] = await db
     .insert(clientsTable)
-    .values({ ...body, firmId: req.user!.firmId })
+    .values({ ...body, accountingSystem, firmId: req.user!.firmId })
     .returning();
 
   await logAudit({
@@ -64,7 +72,7 @@ router.get("/clients/:id", async (req, res) => {
     where: and(eq(clientsTable.id, id), eq(clientsTable.firmId, req.user!.firmId)),
   });
   if (!client) {
-    res.status(404).json({ message: "Client introuvable." });
+    res.status(404).json({ error: "Client introuvable." });
     return;
   }
 
@@ -79,13 +87,22 @@ router.patch("/clients/:id", async (req, res) => {
     where: and(eq(clientsTable.id, id), eq(clientsTable.firmId, req.user!.firmId)),
   });
   if (!existing) {
-    res.status(404).json({ message: "Client introuvable." });
+    res.status(404).json({ error: "Client introuvable." });
     return;
   }
 
+  // Re-derive the SYSCOHADA system whenever the sector or turnover changes,
+  // so the classification shown to the accountant is always up to date.
+  const sector = body.sector ?? existing.sector;
+  const annualTurnover = body.annualTurnover ?? existing.annualTurnover;
+  const accountingSystem =
+    (body.sector !== undefined || body.annualTurnover !== undefined) && annualTurnover != null
+      ? determineAccountingSystem(sector, annualTurnover)
+      : existing.accountingSystem;
+
   const [updated] = await db
     .update(clientsTable)
-    .set(body)
+    .set({ ...body, accountingSystem })
     .where(eq(clientsTable.id, id))
     .returning();
 
@@ -108,7 +125,7 @@ router.delete("/clients/:id", async (req, res) => {
     where: and(eq(clientsTable.id, id), eq(clientsTable.firmId, req.user!.firmId)),
   });
   if (!existing) {
-    res.status(404).json({ message: "Client introuvable." });
+    res.status(404).json({ error: "Client introuvable." });
     return;
   }
 

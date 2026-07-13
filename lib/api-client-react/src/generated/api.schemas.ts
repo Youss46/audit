@@ -229,6 +229,10 @@ export interface Mission {
   status: MissionStatus;
   checklistTotal: number;
   checklistCompleted: number;
+  /** @nullable */
+  visaStampCode?: string | null;
+  /** @nullable */
+  visaIssuedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }

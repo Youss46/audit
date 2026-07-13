@@ -4,12 +4,14 @@ import * as z from "zod"
 import { useLocation } from "wouter"
 import { useCreateClient, Sector } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
-import { Building2, ChevronLeft } from "lucide-react"
+import { Building2, ChevronLeft, Calculator } from "lucide-react"
 import { Link } from "wouter"
+import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
@@ -82,6 +84,13 @@ export default function ClientNew() {
   function onSubmit(values: z.infer<typeof clientSchema>) {
     createMutation.mutate({ data: values })
   }
+
+  const watchedSector = form.watch("sector")
+  const watchedTurnover = form.watch("annualTurnover")
+  const computedSystem =
+    watchedSector && watchedTurnover != null && watchedTurnover > 0
+      ? determineAccountingSystem(watchedSector, watchedTurnover)
+      : null
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
@@ -281,6 +290,19 @@ export default function ClientNew() {
                     </FormItem>
                   )}
                 />
+
+                {computedSystem && (
+                  <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                    <Calculator className="h-5 w-5 text-primary shrink-0" />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm text-muted-foreground">Système SYSCOHADA applicable :</span>
+                        <Badge className="font-mono">{computedSystem}</Badge>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-0.5">{getSystemDescription(computedSystem)}</p>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

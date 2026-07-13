@@ -24,7 +24,13 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth } from "../middlewares/auth";
 import { logAudit } from "../lib/audit";
-import { determineAccountingSystem, generateChecklistLabels } from "../lib/visa-engine";
+import {
+  assertValidMissionTransition,
+  determineAccountingSystem,
+  generateChecklistLabels,
+  generateVisaStampCode,
+  VisaWorkflowError,
+} from "../lib/visa-engine";
 
 const router: IRouter = Router();
 
@@ -44,9 +50,43 @@ async function withCounts(mission: typeof missionsTable.$inferSelect, clientName
     status: mission.status,
     checklistTotal: items.length,
     checklistCompleted: items.filter((i) => i.status === "conforme").length,
+    visaStampCode: mission.visaStampCode ?? null,
+    visaIssuedAt: mission.visaIssuedAt ?? null,
     createdAt: mission.createdAt,
     updatedAt: mission.updatedAt,
   };
+}
+
+// Applies the checklist's current anomaly state to the mission (and its
+// client) automatically: entering "anomalie" as soon as any item is flagged,
+// and returning to "en_cours" once every anomaly has been resolved. This is
+// the system-driven half of the visa status state machine.
+async function syncMissionAnomalyState(mission: typeof missionsTable.$inferSelect) {
+  const items = await db.query.checklistItemsTable.findMany({
+    where: eq(checklistItemsTable.missionId, mission.id),
+  });
+  const hasAnomalies = items.some((i) => i.status === "anomalie");
+
+  let nextStatus = mission.status;
+  if (hasAnomalies && mission.status === "en_cours") {
+    nextStatus = "anomalie";
+  } else if (!hasAnomalies && mission.status === "anomalie") {
+    nextStatus = "en_cours";
+  }
+
+  if (nextStatus === mission.status) return mission;
+
+  const [updated] = await db
+    .update(missionsTable)
+    .set({ status: nextStatus })
+    .where(eq(missionsTable.id, mission.id))
+    .returning();
+  await db
+    .update(clientsTable)
+    .set({ missionStatus: nextStatus })
+    .where(eq(clientsTable.id, mission.clientId));
+
+  return updated;
 }
 
 router.get("/missions", async (req, res) => {
@@ -79,12 +119,12 @@ router.post("/missions", async (req, res) => {
     where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
   });
   if (!client) {
-    res.status(404).json({ message: "Client introuvable." });
+    res.status(404).json({ error: "Client introuvable." });
     return;
   }
   if (client.annualTurnover == null) {
     res.status(422).json({
-      message:
+      error:
         "Le chiffre d'affaires annuel du client doit être renseigné avant d'ouvrir une mission.",
     });
     return;
@@ -140,7 +180,7 @@ router.get("/missions/:id", async (req, res) => {
     with: { client: true },
   });
   if (!mission) {
-    res.status(404).json({ message: "Mission introuvable." });
+    res.status(404).json({ error: "Mission introuvable." });
     return;
   }
 
@@ -162,13 +202,42 @@ router.patch("/missions/:id", async (req, res) => {
     with: { client: true },
   });
   if (!mission) {
-    res.status(404).json({ message: "Mission introuvable." });
+    res.status(404).json({ error: "Mission introuvable." });
     return;
+  }
+
+  let extraUpdates: Partial<typeof missionsTable.$inferInsert> = {};
+
+  if (body.status && body.status !== mission.status) {
+    const items = await db.query.checklistItemsTable.findMany({
+      where: eq(checklistItemsTable.missionId, id),
+    });
+    const hasAnomalies = items.some((i) => i.status === "anomalie");
+    const allConform = items.length > 0 && items.every((i) => i.status === "conforme");
+
+    try {
+      assertValidMissionTransition(mission.status, body.status, { allConform, hasAnomalies });
+    } catch (err) {
+      if (err instanceof VisaWorkflowError) {
+        res.status(409).json({ error: err.message });
+        return;
+      }
+      throw err;
+    }
+
+    // Mock the emission of the digital visa stamp when the mission finally
+    // reaches "visa_emis".
+    if (body.status === "visa_emis") {
+      extraUpdates = {
+        visaStampCode: generateVisaStampCode(mission.fiscalYear, mission.id),
+        visaIssuedAt: new Date(),
+      };
+    }
   }
 
   const [updated] = await db
     .update(missionsTable)
-    .set(body)
+    .set({ ...body, ...extraUpdates })
     .where(eq(missionsTable.id, id))
     .returning();
 
@@ -199,7 +268,7 @@ router.get("/missions/:id/checklist", async (req, res) => {
     where: and(eq(missionsTable.id, id), eq(missionsTable.firmId, req.user!.firmId)),
   });
   if (!mission) {
-    res.status(404).json({ message: "Mission introuvable." });
+    res.status(404).json({ error: "Mission introuvable." });
     return;
   }
 
@@ -219,7 +288,13 @@ router.patch("/missions/:id/checklist/:itemId", async (req, res) => {
     where: and(eq(missionsTable.id, id), eq(missionsTable.firmId, req.user!.firmId)),
   });
   if (!mission) {
-    res.status(404).json({ message: "Mission introuvable." });
+    res.status(404).json({ error: "Mission introuvable." });
+    return;
+  }
+  if (mission.status === "visa_emis") {
+    res.status(409).json({
+      error: "Le visa a déjà été émis : la grille de contrôle est verrouillée.",
+    });
     return;
   }
 
@@ -227,8 +302,21 @@ router.patch("/missions/:id/checklist/:itemId", async (req, res) => {
     where: and(eq(checklistItemsTable.id, itemId), eq(checklistItemsTable.missionId, id)),
   });
   if (!item) {
-    res.status(404).json({ message: "Élément de checklist introuvable." });
+    res.status(404).json({ error: "Élément de checklist introuvable." });
     return;
+  }
+
+  // Flagging a control point as an anomaly always requires a justification
+  // comment so the accountant knows what to fix before the visa can be issued.
+  if (body.status === "anomalie") {
+    const note = (body.note ?? item.note ?? "").trim();
+    if (!note) {
+      res.status(400).json({
+        error:
+          "Un commentaire est obligatoire pour signaler une anomalie sur ce point de contrôle.",
+      });
+      return;
+    }
   }
 
   const [updated] = await db
@@ -236,6 +324,10 @@ router.patch("/missions/:id/checklist/:itemId", async (req, res) => {
     .set(body)
     .where(eq(checklistItemsTable.id, itemId))
     .returning();
+
+  // Reflect the checklist's anomaly state onto the mission/client status
+  // automatically (system-driven part of the visa workflow state machine).
+  await syncMissionAnomalyState(mission);
 
   await logAudit({
     firmId: req.user!.firmId,

@@ -114,6 +114,14 @@ export default function MissionDetail() {
   }
 
   const handleItemStatusChange = (itemId: number, newStatus: ChecklistItemStatus) => {
+    if (newStatus === 'anomalie') {
+      // Flagging an anomaly requires a justification comment: open the note
+      // editor instead of applying the status change immediately.
+      const item = checklist?.find((i) => i.id === itemId)
+      setNoteContent(item?.note || "")
+      setActiveNoteId(itemId)
+      return
+    }
     updateItemMutation.mutate({
       id: missionId,
       itemId: itemId,
@@ -121,11 +129,19 @@ export default function MissionDetail() {
     })
   }
 
-  const handleSaveNote = (itemId: number) => {
+  const handleSaveNote = (itemId: number, markAsAnomaly?: boolean) => {
+    if (markAsAnomaly && !noteContent.trim()) {
+      toast({
+        title: "Commentaire obligatoire",
+        description: "Décrivez l'anomalie constatée avant d'enregistrer.",
+        variant: "destructive"
+      })
+      return
+    }
     updateItemMutation.mutate({
       id: missionId,
       itemId: itemId,
-      data: { note: noteContent }
+      data: markAsAnomaly ? { status: 'anomalie', note: noteContent } : { note: noteContent }
     })
   }
 
@@ -180,21 +196,27 @@ export default function MissionDetail() {
         {user?.role !== 'client_pme' && (
           <div className="flex items-center gap-2 bg-card p-2 rounded-lg border shadow-sm">
             <span className="text-sm font-medium text-muted-foreground mr-2">Workflow :</span>
-            <Select 
-              value={mission.status} 
-              onValueChange={(v) => handleStatusChange(v as MissionStatus)}
-            >
-              <SelectTrigger className="w-[180px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="en_attente">En attente</SelectItem>
-                <SelectItem value="en_cours">En cours</SelectItem>
-                <SelectItem value="anomalie">Anomalie signalée</SelectItem>
-                <SelectItem value="valide" disabled={!isCompleted || hasAnomalies}>Validé (Prêt pour visa)</SelectItem>
-                <SelectItem value="visa_emis" disabled={mission.status !== 'valide' && mission.status !== 'visa_emis'}>Visa Émis</SelectItem>
-              </SelectContent>
-            </Select>
+            {mission.status === 'anomalie' ? (
+              <Badge variant="outline" className="border-transparent bg-red-100 text-red-800 px-3 py-1.5">
+                Anomalie — résolvez les points signalés pour reprendre
+              </Badge>
+            ) : (
+              <Select
+                value={mission.status}
+                onValueChange={(v) => handleStatusChange(v as MissionStatus)}
+                disabled={mission.status === 'visa_emis'}
+              >
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en_attente" disabled={mission.status !== 'en_attente'}>En attente</SelectItem>
+                  <SelectItem value="en_cours" disabled={mission.status !== 'en_attente' && mission.status !== 'en_cours'}>En cours</SelectItem>
+                  <SelectItem value="valide" disabled={mission.status !== 'en_cours' || !isCompleted || hasAnomalies}>Validé (Prêt pour visa)</SelectItem>
+                  <SelectItem value="visa_emis" disabled={mission.status !== 'valide'}>Émettre le visa</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
         )}
       </div>
@@ -250,6 +272,27 @@ export default function MissionDetail() {
               </div>
             )}
 
+            {mission.status === 'valide' && (
+              <div className="mt-6 p-4 bg-teal-50 border border-teal-200 rounded-lg flex items-start gap-3 text-teal-800 dark:bg-teal-900/20 dark:border-teal-900/50 dark:text-teal-200">
+                <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" />
+                <div>
+                  <h4 className="font-semibold text-sm">Dossier validé</h4>
+                  <p className="text-sm mt-1">Le dossier est prêt : l'expert-comptable peut désormais émettre le visa.</p>
+                  {user?.role === 'expert_comptable' && (
+                    <Button
+                      size="sm"
+                      className="mt-3 bg-teal-600 hover:bg-teal-700 text-white"
+                      onClick={() => handleStatusChange('visa_emis')}
+                      disabled={updateMissionMutation.isPending}
+                    >
+                      <Stamp className="mr-2 h-4 w-4" />
+                      Émettre le visa
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {mission.status === 'visa_emis' && (
               <div className="mt-6 p-6 bg-primary border-primary rounded-lg flex items-center justify-between text-primary-foreground shadow-inner">
                 <div className="flex items-center gap-4">
@@ -258,7 +301,14 @@ export default function MissionDetail() {
                   </div>
                   <div>
                     <h4 className="font-bold text-lg">Visa Comptable Émis</h4>
-                    <p className="text-primary-foreground/80 text-sm">La procédure est clôturée pour cet exercice.</p>
+                    <p className="text-primary-foreground/80 text-sm">
+                      La procédure est clôturée pour cet exercice.
+                      {mission.visaStampCode && (
+                        <>
+                          {" "}Cachet numérique : <span className="font-mono">{mission.visaStampCode}</span>
+                        </>
+                      )}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -311,21 +361,38 @@ export default function MissionDetail() {
                       
                       {activeNoteId === item.id && (
                         <div className="mt-3 space-y-2 max-w-2xl">
+                          {item.status !== 'anomalie' && (
+                            <p className="text-xs font-medium text-destructive flex items-center gap-1">
+                              <AlertTriangle className="h-3.5 w-3.5" />
+                              Commentaire obligatoire pour signaler une anomalie
+                            </p>
+                          )}
                           <Textarea 
-                            placeholder="Saisir une observation, une référence de document..."
+                            placeholder="Décrire l'anomalie constatée, une référence de document..."
                             className="min-h-[100px] text-sm"
                             value={noteContent}
                             onChange={(e) => setNoteContent(e.target.value)}
                             autoFocus
                           />
                           <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
-                              onClick={() => handleSaveNote(item.id)}
-                              disabled={updateItemMutation.isPending}
-                            >
-                              Enregistrer la note
-                            </Button>
+                            {item.status !== 'anomalie' ? (
+                              <Button 
+                                size="sm" 
+                                variant="destructive"
+                                onClick={() => handleSaveNote(item.id, true)}
+                                disabled={updateItemMutation.isPending || !noteContent.trim()}
+                              >
+                                Signaler l'anomalie
+                              </Button>
+                            ) : (
+                              <Button 
+                                size="sm" 
+                                onClick={() => handleSaveNote(item.id)}
+                                disabled={updateItemMutation.isPending}
+                              >
+                                Enregistrer la note
+                              </Button>
+                            )}
                             <Button 
                               size="sm" 
                               variant="ghost" 

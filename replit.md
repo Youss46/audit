@@ -43,7 +43,7 @@ M15-AUDIT is a SaaS platform that digitizes accounting workflows and the SYSCOHA
 
 - **M9 (Admin/Auth/RBAC)**: firm registration, login, user invitation/management with 4 roles (expert_comptable, collaborateur, stagiaire, client_pme), full audit log.
 - **M1 (Client/Dossier management)**: client registry with KYC fields, mission-status dashboard.
-- **M4 + P2 (Visa engine)**: opening a mission auto-determines the SYSCOHADA accounting system (SMT/ALLEGE/NORMAL) from sector + turnover and generates a control checklist; status tracker (en_attente → en_cours → anomalie/valide → visa_emis).
+- **M4 + P2 (Visa engine)**: sector/turnover determines the SYSCOHADA system (SMT < 60M commerce / 40M artisanat / 30M services; ALLEGE up to 100M; NORMAL above) the moment it's entered on the client profile, and generates a control checklist (12/24/36 regulatory items + 2 standard checks: balance sheet concordance, fiches R1-R4) when a mission opens. Mission status is a strict state machine (en_attente → en_cours → valide → visa_emis); "anomalie" is system-driven, entered/exited automatically as checklist items are flagged/resolved (never chosen manually). Flagging a checklist item as anomalie requires a comment. Reaching visa_emis mocks a digital visa stamp (`visaStampCode` + `visaIssuedAt` on the mission) and locks the checklist.
 - **M6 (GED)**: per-client document folders with category tagging, upload/download/delete.
 
 ## User preferences

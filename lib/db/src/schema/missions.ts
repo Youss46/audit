@@ -31,6 +31,10 @@ export const missionsTable = pgTable(
       .notNull()
       .$type<MissionStatusValue>()
       .default("en_attente"),
+    // Mock digital visa stamp (module M4/P2): populated when the mission
+    // reaches "visa_emis" so the client's dossier can display proof of issuance.
+    visaStampCode: text("visa_stamp_code"),
+    visaIssuedAt: timestamp("visa_issued_at", { withTimezone: true }),
     createdById: integer("created_by_id"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

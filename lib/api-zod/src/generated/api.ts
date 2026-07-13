@@ -465,6 +465,8 @@ export const ListMissionsResponseItem = zod.object({
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "visaStampCode": zod.string().nullish(),
+  "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -489,6 +491,8 @@ export const CreateMissionResponse = zod.object({
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "visaStampCode": zod.string().nullish(),
+  "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })
@@ -511,6 +515,8 @@ export const GetMissionResponse = zod.object({
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "visaStampCode": zod.string().nullish(),
+  "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -547,6 +553,8 @@ export const UpdateMissionResponse = zod.object({
   "status": zod.enum(['en_attente', 'en_cours', 'anomalie', 'valide', 'visa_emis']),
   "checklistTotal": zod.number(),
   "checklistCompleted": zod.number(),
+  "visaStampCode": zod.string().nullish(),
+  "visaIssuedAt": zod.coerce.date().nullish(),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 })

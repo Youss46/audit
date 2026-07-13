@@ -10,11 +10,13 @@ import {
   getListClientDocumentsQueryKey,
   useUploadClientDocument,
   useDeleteDocument,
+  useUpdateClient,
   MissionStatus,
   Sector
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime, formatDate } from "@/lib/utils"
+import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
 import { 
   Building2, 
   ChevronLeft, 
@@ -26,7 +28,9 @@ import {
   Calendar,
   MoreVertical,
   Download,
-  AlertCircle
+  AlertCircle,
+  Calculator,
+  Stamp
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -62,6 +66,13 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 
 function getStatusLabel(status: MissionStatus) {
@@ -113,10 +124,13 @@ export default function ClientDetail() {
   const [isUploadOpen, setIsUploadOpen] = useState(false)
   const [uploadCategory, setUploadCategory] = useState("Général")
   const [docToDelete, setDocToDelete] = useState<number | null>(null)
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editSector, setEditSector] = useState<Sector>(Sector.services)
+  const [editTurnover, setEditTurnover] = useState<number>(0)
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  const { data: client, isLoading: isClientLoading } = useGetClient(clientId, {
+  const { data: client, isLoading: isClientLoading, refetch: refetchClient } = useGetClient(clientId, {
     query: { enabled: !!clientId, queryKey: getGetClientQueryKey(clientId) }
   })
   
@@ -173,6 +187,41 @@ export default function ClientDetail() {
     }
   })
 
+  const updateClientMutation = useUpdateClient({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Profil financier mis à jour" })
+        setIsEditingProfile(false)
+        refetchClient()
+      },
+      onError: (error) => {
+        toast({
+          title: "Erreur",
+          description: error.data?.error || "Impossible de mettre à jour le client",
+          variant: "destructive"
+        })
+      }
+    }
+  })
+
+  const handleStartEditProfile = () => {
+    if (!client) return
+    setEditSector(client.sector)
+    setEditTurnover(client.annualTurnover ?? 0)
+    setIsEditingProfile(true)
+  }
+
+  const handleSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault()
+    updateClientMutation.mutate({
+      id: clientId,
+      data: { sector: editSector, annualTurnover: editTurnover }
+    })
+  }
+
+  const previewSystem =
+    editTurnover > 0 ? determineAccountingSystem(editSector, editTurnover) : null
+
   const handleCreateMission = (e: React.FormEvent) => {
     e.preventDefault()
     createMissionMutation.mutate({
@@ -205,6 +254,10 @@ export default function ClientDetail() {
     }
     reader.readAsDataURL(file)
   }
+
+  const latestVisaMission = missions
+    ?.filter((m) => m.status === 'visa_emis' && m.visaStampCode)
+    .sort((a, b) => b.fiscalYear - a.fiscalYear)[0]
 
   if (isClientLoading) {
     return <div className="h-[50vh] flex items-center justify-center">
@@ -257,30 +310,103 @@ export default function ClientDetail() {
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
+          {client.missionStatus === 'visa_emis' && latestVisaMission && (
+            <div className="p-5 bg-primary rounded-lg flex items-center justify-between text-primary-foreground shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="h-11 w-11 rounded-full bg-white/20 flex items-center justify-center shrink-0">
+                  <Stamp className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-bold">Visa Comptable Émis — Exercice {latestVisaMission.fiscalYear}</h4>
+                  <p className="text-primary-foreground/80 text-sm">
+                    Cachet numérique : <span className="font-mono">{latestVisaMission.visaStampCode}</span>
+                    {latestVisaMission.visaIssuedAt && ` · émis le ${formatDate(latestVisaMission.visaIssuedAt)}`}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-6 md:grid-cols-2">
             <Card className="shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">Informations KYC</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="text-lg">Profil Financier & Système SYSCOHADA</CardTitle>
+                {user?.role !== 'client_pme' && !isEditingProfile && (
+                  <Button variant="outline" size="sm" onClick={handleStartEditProfile}>
+                    Modifier
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-y-4 text-sm">
-                  <div>
-                    <div className="text-muted-foreground mb-1">Secteur d'activité</div>
-                    <div className="font-medium capitalize">{client.sector}</div>
+                {isEditingProfile ? (
+                  <form onSubmit={handleSaveProfile} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Secteur d'activité</Label>
+                      <Select value={editSector} onValueChange={(v) => setEditSector(v as Sector)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="commerce">Commerce</SelectItem>
+                          <SelectItem value="artisanat">Artisanat</SelectItem>
+                          <SelectItem value="services">Services</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Chiffre d'Affaires Annuel (FCFA)</Label>
+                      <Input
+                        type="number"
+                        min={0}
+                        value={editTurnover}
+                        onChange={(e) => setEditTurnover(parseFloat(e.target.value) || 0)}
+                      />
+                    </div>
+                    {previewSystem && (
+                      <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                        <Calculator className="h-5 w-5 text-primary shrink-0" />
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">Système applicable :</span>
+                            <Badge className="font-mono">{previewSystem}</Badge>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-0.5">{getSystemDescription(previewSystem)}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 justify-end">
+                      <Button type="button" variant="outline" size="sm" onClick={() => setIsEditingProfile(false)} disabled={updateClientMutation.isPending}>
+                        Annuler
+                      </Button>
+                      <Button type="submit" size="sm" disabled={updateClientMutation.isPending}>
+                        {updateClientMutation.isPending ? "Enregistrement..." : "Enregistrer"}
+                      </Button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="grid grid-cols-2 gap-y-4 text-sm">
+                    <div>
+                      <div className="text-muted-foreground mb-1">Secteur d'activité</div>
+                      <div className="font-medium capitalize">{client.sector}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">N° Compte Contribuable</div>
+                      <div className="font-medium">{client.taxId || '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">Chiffre d'Affaires</div>
+                      <div className="font-medium">{client.annualTurnover ? formatCurrency(client.annualTurnover) : '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">Système SYSCOHADA</div>
+                      <div className="font-medium">
+                        {client.accountingSystem ? (
+                          <Badge variant="secondary" className="font-mono">{client.accountingSystem}</Badge>
+                        ) : '-'}
+                      </div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-muted-foreground mb-1">N° Compte Contribuable</div>
-                    <div className="font-medium">{client.taxId || '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground mb-1">Chiffre d'Affaires</div>
-                    <div className="font-medium">{client.annualTurnover ? formatCurrency(client.annualTurnover) : '-'}</div>
-                  </div>
-                  <div>
-                    <div className="text-muted-foreground mb-1">Création au cabinet</div>
-                    <div className="font-medium">{formatDate(client.createdAt)}</div>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -307,6 +433,10 @@ export default function ClientDetail() {
                   <div>
                     <div className="text-muted-foreground mb-1">Adresse complète</div>
                     <div className="font-medium">{client.address || '-'}</div>
+                  </div>
+                  <div>
+                    <div className="text-muted-foreground mb-1">Création au cabinet</div>
+                    <div className="font-medium">{formatDate(client.createdAt)}</div>
                   </div>
                 </div>
               </CardContent>
