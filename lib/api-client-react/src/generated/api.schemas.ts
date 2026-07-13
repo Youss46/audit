@@ -416,6 +416,8 @@ export interface Transaction {
   validatedByName?: string | null;
   /** @nullable */
   validatedAt?: string | null;
+  /** Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected. */
+  anomalies: string[];
   createdAt: string;
   updatedAt: string;
 }

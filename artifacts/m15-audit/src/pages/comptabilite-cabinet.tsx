@@ -16,14 +16,17 @@ import {
   getTransactionTypeLabel,
   getPaymentMethodLabel,
   getTransactionSourceLabel,
+  getAnomalyLabel,
+  getAnomalyShortLabel,
   formatFcfa,
 } from "@/lib/status"
-import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -34,6 +37,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 
 // Module M3 (Comptabilité et Travaux): the accountant's ledger review
 // workspace. Every plain-language PME entry ("à valider") is shown next to
@@ -43,6 +47,9 @@ export default function ComptabiliteCabinet() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "ALL">("a_valider")
+  // Module M8: "Smart Filter" -- lets the accountant narrow the review
+  // queue down to only the entries the anomaly detector flagged.
+  const [anomaliesOnly, setAnomaliesOnly] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<number | null>(null)
   const [clarificationNote, setClarificationNote] = useState("")
   // Journal-line account numbers currently being edited, keyed by
@@ -140,7 +147,9 @@ export default function ComptabiliteCabinet() {
     })
   }
 
-  const rows = transactions ?? []
+  const allRows = transactions ?? []
+  const rows = anomaliesOnly ? allRows.filter((t) => (t.anomalies?.length ?? 0) > 0) : allRows
+  const anomalyCount = allRows.filter((t) => (t.anomalies?.length ?? 0) > 0).length
 
   return (
     <div className="space-y-6">
@@ -152,23 +161,45 @@ export default function ComptabiliteCabinet() {
         </p>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
-        {([
-          ["a_valider", "À valider"],
-          ["valide", "Validées"],
-          ["anomalie", "Anomalies"],
-          ["ALL", "Toutes"],
-        ] as const).map(([value, label]) => (
-          <Badge
-            key={value}
-            variant={statusFilter === value ? "default" : "outline"}
-            className="cursor-pointer whitespace-nowrap"
-            onClick={() => setStatusFilter(value)}
-            data-testid={`filter-status-${value}`}
-          >
-            {label}
-          </Badge>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {([
+            ["a_valider", "À valider"],
+            ["valide", "Validées"],
+            ["anomalie", "Anomalies"],
+            ["ALL", "Toutes"],
+          ] as const).map(([value, label]) => (
+            <Badge
+              key={value}
+              variant={statusFilter === value ? "default" : "outline"}
+              className="cursor-pointer whitespace-nowrap"
+              onClick={() => setStatusFilter(value)}
+              data-testid={`filter-status-${value}`}
+            >
+              {label}
+            </Badge>
+          ))}
+        </div>
+        {/* Module M8: "Smart Filter" -- narrows the queue to entries the
+            rule-based detector flagged (doublon, incohérence, montant
+            anormal), regardless of the status filter above. */}
+        <div className="flex items-center gap-2 pb-2">
+          <Switch
+            id="anomalies-only"
+            checked={anomaliesOnly}
+            onCheckedChange={setAnomaliesOnly}
+            data-testid="switch-anomalies-only"
+          />
+          <Label htmlFor="anomalies-only" className="text-sm cursor-pointer flex items-center gap-1.5">
+            <ShieldAlert className="h-3.5 w-3.5 text-red-600 dark:text-red-400" />
+            Afficher uniquement les anomalies
+            {anomalyCount > 0 && (
+              <Badge variant="outline" className="border-transparent bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300">
+                {anomalyCount}
+              </Badge>
+            )}
+          </Label>
+        </div>
       </div>
 
       {isLoading ? (
@@ -179,16 +210,25 @@ export default function ComptabiliteCabinet() {
         <Card className="shadow-sm">
           <CardContent className="p-10 flex flex-col items-center justify-center text-muted-foreground">
             <BookOpenCheck className="h-8 w-8 mb-2 opacity-20" />
-            <p>Aucune opération dans cette file.</p>
+            <p>{anomaliesOnly ? "Aucune anomalie détectée dans cette file." : "Aucune opération dans cette file."}</p>
           </CardContent>
         </Card>
       ) : (
         <div className="space-y-4">
-          {rows.map((t) => (
-            <Card key={t.id} className="shadow-sm" data-testid={`card-transaction-${t.id}`}>
+          {rows.map((t) => {
+            const anomalies = t.anomalies ?? []
+            const hasAnomalies = anomalies.length > 0
+            return (
+            <Card
+              key={t.id}
+              className={hasAnomalies
+                ? "shadow-sm border-red-300 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
+                : "shadow-sm"}
+              data-testid={`card-transaction-${t.id}`}
+            >
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
                 <div>
-                  <CardTitle className="text-base flex items-center gap-2">
+                  <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     {t.clientName}
                     <Badge variant="outline" className={`border-transparent ${getTransactionStatusColor(t.status)}`}>
                       {getTransactionStatusLabel(t.status)}
@@ -204,6 +244,26 @@ export default function ComptabiliteCabinet() {
                         Règlement de facture
                       </Badge>
                     )}
+                    {/* Module M8: explicit warning tooltip per detected
+                        anomaly, worded so the accountant immediately knows
+                        why the entry was flagged. */}
+                    {anomalies.map((code) => (
+                      <Tooltip key={code}>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="outline"
+                            className="border-transparent bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300 cursor-help"
+                            data-testid={`badge-anomaly-${t.id}-${code}`}
+                          >
+                            <AlertTriangle className="mr-1 h-3 w-3" />
+                            {getAnomalyShortLabel(code)}
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent className="max-w-xs bg-red-700 text-white">
+                          ⚠️ {getAnomalyLabel(code)}
+                        </TooltipContent>
+                      </Tooltip>
+                    ))}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     {formatDate(t.date)} · {getTransactionTypeLabel(t.type)} · {formatFcfa(t.amount)}
@@ -228,12 +288,22 @@ export default function ComptabiliteCabinet() {
                     </Button>
                     <Button
                       size="sm"
+                      variant={hasAnomalies ? "destructive" : "default"}
                       onClick={() => approveMutation.mutate({ id: t.id })}
                       disabled={approveMutation.isPending}
                       data-testid={`button-approve-${t.id}`}
                     >
-                      <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                      Approuver &amp; Comptabiliser
+                      {hasAnomalies ? (
+                        <>
+                          <ShieldAlert className="mr-1.5 h-4 w-4" />
+                          Forcer la validation
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                          Approuver &amp; Comptabiliser
+                        </>
+                      )}
                     </Button>
                   </div>
                 )}
@@ -362,7 +432,8 @@ export default function ComptabiliteCabinet() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
 

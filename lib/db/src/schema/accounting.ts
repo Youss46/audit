@@ -2,6 +2,7 @@ import {
   type AnyPgColumn,
   index,
   integer,
+  jsonb,
   pgTable,
   serial,
   text,
@@ -77,6 +78,18 @@ export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
 export const PAYMENT_TYPES = ["cash", "credit"] as const;
 export type PaymentType = (typeof PAYMENT_TYPES)[number];
 
+// Module M8 (Anomalie & Doublon Detector): rule-based flags computed
+// automatically at creation time (and recomputed whenever the journal
+// lines are adjusted). Kept as an explicit code list rather than free text
+// so the frontend can render a fixed, professionally-worded tooltip per
+// code instead of trusting arbitrary backend strings.
+export const ANOMALY_CODES = [
+  "DOUBLON_SUSPECT",
+  "INCOHERENCE_COMPTABLE",
+  "MONTANT_ANORMAL",
+] as const;
+export type AnomalyCode = (typeof ANOMALY_CODES)[number];
+
 // A transaction is one plain-language cash movement (recette/dépense)
 // declared either by the PME (module P3) or entered directly by the cabinet
 // (module M3). The automated matching engine (lib/accounting-engine.ts)
@@ -145,6 +158,11 @@ export const transactionsTable = pgTable(
       onDelete: "set null",
     }),
     validatedAt: timestamp("validated_at", { withTimezone: true }),
+    // Module M8: rule-based anomaly/duplicate flags (see ANOMALY_CODES),
+    // recomputed at creation and whenever journal lines are adjusted.
+    // Never blocks the workflow -- the cabinet can still "Forcer la
+    // validation" -- it only surfaces a warning in the M3 review queue.
+    anomalies: jsonb("anomalies").notNull().default([]).$type<AnomalyCode[]>(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

@@ -121,3 +121,28 @@ export function formatFcfa(amount: number | null | undefined) {
   if (amount == null) return '—'
   return `${amount.toLocaleString('fr-FR')} FCFA`
 }
+
+// Module M8 (Anomalie & Doublon Detector): rule-based flags returned by the
+// backend as plain codes (see ANOMALY_CODES) -- this maps each code to the
+// exact professionally-worded French warning shown to the accountant.
+export function getAnomalyLabel(code: string) {
+  switch (code) {
+    case 'DOUBLON_SUSPECT':
+      return "Doublon suspecté : une autre opération de ce client, du même montant, a été déclarée à moins de 24h de celle-ci."
+    case 'INCOHERENCE_COMPTABLE':
+      return "Incohérence comptable : le compte imputé ne correspond pas à la nature de l'opération (charge/produit)."
+    case 'MONTANT_ANORMAL':
+      return "Montant anormalement élevé pour cette catégorie, comparé à la moyenne des 3 derniers mois de ce client."
+    default:
+      return "Anomalie détectée sur cette opération."
+  }
+}
+
+export function getAnomalyShortLabel(code: string) {
+  switch (code) {
+    case 'DOUBLON_SUSPECT': return 'Doublon suspect'
+    case 'INCOHERENCE_COMPTABLE': return 'Incohérence comptable'
+    case 'MONTANT_ANORMAL': return 'Montant anormal'
+    default: return 'Anomalie'
+  }
+}

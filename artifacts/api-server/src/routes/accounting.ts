@@ -41,6 +41,7 @@ import {
   computeSettlementJournalLines,
   listCategoriesForType,
 } from "../lib/accounting-engine";
+import { detectAnomalies } from "../lib/anomaly-detector";
 
 const router: IRouter = Router();
 
@@ -82,6 +83,7 @@ function serializeTransaction(
     createdByName: extra.createdByName ?? null,
     validatedByName: extra.validatedByName ?? null,
     validatedAt: tx.validatedAt ?? null,
+    anomalies: tx.anomalies ?? [],
     createdAt: tx.createdAt,
     updatedAt: tx.updatedAt,
   };
@@ -199,6 +201,21 @@ async function createTransactionEntry(
 
   const source = req.user!.role === "client_pme" ? "pme_entry" : "manual_cabinet";
 
+  // Module M8: run the rule-based anomaly/duplicate detector before this
+  // entry reaches the M3 review queue, so the accountant sees the warning
+  // from the very first time it appears there. Never blocks creation --
+  // only surfaces a flag the accountant can override ("Forcer la
+  // validation").
+  const anomalies = await detectAnomalies({
+    firmId: req.user!.firmId,
+    clientId: body.clientId,
+    date: body.date,
+    amount: body.amount,
+    category: body.category,
+    type: body.type,
+    journalLines,
+  });
+
   const [tx] = await db
     .insert(transactionsTable)
     .values({
@@ -216,6 +233,7 @@ async function createTransactionEntry(
       cashRegisterId,
       status: "a_valider",
       source,
+      anomalies,
       createdById: req.user!.id,
     })
     .returning();
@@ -436,15 +454,22 @@ router.post(
       .where(eq(transactionsTable.id, id))
       .returning();
 
+    // Module M8: an entry carrying an unresolved anomaly flag that still
+    // gets approved is, by definition, being "forcée" by the accountant --
+    // record that distinctly in the audit trail rather than as a routine
+    // approval, without ever blocking the action itself.
+    const hadAnomalies = (tx.anomalies ?? []).length > 0;
     await logAudit({
       firmId: req.user!.firmId,
       userId: req.user!.id,
       userName: req.user!.fullName,
       userRole: req.user!.role,
-      action: AuditAction.TRANSACTION_APPROVE,
+      action: hadAnomalies ? AuditAction.TRANSACTION_FORCE_VALIDATE : AuditAction.TRANSACTION_APPROVE,
       entityType: "transaction",
       entityId: id,
-      details: `Comptabilisation de "${tx.label}" (${tx.amount} FCFA)`,
+      details: hadAnomalies
+        ? `Validation forcée de "${tx.label}" (${tx.amount} FCFA) malgré anomalie(s) : ${(tx.anomalies ?? []).join(", ")}`
+        : `Comptabilisation de "${tx.label}" (${tx.amount} FCFA)`,
       ipAddress: req.ip,
     });
 
@@ -706,6 +731,30 @@ router.patch(
         );
     }
 
+    // Module M8: an account-number redirect can turn a previously coherent
+    // entry into an incoherent one (or vice versa) -- recompute all rules
+    // rather than patching just the incoherence flag, since the accountant
+    // may also have caught up on a duplicate/spike in the meantime.
+    const updatedLines = body.lines.map((line) => ({ accountNumber: line.accountNumber }));
+    const untouchedLines = tx.journalLines
+      .filter((line) => !body.lines.some((updated) => updated.id === line.id))
+      .map((line) => ({ accountNumber: line.accountNumber }));
+    const anomalies = await detectAnomalies({
+      transactionId: tx.id,
+      firmId: req.user!.firmId,
+      clientId: tx.clientId,
+      date: tx.date,
+      amount: tx.amount,
+      category: tx.category,
+      type: tx.type,
+      journalLines: [...updatedLines, ...untouchedLines],
+    });
+    const [updatedTx] = await db
+      .update(transactionsTable)
+      .set({ anomalies })
+      .where(eq(transactionsTable.id, tx.id))
+      .returning();
+
     await logAudit({
       firmId: req.user!.firmId,
       userId: req.user!.id,
@@ -720,7 +769,7 @@ router.patch(
 
     res.json(
       UpdateTransactionJournalLinesResponse.parse(
-        await withJournalLines(tx, {
+        await withJournalLines(updatedTx, {
           clientName: tx.client?.name,
           documentFileName: tx.document?.fileName,
           createdByName: tx.createdBy?.fullName,

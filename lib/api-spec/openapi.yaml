@@ -1650,6 +1650,7 @@ components:
           paymentType,
           status,
           source,
+          anomalies,
           createdAt,
           updatedAt,
         ]
@@ -1686,6 +1687,13 @@ components:
         createdByName: { type: ["string", "null"] }
         validatedByName: { type: ["string", "null"] }
         validatedAt: { type: ["string", "null"], format: date-time }
+        anomalies:
+          description: >-
+            Module M8 (Anomalie & Doublon Detector): rule-based flags computed
+            automatically when the entry is created or its journal lines are
+            adjusted. Empty when no anomaly was detected.
+          type: array
+          items: { type: string }
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 

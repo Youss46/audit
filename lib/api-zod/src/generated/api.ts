@@ -717,6 +717,7 @@ export const ListTransactionsResponseItem = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -780,6 +781,7 @@ export const CreateTransactionResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -827,6 +829,7 @@ export const GetTransactionResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -874,6 +877,7 @@ export const ApproveTransactionResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -928,6 +932,7 @@ export const RejectTransactionResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -980,6 +985,7 @@ export const SettleTransactionResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -1038,6 +1044,7 @@ export const UpdateTransactionJournalLinesResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -1104,6 +1111,7 @@ export const BatchCreateTransactionsResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
@@ -1298,6 +1306,7 @@ export const CloseDailyClosureResponse = zod.object({
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
   "createdAt": zod.coerce.date(),
   "updatedAt": zod.coerce.date()
 }).and(zod.object({
