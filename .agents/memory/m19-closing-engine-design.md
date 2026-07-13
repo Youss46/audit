@@ -20,7 +20,10 @@ description: Architecture and key decisions for the Clôture d'Exercice Comptabl
 - `isPeriodLocked(firmId, clientId, year)` exported from `closing-engine.ts`
 - Called in `createTransactionEntry` (accounting.ts) — guards all POST /transactions
 - Called in generate-closings handler (fixed-assets.ts) — guards manual dotation generation
+- Also called in `POST /transactions/:id/approve` and `PATCH /transactions/:id/journal-lines` (keyed on `tx.date.getFullYear()`) — closes a gap where an entry created *before* a year was locked, but still sitting unapproved, could otherwise be approved/edited into a locked ledger afterward. `/settle` wasn't guarded since it always books at `new Date()` (today), never the original tx's year.
 - Closing engine itself bypasses the lock by doing direct DB inserts (not via the transaction creation API)
+
+**Why:** "Lock the period" must mean no ledger-affecting mutation for that year, not just no new POSTs — any status transition into `"valide"` or edit of journal lines for a backdated entry counts.
 
 ## Net result accounting (SYSCOHADA)
 - Class 6 (charges): net debit balance → credit each account to zero them

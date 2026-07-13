@@ -462,6 +462,12 @@ router.post(
       res.status(409).json({ error: "Cette opération est déjà comptabilisée." });
       return;
     }
+    if (await isPeriodLocked(req.user!.firmId, tx.clientId, tx.date.getFullYear())) {
+      res.status(403).json({
+        error: `L'exercice ${tx.date.getFullYear()} est définitivement clôturé. Cette opération ne peut plus être comptabilisée.`,
+      });
+      return;
+    }
 
     const [updated] = await db
       .update(transactionsTable)
@@ -789,6 +795,12 @@ router.patch(
     if (tx.status !== "a_valider") {
       res.status(409).json({
         error: "Les comptes ne peuvent être ajustés que pour une opération à valider.",
+      });
+      return;
+    }
+    if (await isPeriodLocked(req.user!.firmId, tx.clientId, tx.date.getFullYear())) {
+      res.status(403).json({
+        error: `L'exercice ${tx.date.getFullYear()} est définitivement clôturé. Cette opération ne peut plus être modifiée.`,
       });
       return;
     }
