@@ -51,33 +51,41 @@ function getAccountingSystemBadgeClass(system: AccountingSystem | string | null 
 
 // ---------------------------------------------------------------------------
 // Module M3 (Comptabilité & Travaux): the per-client accounting views share
-// this header — pick a client, then switch between the ledger views and the
-// year-end closing workspace. Selecting a client keeps the current tab and
-// just swaps the :clientId segment in the URL (source of truth for context).
+// this header — pick a client, then switch between the ledger views, the
+// fixed-asset registry, and the year-end closing workspace.
 //
-// The "cloture" tab has a different URL prefix (/cabinet/client/:id/cloture)
-// from the comptabilite tabs (/comptabilite/:id/...) because it lives in the
-// dedicated cabinet workspace rather than the reporting section.
+// URL routing per tab:
+//   saisie / journaux / grand-livre / etats-financiers
+//     → /comptabilite/:id/<slug>
+//   immobilisations  → /cabinet/client/:id/immobilisations
+//   cloture          → /cabinet/client/:id/cloture
 // ---------------------------------------------------------------------------
+
 const TABS = [
-  { slug: "saisie",            label: "Flux de Saisie"   },
-  { slug: "journaux",          label: "Journaux"          },
-  { slug: "grand-livre",       label: "Grand Livre"       },
-  { slug: "etats-financiers",  label: "États Financiers"  },
-  { slug: "cloture",           label: "Clôture Annuelle"  },
+  { slug: "saisie",           label: "Flux de Saisie"   },
+  { slug: "journaux",         label: "Journaux"          },
+  { slug: "grand-livre",      label: "Grand Livre"       },
+  { slug: "etats-financiers", label: "États Financiers"  },
+  { slug: "immobilisations",  label: "Immobilisations"   },
+  { slug: "cloture",          label: "Clôture Annuelle"  },
 ] as const
+
+/** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
+const CABINET_TABS = new Set<string>(["immobilisations", "cloture"])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
 
 export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlug }) {
   const [, setLocation] = useLocation()
-  // Match both the comptabilite tabs and the cabinet/client cloture tab.
-  const [, comptaParams]  = useRoute<{ clientId: string }>("/comptabilite/:clientId/:tab")
-  const [, cabinetParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/cloture")
-  const params   = comptaParams ?? cabinetParams
+
+  // Detect clientId from all possible URL patterns this nav appears on.
+  const [, comptaParams] = useRoute<{ clientId: string }>("/comptabilite/:clientId/:tab")
+  const [, clotureParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/cloture")
+  const [, immobParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/immobilisations")
+  const params   = comptaParams ?? clotureParams ?? immobParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
-  // All clients for the selector dropdown
+  // All clients for the selector dropdown.
   const { data: clients, isLoading: clientsLoading } = useListClients()
 
   // Selected client detail — enriches the context header with sector,
@@ -102,19 +110,22 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   )
   const pendingCount = pendingTransactions?.length ?? 0
 
+  // Route helper: build the destination URL for a given tab + clientId.
+  function tabUrl(tab: string, id: number | string): string {
+    return CABINET_TABS.has(tab)
+      ? `/cabinet/client/${id}/${tab}`
+      : `/comptabilite/${id}/${tab}`
+  }
+
   const handleClientChange = (value: string) => {
-    setLocation(`/comptabilite/${value}/${activeTab}`)
+    // Keep the current tab when switching clients — preserves the accountant's
+    // workflow context (e.g. stays on Journaux while comparing two clients).
+    setLocation(tabUrl(activeTab, value))
   }
 
   const handleTabChange = (tab: string) => {
     if (!clientId) return
-    // The cloture tab lives under /cabinet/client/:id/cloture; all other
-    // tabs live under /comptabilite/:id/<slug>.
-    if (tab === "cloture") {
-      setLocation(`/cabinet/client/${clientId}/cloture`)
-    } else {
-      setLocation(`/comptabilite/${clientId}/${tab}`)
-    }
+    setLocation(tabUrl(tab, clientId))
   }
 
   return (
@@ -142,11 +153,9 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
                   >
                     <span className="flex items-center gap-2">
                       {client.name}
-                      {client.missionStatus && (
-                        <span className="text-xs text-muted-foreground">
-                          — {getSectorLabel(client.sector)}
-                        </span>
-                      )}
+                      <span className="text-xs text-muted-foreground">
+                        — {getSectorLabel(client.sector)}
+                      </span>
                     </span>
                   </SelectItem>
                 ))}
