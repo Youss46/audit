@@ -1,4 +1,5 @@
 import {
+  type AnyPgColumn,
   index,
   integer,
   pgTable,
@@ -52,11 +53,21 @@ export type TransactionType = (typeof TRANSACTION_TYPES)[number];
 export const TRANSACTION_STATUSES = ["a_valider", "valide", "anomalie"] as const;
 export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 
-export const TRANSACTION_SOURCES = ["pme_entry", "manual_cabinet"] as const;
+// "settlement" is the second leg of a credit (accrual) operation -- the
+// treasury movement generated when a PME marks an outstanding invoice as
+// paid (module P3 "Factures en attente" -> "Marquer comme payé").
+export const TRANSACTION_SOURCES = ["pme_entry", "manual_cabinet", "settlement"] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
 export const PAYMENT_METHODS = ["especes", "mobile_money", "cheque", "virement"] as const;
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
+// "cash" (au comptant): the treasury account (571/521) is hit immediately.
+// "credit" (à crédit): the operation first books against a third-party
+// account (4111 Clients / 4011 Fournisseurs) and only touches treasury once
+// settled -- strict SYSCOHADA accrual accounting, module P3/M3.
+export const PAYMENT_TYPES = ["cash", "credit"] as const;
+export type PaymentType = (typeof PAYMENT_TYPES)[number];
 
 // A transaction is one plain-language cash movement (recette/dépense)
 // declared either by the PME (module P3) or entered directly by the cabinet
@@ -82,7 +93,15 @@ export const transactionsTable = pgTable(
     // null for a manual cabinet entry where the accountant picks accounts
     // directly instead of going through the matching engine.
     category: text("category"),
+    // "cash" (au comptant) or "credit" (à crédit) -- decides whether the
+    // matching engine books straight to treasury or through a third-party
+    // (411/401) account first. Defaults to "cash" for pre-existing rows.
+    paymentType: text("payment_type").notNull().$type<PaymentType>().default("cash"),
+    // Required for cash operations; null for credit operations until the
+    // settlement leg is recorded (see paymentMethod on the settlement row).
     paymentMethod: text("payment_method").$type<PaymentMethod>(),
+    // Required for credit operations ("Date d'échéance"); unused for cash.
+    dueDate: timestamp("due_date", { withTimezone: true }),
     status: text("status").notNull().$type<TransactionStatus>().default("a_valider"),
     source: text("source").notNull().$type<TransactionSource>(),
     // Optional link to the supporting receipt/attachment already deposited
@@ -93,6 +112,17 @@ export const transactionsTable = pgTable(
     // Filled in by the cabinet when "Invalider" is used, so the PME knows
     // what to fix before resubmitting.
     clarificationNote: text("clarification_note"),
+    // Set once a credit operation's settlement has been requested (PME
+    // clicked "Marquer comme payé"). The actual treasury entry lives in a
+    // separate transaction row (source: "settlement", parentTransactionId
+    // pointing back here) that still goes through the normal M3 review.
+    settledAt: timestamp("settled_at", { withTimezone: true }),
+    // Self-reference: set only on a "settlement" transaction, pointing back
+    // to the original credit (accrual) operation it settles.
+    parentTransactionId: integer("parent_transaction_id").references(
+      (): AnyPgColumn => transactionsTable.id,
+      { onDelete: "set null" },
+    ),
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),

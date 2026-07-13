@@ -702,12 +702,16 @@ export const ListTransactionsResponseItem = zod.object({
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().nullish(),
   "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -741,7 +745,9 @@ export const CreateTransactionBody = zod.object({
   "amount": zod.number().min(1),
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().min(1),
-  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional().describe('Required when paymentType is \"cash\"; ignored for \"credit\".'),
+  "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
   "documentId": zod.number().nullish()
 })
 
@@ -756,12 +762,16 @@ export const CreateTransactionResponse = zod.object({
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().nullish(),
   "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -797,12 +807,16 @@ export const GetTransactionResponse = zod.object({
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().nullish(),
   "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -838,12 +852,16 @@ export const ApproveTransactionResponse = zod.object({
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().nullish(),
   "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -886,12 +904,121 @@ export const RejectTransactionResponse = zod.object({
   "type": zod.enum(['recette', 'depense']),
   "category": zod.string().nullish(),
   "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Marquer comme payé: records the settlement of a credit (à crédit) operation. Creates a second, separately reviewed transaction that moves the balance from the third-party account (4111/4011) to treasury (module P3/M3).
+ */
+export const SettleTransactionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SettleTransactionBody = zod.object({
+  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement'])
+})
+
+export const SettleTransactionResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Cabinet-only: adjust the account number of one or more computed journal lines (e.g. the 4111/4011 third-party mapping) before final validation (module M3). Only allowed while the transaction is still à valider.
+ */
+export const UpdateTransactionJournalLinesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateTransactionJournalLinesBody = zod.object({
+  "lines": zod.array(zod.object({
+  "id": zod.number(),
+  "accountNumber": zod.string().min(1)
+})).min(1)
+})
+
+export const UpdateTransactionJournalLinesResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),

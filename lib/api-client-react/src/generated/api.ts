@@ -49,6 +49,8 @@ import type {
   TransactionDetail,
   TransactionInput,
   TransactionRejectInput,
+  TransactionSettleInput,
+  UpdateJournalLinesInput,
   User,
   UserInput,
   UserUpdate
@@ -2498,5 +2500,149 @@ export const useRejectTransaction = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getRejectTransactionMutationOptions(options));
+    }
+
+export const getSettleTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}/settle`
+}
+
+/**
+ * @summary Marquer comme payé: records the settlement of a credit (à crédit) operation. Creates a second, separately reviewed transaction that moves the balance from the third-party account (4111/4011) to treasury (module P3/M3).
+ */
+export const settleTransaction = async (id: number,
+    transactionSettleInput: TransactionSettleInput, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getSettleTransactionUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(transactionSettleInput)
+  }
+);}
+
+
+
+
+
+export const getSettleTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settleTransaction>>, TError,{id: number;data: BodyType<TransactionSettleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof settleTransaction>>, TError,{id: number;data: BodyType<TransactionSettleInput>}, TContext> => {
+
+const mutationKey = ['settleTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof settleTransaction>>, {id: number;data: BodyType<TransactionSettleInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  settleTransaction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SettleTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof settleTransaction>>>
+    export type SettleTransactionMutationBody = BodyType<TransactionSettleInput>
+    export type SettleTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Marquer comme payé: records the settlement of a credit (à crédit) operation. Creates a second, separately reviewed transaction that moves the balance from the third-party account (4111/4011) to treasury (module P3/M3).
+ */
+export const useSettleTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settleTransaction>>, TError,{id: number;data: BodyType<TransactionSettleInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof settleTransaction>>,
+        TError,
+        {id: number;data: BodyType<TransactionSettleInput>},
+        TContext
+      > => {
+      return useMutation(getSettleTransactionMutationOptions(options));
+    }
+
+export const getUpdateTransactionJournalLinesUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}/journal-lines`
+}
+
+/**
+ * @summary Cabinet-only: adjust the account number of one or more computed journal lines (e.g. the 4111/4011 third-party mapping) before final validation (module M3). Only allowed while the transaction is still à valider.
+ */
+export const updateTransactionJournalLines = async (id: number,
+    updateJournalLinesInput: UpdateJournalLinesInput, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getUpdateTransactionJournalLinesUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateJournalLinesInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransactionJournalLinesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransactionJournalLines>>, TError,{id: number;data: BodyType<UpdateJournalLinesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransactionJournalLines>>, TError,{id: number;data: BodyType<UpdateJournalLinesInput>}, TContext> => {
+
+const mutationKey = ['updateTransactionJournalLines'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransactionJournalLines>>, {id: number;data: BodyType<UpdateJournalLinesInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateTransactionJournalLines(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransactionJournalLinesMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransactionJournalLines>>>
+    export type UpdateTransactionJournalLinesMutationBody = BodyType<UpdateJournalLinesInput>
+    export type UpdateTransactionJournalLinesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Cabinet-only: adjust the account number of one or more computed journal lines (e.g. the 4111/4011 third-party mapping) before final validation (module M3). Only allowed while the transaction is still à valider.
+ */
+export const useUpdateTransactionJournalLines = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransactionJournalLines>>, TError,{id: number;data: BodyType<UpdateJournalLinesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransactionJournalLines>>,
+        TError,
+        {id: number;data: BodyType<UpdateJournalLinesInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateTransactionJournalLinesMutationOptions(options));
     }
 

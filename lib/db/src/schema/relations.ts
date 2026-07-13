@@ -76,6 +76,16 @@ export const transactionsRelations = relations(transactionsTable, ({ one, many }
     references: [usersTable.id],
   }),
   journalLines: many(journalLinesTable),
+  // Self-relation for credit (accrual) operations: a "settlement"
+  // transaction points back to the original operation it settles.
+  parentTransaction: one(transactionsTable, {
+    fields: [transactionsTable.parentTransactionId],
+    references: [transactionsTable.id],
+    relationName: "settlement",
+  }),
+  settlementTransaction: many(transactionsTable, {
+    relationName: "settlement",
+  }),
 }));
 
 export const journalLinesRelations = relations(journalLinesTable, ({ one }) => ({

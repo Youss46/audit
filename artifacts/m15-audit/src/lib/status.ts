@@ -1,4 +1,4 @@
-import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, TransactionType } from "@workspace/api-client-react"
+import type { MissionStatus, UserRole, TransactionStatus, PaymentMethod, PaymentType, TransactionType, TransactionSource } from "@workspace/api-client-react"
 
 // Shared French labels/colors for the mission workflow state machine and the
 // RBAC role badges, so every screen (dashboard, clients, missions, GED, team)
@@ -83,6 +83,19 @@ export function getPaymentMethodLabel(method: PaymentMethod | string | null | un
     case 'mobile_money': return 'Wave / Orange Money'
     case 'cheque': return 'Chèque'
     case 'virement': return 'Virement'
+    default: return '—'
+  }
+}
+
+export function getPaymentTypeLabel(type: PaymentType | string | null | undefined) {
+  return type === 'cash' ? 'Immédiat (Au comptant)' : type === 'credit' ? 'Plus tard (À crédit)' : '—'
+}
+
+export function getTransactionSourceLabel(source: TransactionSource | string | null | undefined) {
+  switch (source) {
+    case 'settlement': return 'Règlement de facture'
+    case 'manual_cabinet': return 'Saisie cabinet'
+    case 'pme_entry': return 'Déclaration client'
     default: return '—'
   }
 }

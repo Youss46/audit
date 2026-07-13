@@ -787,6 +787,86 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /transactions/{id}/settle:
+    post:
+      operationId: settleTransaction
+      tags: [accounting]
+      summary: "Marquer comme payé: records the settlement of a credit (à crédit) operation. Creates a second, separately reviewed transaction that moves the balance from the third-party account (4111/4011) to treasury (module P3/M3)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransactionSettleInput"
+      responses:
+        "201":
+          description: Settlement transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "400":
+          description: Transaction is not an outstanding credit operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transaction is already settled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /transactions/{id}/journal-lines:
+    patch:
+      operationId: updateTransactionJournalLines
+      tags: [accounting]
+      summary: "Cabinet-only: adjust the account number of one or more computed journal lines (e.g. the 4111/4011 third-party mapping) before final validation (module M3). Only allowed while the transaction is still à valider."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateJournalLinesInput"
+      responses:
+        "200":
+          description: Transaction with updated journal lines
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Transaction is no longer editable
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -1190,6 +1270,7 @@ components:
       enum:
         - pme_entry
         - manual_cabinet
+        - settlement
 
     PaymentMethod:
       type: string
@@ -1198,6 +1279,12 @@ components:
         - mobile_money
         - cheque
         - virement
+
+    PaymentType:
+      type: string
+      enum:
+        - cash
+        - credit
 
     TransactionCategoryOption:
       type: object
@@ -1228,6 +1315,7 @@ components:
           label,
           amount,
           type,
+          paymentType,
           status,
           source,
           createdAt,
@@ -1245,10 +1333,13 @@ components:
           $ref: "#/components/schemas/TransactionType"
         category: { type: ["string", "null"] }
         categoryLabel: { type: ["string", "null"] }
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
         paymentMethod:
           anyOf:
             - $ref: "#/components/schemas/PaymentMethod"
             - type: "null"
+        dueDate: { type: ["string", "null"], format: date-time }
         status:
           $ref: "#/components/schemas/TransactionStatus"
         source:
@@ -1256,6 +1347,8 @@ components:
         documentId: { type: ["integer", "null"] }
         documentFileName: { type: ["string", "null"] }
         clarificationNote: { type: ["string", "null"] }
+        settledAt: { type: ["string", "null"], format: date-time }
+        parentTransactionId: { type: ["integer", "null"] }
         createdByName: { type: ["string", "null"] }
         validatedByName: { type: ["string", "null"] }
         validatedAt: { type: ["string", "null"], format: date-time }
@@ -1275,7 +1368,7 @@ components:
 
     TransactionInput:
       type: object
-      required: [clientId, date, label, amount, type, category, paymentMethod]
+      required: [clientId, date, label, amount, type, category, paymentType]
       properties:
         clientId: { type: integer }
         date: { type: string, format: date-time }
@@ -1290,8 +1383,17 @@ components:
         category:
           type: string
           minLength: 1
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
         paymentMethod:
-          $ref: "#/components/schemas/PaymentMethod"
+          description: Required when paymentType is "cash"; ignored for "credit".
+          anyOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        dueDate:
+          description: Required when paymentType is "credit" ("Date d'échéance"); ignored for "cash".
+          type: ["string", "null"]
+          format: date-time
         documentId: { type: ["integer", "null"] }
 
     TransactionRejectInput:
@@ -1301,3 +1403,26 @@ components:
         clarificationNote:
           type: string
           minLength: 1
+
+    TransactionSettleInput:
+      type: object
+      required: [paymentMethod]
+      properties:
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+
+    UpdateJournalLinesInput:
+      type: object
+      required: [lines]
+      properties:
+        lines:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [id, accountNumber]
+            properties:
+              id: { type: integer }
+              accountNumber:
+                type: string
+                minLength: 1

@@ -24,7 +24,9 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
 
   // Classe 4 - Comptes de tiers
   { accountNumber: "401", name: "Fournisseurs", accountClass: 4 },
+  { accountNumber: "4011", name: "Fournisseurs", accountClass: 4 },
   { accountNumber: "411", name: "Clients", accountClass: 4 },
+  { accountNumber: "4111", name: "Clients", accountClass: 4 },
   { accountNumber: "421", name: "Personnel, avances et acomptes", accountClass: 4 },
   { accountNumber: "444", name: "État, impôts sur les bénéfices", accountClass: 4 },
   { accountNumber: "445", name: "État, TVA", accountClass: 4 },
@@ -40,6 +42,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "6052", name: "Fournitures non stockables - Eau, électricité", accountClass: 6 },
   { accountNumber: "6054", name: "Fournitures de bureau", accountClass: 6 },
   { accountNumber: "614", name: "Transports du personnel", accountClass: 6 },
+  { accountNumber: "618", name: "Voyages et déplacements", accountClass: 6 },
   { accountNumber: "622", name: "Locations et charges locatives", accountClass: 6 },
   { accountNumber: "624", name: "Entretien, réparations et maintenance", accountClass: 6 },
   { accountNumber: "628", name: "Autres charges externes", accountClass: 6 },

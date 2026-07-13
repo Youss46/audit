@@ -5,10 +5,12 @@ import {
   useListTransactionCategories,
   getListTransactionCategoriesQueryKey,
   useCreateTransaction,
+  useSettleTransaction,
   useListClientDocuments,
   getListClientDocumentsQueryKey,
   TransactionType,
   PaymentMethod,
+  PaymentType,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useQueryClient } from "@tanstack/react-query"
@@ -18,9 +20,10 @@ import {
   getTransactionStatusColor,
   getTransactionStatusLabel,
   getPaymentMethodLabel,
+  getPaymentTypeLabel,
   formatFcfa,
 } from "@/lib/status"
-import { Plus, TrendingUp, TrendingDown, Paperclip, Wallet } from "lucide-react"
+import { Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -61,7 +64,9 @@ function emptyForm(type: TransactionType) {
     label: "",
     amount: "",
     category: "",
+    paymentType: "cash" as PaymentType,
     paymentMethod: "" as PaymentMethod | "",
+    dueDate: "",
     documentId: "" as string,
   }
 }
@@ -76,9 +81,11 @@ export default function ComptabilitePme() {
   const queryClient = useQueryClient()
   const clientId = user?.clientId ?? 0
 
-  const [activeTab, setActiveTab] = useState<TransactionType>("recette")
+  const [activeTab, setActiveTab] = useState<TransactionType | "en_attente">("recette")
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [form, setForm] = useState(emptyForm("recette"))
+  const [settleTarget, setSettleTarget] = useState<number | null>(null)
+  const [settlePaymentMethod, setSettlePaymentMethod] = useState<PaymentMethod | "">("")
 
   const { data: transactions, isLoading } = useListTransactions(
     { clientId },
@@ -100,13 +107,34 @@ export default function ComptabilitePme() {
           description: "Votre cabinet comptable va la vérifier et la comptabiliser.",
         })
         setIsFormOpen(false)
-        setForm(emptyForm(activeTab))
+        setForm(emptyForm(activeTab === "en_attente" ? "recette" : activeTab))
         queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey({ clientId }) })
       },
       onError: (error) => {
         toast({
           title: "Erreur",
           description: error.data?.error || "Impossible d'enregistrer l'opération.",
+          variant: "destructive",
+        })
+      },
+    },
+  })
+
+  const settleMutation = useSettleTransaction({
+    mutation: {
+      onSuccess: () => {
+        toast({
+          title: "Facture marquée comme payée",
+          description: "Le règlement a été transmis à votre cabinet pour comptabilisation.",
+        })
+        setSettleTarget(null)
+        setSettlePaymentMethod("")
+        queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey({ clientId }) })
+      },
+      onError: (error) => {
+        toast({
+          title: "Erreur",
+          description: error.data?.error || "Impossible d'enregistrer ce règlement.",
           variant: "destructive",
         })
       },
@@ -121,7 +149,9 @@ export default function ComptabilitePme() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     const amount = parseInt(form.amount, 10)
-    if (!form.label.trim() || !amount || amount <= 0 || !form.category || !form.paymentMethod) return
+    if (!form.label.trim() || !amount || amount <= 0 || !form.category) return
+    if (form.paymentType === "cash" && !form.paymentMethod) return
+    if (form.paymentType === "credit" && !form.dueDate) return
     createMutation.mutate({
       data: {
         clientId,
@@ -130,17 +160,28 @@ export default function ComptabilitePme() {
         amount,
         type: form.type,
         category: form.category,
-        paymentMethod: form.paymentMethod as PaymentMethod,
+        paymentType: form.paymentType,
+        paymentMethod: form.paymentType === "cash" ? (form.paymentMethod as PaymentMethod) : null,
+        dueDate: form.paymentType === "credit" ? new Date(form.dueDate).toISOString() : null,
         documentId: form.documentId ? parseInt(form.documentId, 10) : null,
       },
     })
   }
 
-  const { recettes, depenses } = useMemo(() => {
+  const handleSettle = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (settleTarget == null || !settlePaymentMethod) return
+    settleMutation.mutate({ id: settleTarget, data: { paymentMethod: settlePaymentMethod } })
+  }
+
+  const { recettes, depenses, facturesEnAttente } = useMemo(() => {
     const list = transactions ?? []
     return {
       recettes: list.filter((t) => t.type === "recette"),
       depenses: list.filter((t) => t.type === "depense"),
+      facturesEnAttente: list.filter(
+        (t) => t.paymentType === "credit" && t.status === "valide" && !t.settledAt,
+      ),
     }
   }, [transactions])
 
@@ -156,7 +197,10 @@ export default function ComptabilitePme() {
             comptabilise automatiquement.
           </p>
         </div>
-        <Button data-testid="button-new-operation" onClick={() => openForm(activeTab)}>
+        <Button
+          data-testid="button-new-operation"
+          onClick={() => openForm(activeTab === "en_attente" ? "recette" : activeTab)}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Nouvelle opération
         </Button>
@@ -191,70 +235,159 @@ export default function ComptabilitePme() {
         </Card>
       </div>
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TransactionType)}>
+      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TransactionType | "en_attente")}>
         <TabsList>
           <TabsTrigger value="recette" data-testid="tab-recettes">Recettes</TabsTrigger>
           <TabsTrigger value="depense" data-testid="tab-depenses">Dépenses</TabsTrigger>
+          <TabsTrigger value="en_attente" data-testid="tab-factures-en-attente">
+            Factures en attente
+            {facturesEnAttente.length > 0 && (
+              <Badge variant="secondary" className="ml-1.5">{facturesEnAttente.length}</Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
-        <TabsContent value={activeTab} className="mt-4">
+
+        {(["recette", "depense"] as const).map((type) => (
+          <TabsContent key={type} value={type} className="mt-4">
+            <Card className="shadow-sm">
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Libellé</TableHead>
+                        <TableHead>Catégorie</TableHead>
+                        <TableHead>Règlement</TableHead>
+                        <TableHead>Montant</TableHead>
+                        <TableHead>Pièce jointe</TableHead>
+                        <TableHead>Statut</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {isLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                            Chargement...
+                          </TableCell>
+                        </TableRow>
+                      ) : (type === "recette" ? recettes : depenses).length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
+                            <div className="flex flex-col items-center justify-center">
+                              <Wallet className="h-8 w-8 mb-2 opacity-20" />
+                              <p>Aucune opération pour le moment.</p>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        (type === "recette" ? recettes : depenses).map((t) => (
+                          <TableRow key={t.id} data-testid={`row-transaction-${t.id}`}>
+                            <TableCell className="whitespace-nowrap text-sm">{formatDate(t.date)}</TableCell>
+                            <TableCell className="font-medium">
+                              {t.label}
+                              {t.source === "settlement" && (
+                                <Badge variant="outline" className="ml-1.5 text-[10px] py-0 border-transparent bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                                  Règlement
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">{t.categoryLabel ?? "—"}</TableCell>
+                            <TableCell className="text-sm">
+                              {t.paymentType === "credit" ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                  À crédit
+                                  {t.dueDate && <span className="text-xs text-muted-foreground">· éch. {formatDate(t.dueDate)}</span>}
+                                </span>
+                              ) : (
+                                getPaymentMethodLabel(t.paymentMethod)
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">{formatFcfa(t.amount)}</TableCell>
+                            <TableCell>
+                              {t.documentId ? (
+                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t.documentFileName ?? undefined}>
+                                  <Paperclip className="h-3.5 w-3.5" />
+                                  Jointe
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Aucune</span>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`border-transparent ${getTransactionStatusColor(t.status)}`}>
+                                {getTransactionStatusLabel(t.status)}
+                              </Badge>
+                              {t.paymentType === "credit" && t.status === "valide" && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {t.settledAt ? "Réglée" : "Non réglée"}
+                                </p>
+                              )}
+                              {t.status === "anomalie" && t.clarificationNote && (
+                                <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-xs">
+                                  {t.clarificationNote}
+                                </p>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+
+        <TabsContent value="en_attente" className="mt-4">
           <Card className="shadow-sm">
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Date</TableHead>
+                      <TableHead>Date d'échéance</TableHead>
                       <TableHead>Libellé</TableHead>
-                      <TableHead>Catégorie</TableHead>
-                      <TableHead>Mode de règlement</TableHead>
+                      <TableHead>Type</TableHead>
                       <TableHead>Montant</TableHead>
-                      <TableHead>Pièce jointe</TableHead>
-                      <TableHead>Statut</TableHead>
+                      <TableHead className="text-right">Action</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {isLoading ? (
+                    {facturesEnAttente.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
-                          Chargement...
-                        </TableCell>
-                      </TableRow>
-                    ) : rows.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
+                        <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
                           <div className="flex flex-col items-center justify-center">
-                            <Wallet className="h-8 w-8 mb-2 opacity-20" />
-                            <p>Aucune opération pour le moment.</p>
+                            <CircleDollarSign className="h-8 w-8 mb-2 opacity-20" />
+                            <p>Aucune facture en attente de règlement.</p>
                           </div>
                         </TableCell>
                       </TableRow>
                     ) : (
-                      rows.map((t) => (
-                        <TableRow key={t.id} data-testid={`row-transaction-${t.id}`}>
-                          <TableCell className="whitespace-nowrap text-sm">{formatDate(t.date)}</TableCell>
-                          <TableCell className="font-medium">{t.label}</TableCell>
-                          <TableCell className="text-sm">{t.categoryLabel ?? "—"}</TableCell>
-                          <TableCell className="text-sm">{getPaymentMethodLabel(t.paymentMethod)}</TableCell>
-                          <TableCell className="font-medium">{formatFcfa(t.amount)}</TableCell>
-                          <TableCell>
-                            {t.documentId ? (
-                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title={t.documentFileName ?? undefined}>
-                                <Paperclip className="h-3.5 w-3.5" />
-                                Jointe
-                              </span>
-                            ) : (
-                              <span className="text-xs text-muted-foreground italic">Aucune</span>
-                            )}
+                      facturesEnAttente.map((t) => (
+                        <TableRow key={t.id} data-testid={`row-facture-attente-${t.id}`}>
+                          <TableCell className="whitespace-nowrap text-sm">
+                            {t.dueDate ? formatDate(t.dueDate) : "—"}
                           </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={`border-transparent ${getTransactionStatusColor(t.status)}`}>
-                              {getTransactionStatusLabel(t.status)}
-                            </Badge>
-                            {t.status === "anomalie" && t.clarificationNote && (
-                              <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-xs">
-                                {t.clarificationNote}
-                              </p>
-                            )}
+                          <TableCell className="font-medium">{t.label}</TableCell>
+                          <TableCell className="text-sm">
+                            {t.type === "recette" ? "Créance client" : "Dette fournisseur"}
+                          </TableCell>
+                          <TableCell className="font-medium">{formatFcfa(t.amount)}</TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSettleTarget(t.id)
+                                setSettlePaymentMethod("")
+                              }}
+                              data-testid={`button-settle-${t.id}`}
+                            >
+                              Marquer comme payé
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))
@@ -355,23 +488,63 @@ export default function ComptabilitePme() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="paymentMethod">Mode de règlement</Label>
-              <Select
-                value={form.paymentMethod}
-                onValueChange={(v) => setForm((f) => ({ ...f, paymentMethod: v as PaymentMethod }))}
-              >
-                <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
-                  <SelectValue placeholder="Sélectionner un mode..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {PAYMENT_METHODS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {getPaymentMethodLabel(m)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Règlement</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={form.paymentType === "cash" ? "default" : "outline"}
+                  onClick={() => setForm((f) => ({ ...f, paymentType: "cash", dueDate: "" }))}
+                  data-testid="button-payment-type-cash"
+                >
+                  Immédiat (Au comptant)
+                </Button>
+                <Button
+                  type="button"
+                  variant={form.paymentType === "credit" ? "default" : "outline"}
+                  onClick={() => setForm((f) => ({ ...f, paymentType: "credit", paymentMethod: "" }))}
+                  data-testid="button-payment-type-credit"
+                >
+                  Plus tard (À crédit)
+                </Button>
+              </div>
             </div>
+
+            {form.paymentType === "cash" ? (
+              <div className="space-y-2">
+                <Label htmlFor="paymentMethod">Mode de règlement</Label>
+                <Select
+                  value={form.paymentMethod}
+                  onValueChange={(v) => setForm((f) => ({ ...f, paymentMethod: v as PaymentMethod }))}
+                >
+                  <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
+                    <SelectValue placeholder="Sélectionner un mode..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {getPaymentMethodLabel(m)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label htmlFor="dueDate">Date d'échéance</Label>
+                <Input
+                  id="dueDate"
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
+                  data-testid="input-due-date"
+                  required
+                />
+                <p className="text-xs text-muted-foreground">
+                  Cette opération sera enregistrée comme une créance ou une dette. Vous pourrez la
+                  marquer comme payée depuis l'onglet "Factures en attente" une fois validée.
+                </p>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="document">Pièce jointe (optionnel)</Label>
@@ -407,6 +580,51 @@ export default function ComptabilitePme() {
               </Button>
               <Button type="submit" disabled={createMutation.isPending}>
                 {createMutation.isPending ? "Envoi..." : "Enregistrer l'opération"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={settleTarget != null} onOpenChange={(open) => !open && setSettleTarget(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Marquer la facture comme payée</DialogTitle>
+            <DialogDescription>
+              Indiquez comment ce règlement a été effectué. Votre cabinet comptabilisera ce
+              paiement dans le grand livre.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleSettle} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="settlePaymentMethod">Mode de règlement</Label>
+              <Select
+                value={settlePaymentMethod}
+                onValueChange={(v) => setSettlePaymentMethod(v as PaymentMethod)}
+              >
+                <SelectTrigger id="settlePaymentMethod" data-testid="select-settle-payment-method">
+                  <SelectValue placeholder="Sélectionner un mode..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAYMENT_METHODS.map((m) => (
+                    <SelectItem key={m} value={m}>
+                      {getPaymentMethodLabel(m)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSettleTarget(null)}
+                disabled={settleMutation.isPending}
+              >
+                Annuler
+              </Button>
+              <Button type="submit" disabled={settleMutation.isPending || !settlePaymentMethod}>
+                {settleMutation.isPending ? "Envoi..." : "Confirmer le paiement"}
               </Button>
             </DialogFooter>
           </form>

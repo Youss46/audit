@@ -339,6 +339,7 @@ export type TransactionSource = typeof TransactionSource[keyof typeof Transactio
 export const TransactionSource = {
   pme_entry: 'pme_entry',
   manual_cabinet: 'manual_cabinet',
+  settlement: 'settlement',
 } as const;
 
 export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
@@ -349,6 +350,14 @@ export const PaymentMethod = {
   mobile_money: 'mobile_money',
   cheque: 'cheque',
   virement: 'virement',
+} as const;
+
+export type PaymentType = typeof PaymentType[keyof typeof PaymentType];
+
+
+export const PaymentType = {
+  cash: 'cash',
+  credit: 'credit',
 } as const;
 
 export interface TransactionCategoryOption {
@@ -380,7 +389,10 @@ export interface Transaction {
   category?: string | null;
   /** @nullable */
   categoryLabel?: string | null;
+  paymentType: PaymentType;
   paymentMethod?: PaymentMethod | null;
+  /** @nullable */
+  dueDate?: string | null;
   status: TransactionStatus;
   source: TransactionSource;
   /** @nullable */
@@ -389,6 +401,10 @@ export interface Transaction {
   documentFileName?: string | null;
   /** @nullable */
   clarificationNote?: string | null;
+  /** @nullable */
+  settledAt?: string | null;
+  /** @nullable */
+  parentTransactionId?: number | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */
@@ -413,7 +429,14 @@ export interface TransactionInput {
   type: TransactionType;
   /** @minLength 1 */
   category: string;
-  paymentMethod: PaymentMethod;
+  paymentType: PaymentType;
+  /** Required when paymentType is "cash"; ignored for "credit". */
+  paymentMethod?: PaymentMethod | null;
+  /**
+     * Required when paymentType is "credit" ("Date d'échéance"); ignored for "cash".
+     * @nullable
+     */
+  dueDate?: string | null;
   /** @nullable */
   documentId?: number | null;
 }
@@ -421,6 +444,21 @@ export interface TransactionInput {
 export interface TransactionRejectInput {
   /** @minLength 1 */
   clarificationNote: string;
+}
+
+export interface TransactionSettleInput {
+  paymentMethod: PaymentMethod;
+}
+
+export type UpdateJournalLinesInputLinesItem = {
+  id: number;
+  /** @minLength 1 */
+  accountNumber: string;
+};
+
+export interface UpdateJournalLinesInput {
+  /** @minItems 1 */
+  lines: UpdateJournalLinesInputLinesItem[];
 }
 
 export type ListAuditLogsParams = {

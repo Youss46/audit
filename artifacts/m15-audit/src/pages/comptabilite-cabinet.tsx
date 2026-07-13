@@ -4,6 +4,7 @@ import {
   getListTransactionsQueryKey,
   useApproveTransaction,
   useRejectTransaction,
+  useUpdateTransactionJournalLines,
   TransactionStatus,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -14,12 +15,14 @@ import {
   getTransactionStatusLabel,
   getTransactionTypeLabel,
   getPaymentMethodLabel,
+  getTransactionSourceLabel,
   formatFcfa,
 } from "@/lib/status"
-import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -42,6 +45,11 @@ export default function ComptabiliteCabinet() {
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "ALL">("a_valider")
   const [rejectTarget, setRejectTarget] = useState<number | null>(null)
   const [clarificationNote, setClarificationNote] = useState("")
+  // Journal-line account numbers currently being edited, keyed by
+  // `${transactionId}:${lineId}` -> account number. Only relevant for credit
+  // (à crédit) operations still "à valider" (M3 requirement: let the
+  // accountant adjust the 4111/4011 mapping before final validation).
+  const [editingAccounts, setEditingAccounts] = useState<Record<number, Record<number, string>>>({})
 
   const { data: transactions, isLoading } = useListTransactions(
     statusFilter === "ALL" ? undefined : { status: statusFilter },
@@ -88,6 +96,48 @@ export default function ComptabiliteCabinet() {
     e.preventDefault()
     if (rejectTarget == null || !clarificationNote.trim()) return
     rejectMutation.mutate({ id: rejectTarget, data: { clarificationNote: clarificationNote.trim() } })
+  }
+
+  const updateJournalLinesMutation = useUpdateTransactionJournalLines({
+    mutation: {
+      onSuccess: (_data, variables) => {
+        toast({ title: "Comptes mis à jour", description: "Le mappage des comptes tiers a été enregistré." })
+        setEditingAccounts((prev) => {
+          const next = { ...prev }
+          delete next[variables.id]
+          return next
+        })
+        invalidateList()
+      },
+      onError: (error) => {
+        toast({
+          title: "Erreur",
+          description: error.data?.error || "Impossible de mettre à jour les comptes.",
+          variant: "destructive",
+        })
+      },
+    },
+  })
+
+  const startEditingAccounts = (transactionId: number, lines: { id: number; accountNumber: string }[]) => {
+    setEditingAccounts((prev) => ({
+      ...prev,
+      [transactionId]: Object.fromEntries(lines.map((l) => [l.id, l.accountNumber])),
+    }))
+  }
+
+  const saveEditedAccounts = (transactionId: number) => {
+    const edits = editingAccounts[transactionId]
+    if (!edits) return
+    updateJournalLinesMutation.mutate({
+      id: transactionId,
+      data: {
+        lines: Object.entries(edits).map(([lineId, accountNumber]) => ({
+          id: Number(lineId),
+          accountNumber,
+        })),
+      },
+    })
   }
 
   const rows = transactions ?? []
@@ -143,9 +193,21 @@ export default function ComptabiliteCabinet() {
                     <Badge variant="outline" className={`border-transparent ${getTransactionStatusColor(t.status)}`}>
                       {getTransactionStatusLabel(t.status)}
                     </Badge>
+                    {t.paymentType === "credit" && (
+                      <Badge variant="outline" className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
+                        <Clock className="mr-1 h-3 w-3" />
+                        À crédit
+                      </Badge>
+                    )}
+                    {t.source === "settlement" && (
+                      <Badge variant="outline" className="border-transparent bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
+                        Règlement de facture
+                      </Badge>
+                    )}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     {formatDate(t.date)} · {getTransactionTypeLabel(t.type)} · {formatFcfa(t.amount)}
+                    {t.paymentType === "credit" && t.dueDate && ` · Échéance ${formatDate(t.dueDate)}`}
                   </p>
                 </div>
                 {t.status !== "valide" && (
@@ -186,7 +248,18 @@ export default function ComptabiliteCabinet() {
                     <p className="font-medium">{t.label}</p>
                     <div className="text-sm text-muted-foreground space-y-1">
                       <p>Catégorie : {t.categoryLabel ?? "—"}</p>
-                      <p>Mode de règlement : {getPaymentMethodLabel(t.paymentMethod)}</p>
+                      {t.paymentType === "credit" ? (
+                        <>
+                          <p>Règlement : À crédit{t.dueDate ? ` (échéance ${formatDate(t.dueDate)})` : ""}</p>
+                          <p>
+                            Facture réglée :{" "}
+                            {t.settledAt ? `Oui, le ${formatDateTime(t.settledAt)}` : "Non"}
+                          </p>
+                        </>
+                      ) : (
+                        <p>Mode de règlement : {getPaymentMethodLabel(t.paymentMethod)}</p>
+                      )}
+                      <p>Origine : {getTransactionSourceLabel(t.source)}</p>
                       <p>Saisi par : {t.createdByName ?? "—"}</p>
                     </div>
                     {t.documentId ? (
@@ -207,10 +280,36 @@ export default function ComptabiliteCabinet() {
 
                   {/* Right: computed SYSCOHADA double-entry lines */}
                   <div className="rounded-md border p-4 space-y-2">
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                      <ClipboardList className="h-3.5 w-3.5" />
-                      Écriture SYSCOHADA générée
-                    </p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                        <ClipboardList className="h-3.5 w-3.5" />
+                        Écriture SYSCOHADA générée
+                      </p>
+                      {t.paymentType === "credit" && t.status === "a_valider" && (
+                        editingAccounts[t.id] ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => saveEditedAccounts(t.id)}
+                            disabled={updateJournalLinesMutation.isPending}
+                            data-testid={`button-save-accounts-${t.id}`}
+                          >
+                            <Save className="mr-1.5 h-3.5 w-3.5" />
+                            Enregistrer
+                          </Button>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => startEditingAccounts(t.id, t.journalLines)}
+                            data-testid={`button-edit-accounts-${t.id}`}
+                          >
+                            <Pencil className="mr-1.5 h-3.5 w-3.5" />
+                            Ajuster les comptes tiers
+                          </Button>
+                        )
+                      )}
+                    </div>
                     <table className="w-full text-sm">
                       <thead>
                         <tr className="text-xs text-muted-foreground">
@@ -223,7 +322,21 @@ export default function ComptabiliteCabinet() {
                         {t.journalLines.map((line) => (
                           <tr key={line.id} className="border-t">
                             <td className="py-1.5">
-                              <span className="font-mono text-xs mr-1.5">{line.accountNumber}</span>
+                              {editingAccounts[t.id]?.[line.id] !== undefined ? (
+                                <Input
+                                  className="h-7 w-24 font-mono text-xs inline-block mr-1.5"
+                                  value={editingAccounts[t.id][line.id]}
+                                  onChange={(e) =>
+                                    setEditingAccounts((prev) => ({
+                                      ...prev,
+                                      [t.id]: { ...prev[t.id], [line.id]: e.target.value },
+                                    }))
+                                  }
+                                  data-testid={`input-account-${line.id}`}
+                                />
+                              ) : (
+                                <span className="font-mono text-xs mr-1.5">{line.accountNumber}</span>
+                              )}
                               {line.label}
                             </td>
                             <td className="text-right py-1.5">

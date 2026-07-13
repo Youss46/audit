@@ -1,4 +1,4 @@
-import type { PaymentMethod, TransactionType } from "@workspace/db";
+import type { PaymentMethod, PaymentType, TransactionType } from "@workspace/db";
 
 // Module M3/P3 automated matching engine: bridges a PME's plain-language
 // cash entry (category + type + payment method) to the exact SYSCOHADA
@@ -21,6 +21,14 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   mobile_money: "Wave / Orange Money",
   cheque: "Chèque",
   virement: "Virement",
+};
+
+// Third-party ("tiers") accounts used for credit (à crédit) operations,
+// strict SYSCOHADA accrual accounting: a recette is booked against 4111
+// (Clients) until settled, a dépense against 4011 (Fournisseurs).
+const THIRD_PARTY_ACCOUNTS: Record<TransactionType, { accountNumber: string; label: string }> = {
+  recette: { accountNumber: "4111", label: "Clients" },
+  depense: { accountNumber: "4011", label: "Fournisseurs" },
 };
 
 export interface CategoryRule {
@@ -46,8 +54,8 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   achat_carburant: {
     label: "Achat carburant",
     type: "depense",
-    counterpartAccount: "6051",
-    counterpartName: "Fournitures non stockables - Carburant",
+    counterpartAccount: "618",
+    counterpartName: "Voyages et déplacements",
   },
   loyer: {
     label: "Loyer",
@@ -130,13 +138,20 @@ export interface ComputedJournalLine {
   creditAmount: number;
 }
 
-// Computes the balanced double-entry journal lines for one transaction.
-// - Dépense: Debit = counterpart charge account, Credit = treasury account.
-// - Recette: Debit = treasury account, Credit = counterpart product account.
+// Computes the balanced double-entry journal lines for one transaction,
+// honouring strict SYSCOHADA cash-vs-accrual treatment:
+// - Cash (au comptant):
+//   - Dépense: Debit = counterpart charge account, Credit = treasury account.
+//   - Recette: Debit = treasury account, Credit = counterpart product account.
+// - Credit (à crédit) -- "invoicing" step, booked through a third-party
+//   account instead of treasury until settled:
+//   - Dépense: Debit = counterpart charge account, Credit = 4011 Fournisseurs.
+//   - Recette: Debit = 4111 Clients, Credit = counterpart product account.
 export function computeJournalLines(input: {
   category: string;
   type: TransactionType;
-  paymentMethod: PaymentMethod;
+  paymentType: PaymentType;
+  paymentMethod?: PaymentMethod | null;
   amount: number;
 }): ComputedJournalLine[] {
   const rule = CATEGORY_RULES[input.category];
@@ -152,14 +167,78 @@ export function computeJournalLines(input: {
     throw new AccountingEngineError("Le montant doit être strictement positif.");
   }
 
-  const treasuryAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
-  const treasuryLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+  let treasuryOrThirdPartyAccount: string;
+  let treasuryOrThirdPartyLabel: string;
+  if (input.paymentType === "cash") {
+    if (!input.paymentMethod) {
+      throw new AccountingEngineError(
+        "Le mode de règlement est requis pour une opération au comptant.",
+      );
+    }
+    treasuryOrThirdPartyAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
+    treasuryOrThirdPartyLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+  } else {
+    const thirdParty = THIRD_PARTY_ACCOUNTS[input.type];
+    treasuryOrThirdPartyAccount = thirdParty.accountNumber;
+    treasuryOrThirdPartyLabel = thirdParty.label;
+  }
 
   if (input.type === "depense") {
     return [
       {
         accountNumber: rule.counterpartAccount,
         label: rule.counterpartName,
+        debitAmount: input.amount,
+        creditAmount: 0,
+      },
+      {
+        accountNumber: treasuryOrThirdPartyAccount,
+        label: treasuryOrThirdPartyLabel,
+        debitAmount: 0,
+        creditAmount: input.amount,
+      },
+    ];
+  }
+
+  return [
+    {
+      accountNumber: treasuryOrThirdPartyAccount,
+      label: treasuryOrThirdPartyLabel,
+      debitAmount: input.amount,
+      creditAmount: 0,
+    },
+    {
+      accountNumber: rule.counterpartAccount,
+      label: rule.counterpartName,
+      debitAmount: 0,
+      creditAmount: input.amount,
+    },
+  ];
+}
+
+// Computes the second leg ("Step 2: Settlement") of a credit operation, once
+// the PME marks an outstanding invoice as paid: moves the balance from the
+// third-party account (4111/4011) to the treasury account for the chosen
+// payment method.
+// - Dépense (we owed a Fournisseur, now paying): Debit 4011, Credit treasury.
+// - Recette (a Client owed us, now paying): Debit treasury, Credit 4111.
+export function computeSettlementJournalLines(input: {
+  type: TransactionType;
+  paymentMethod: PaymentMethod;
+  amount: number;
+}): ComputedJournalLine[] {
+  if (input.amount <= 0) {
+    throw new AccountingEngineError("Le montant doit être strictement positif.");
+  }
+  const thirdParty = THIRD_PARTY_ACCOUNTS[input.type];
+  const treasuryAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
+  const treasuryLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+
+  if (input.type === "depense") {
+    return [
+      {
+        accountNumber: thirdParty.accountNumber,
+        label: thirdParty.label,
         debitAmount: input.amount,
         creditAmount: 0,
       },
@@ -180,8 +259,8 @@ export function computeJournalLines(input: {
       creditAmount: 0,
     },
     {
-      accountNumber: rule.counterpartAccount,
-      label: rule.counterpartName,
+      accountNumber: thirdParty.accountNumber,
+      label: thirdParty.label,
       debitAmount: 0,
       creditAmount: input.amount,
     },

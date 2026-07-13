@@ -22,6 +22,12 @@ import {
   RejectTransactionParams,
   RejectTransactionBody,
   RejectTransactionResponse,
+  SettleTransactionParams,
+  SettleTransactionBody,
+  SettleTransactionResponse,
+  UpdateTransactionJournalLinesParams,
+  UpdateTransactionJournalLinesBody,
+  UpdateTransactionJournalLinesResponse,
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
@@ -29,6 +35,7 @@ import {
   AccountingEngineError,
   CATEGORY_RULES,
   computeJournalLines,
+  computeSettlementJournalLines,
   listCategoriesForType,
 } from "../lib/accounting-engine";
 
@@ -56,12 +63,16 @@ function serializeTransaction(
     type: tx.type,
     category: tx.category ?? null,
     categoryLabel: tx.category ? CATEGORY_RULES[tx.category]?.label ?? null : null,
+    paymentType: tx.paymentType,
     paymentMethod: tx.paymentMethod ?? null,
+    dueDate: tx.dueDate ?? null,
     status: tx.status,
     source: tx.source,
     documentId: tx.documentId ?? null,
     documentFileName: extra.documentFileName ?? null,
     clarificationNote: tx.clarificationNote ?? null,
+    settledAt: tx.settledAt ?? null,
+    parentTransactionId: tx.parentTransactionId ?? null,
     createdByName: extra.createdByName ?? null,
     validatedByName: extra.validatedByName ?? null,
     validatedAt: tx.validatedAt ?? null,
@@ -157,11 +168,28 @@ router.post("/transactions", async (req, res) => {
     }
   }
 
+  // Cash (au comptant) operations require a payment method; credit (à
+  // crédit) operations require a due date instead, and never touch treasury
+  // until settled (see /transactions/:id/settle).
+  if (body.paymentType === "cash" && !body.paymentMethod) {
+    res.status(400).json({
+      error: "Le mode de règlement est requis pour une opération au comptant.",
+    });
+    return;
+  }
+  if (body.paymentType === "credit" && !body.dueDate) {
+    res.status(400).json({
+      error: "La date d'échéance est requise pour une opération à crédit.",
+    });
+    return;
+  }
+
   let journalLines: ReturnType<typeof computeJournalLines>;
   try {
     journalLines = computeJournalLines({
       category: body.category,
       type: body.type,
+      paymentType: body.paymentType,
       paymentMethod: body.paymentMethod,
       amount: body.amount,
     });
@@ -185,7 +213,9 @@ router.post("/transactions", async (req, res) => {
       amount: body.amount,
       type: body.type,
       category: body.category,
-      paymentMethod: body.paymentMethod,
+      paymentType: body.paymentType,
+      paymentMethod: body.paymentType === "cash" ? body.paymentMethod : null,
+      dueDate: body.paymentType === "credit" ? body.dueDate : null,
       documentId: body.documentId ?? null,
       status: "a_valider",
       source,
@@ -356,6 +386,181 @@ router.post(
           clientName: tx.client?.name,
           documentFileName: tx.document?.fileName,
           createdByName: tx.createdBy?.fullName,
+        }),
+      ),
+    );
+  },
+);
+
+// Module P3: "Marquer comme payé" -- the PME (or cabinet) declares an
+// outstanding credit operation as settled. This never edits the original
+// entry; it creates a new, separately reviewed "settlement" transaction
+// carrying the second SYSCOHADA leg (4111/4011 -> treasury), so the general
+// ledger always keeps both legs auditable.
+router.post("/transactions/:id/settle", async (req, res) => {
+  const { id } = SettleTransactionParams.parse(req.params);
+  const body = SettleTransactionBody.parse(req.body);
+
+  const tx = await db.query.transactionsTable.findFirst({
+    where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
+    with: { client: true },
+  });
+  if (!tx) {
+    res.status(404).json({ error: "Opération introuvable." });
+    return;
+  }
+  if (!requireOwnClient(req, res, tx.clientId)) return;
+
+  if (tx.paymentType !== "credit") {
+    res.status(400).json({ error: "Cette opération n'est pas une opération à crédit." });
+    return;
+  }
+  if (tx.status !== "valide") {
+    res.status(400).json({
+      error: "Cette facture doit être validée par le cabinet avant d'être réglée.",
+    });
+    return;
+  }
+  if (tx.settledAt) {
+    res.status(409).json({ error: "Cette facture est déjà réglée." });
+    return;
+  }
+
+  let journalLines: ReturnType<typeof computeSettlementJournalLines>;
+  try {
+    journalLines = computeSettlementJournalLines({
+      type: tx.type,
+      paymentMethod: body.paymentMethod,
+      amount: tx.amount,
+    });
+  } catch (err) {
+    if (err instanceof AccountingEngineError) {
+      res.status(400).json({ error: err.message });
+      return;
+    }
+    throw err;
+  }
+
+  const [settlement] = await db
+    .insert(transactionsTable)
+    .values({
+      firmId: req.user!.firmId,
+      clientId: tx.clientId,
+      date: new Date(),
+      label: `Règlement - ${tx.label}`,
+      amount: tx.amount,
+      type: tx.type,
+      category: tx.category,
+      paymentType: "cash",
+      paymentMethod: body.paymentMethod,
+      status: "a_valider",
+      source: "settlement",
+      parentTransactionId: tx.id,
+      createdById: req.user!.id,
+    })
+    .returning();
+
+  await db.insert(journalLinesTable).values(
+    journalLines.map((line) => ({
+      transactionId: settlement.id,
+      accountNumber: line.accountNumber,
+      label: line.label,
+      debitAmount: line.debitAmount,
+      creditAmount: line.creditAmount,
+    })),
+  );
+
+  await db
+    .update(transactionsTable)
+    .set({ settledAt: new Date() })
+    .where(eq(transactionsTable.id, tx.id));
+
+  await logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    userRole: req.user!.role,
+    action: AuditAction.TRANSACTION_SETTLE,
+    entityType: "transaction",
+    entityId: settlement.id,
+    details: `Règlement de "${tx.label}" (${tx.amount} FCFA) pour "${tx.client?.name}"`,
+    ipAddress: req.ip,
+  });
+
+  res
+    .status(201)
+    .json(
+      SettleTransactionResponse.parse(
+        await withJournalLines(settlement, {
+          clientName: tx.client?.name,
+          createdByName: req.user!.fullName,
+        }),
+      ),
+    );
+});
+
+// Module M3: lets the accountant adjust the account number of a computed
+// journal line (e.g. redirect the generic 4111/4011 mapping to a more
+// specific sub-account) before approving. Amounts are never editable here --
+// only account numbers -- so the entry always stays balanced.
+router.patch(
+  "/transactions/:id/journal-lines",
+  requireRole("expert_comptable", "collaborateur"),
+  async (req, res) => {
+    const { id } = UpdateTransactionJournalLinesParams.parse(req.params);
+    const body = UpdateTransactionJournalLinesBody.parse(req.body);
+
+    const tx = await db.query.transactionsTable.findFirst({
+      where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
+      with: { client: true, document: true, createdBy: true, validatedBy: true, journalLines: true },
+    });
+    if (!tx) {
+      res.status(404).json({ error: "Opération introuvable." });
+      return;
+    }
+    if (tx.status !== "a_valider") {
+      res.status(409).json({
+        error: "Les comptes ne peuvent être ajustés que pour une opération à valider.",
+      });
+      return;
+    }
+
+    const existingIds = new Set(tx.journalLines.map((line) => line.id));
+    for (const line of body.lines) {
+      if (!existingIds.has(line.id)) {
+        res.status(400).json({ error: "Ligne d'écriture introuvable pour cette opération." });
+        return;
+      }
+    }
+
+    for (const line of body.lines) {
+      await db
+        .update(journalLinesTable)
+        .set({ accountNumber: line.accountNumber })
+        .where(
+          and(eq(journalLinesTable.id, line.id), eq(journalLinesTable.transactionId, tx.id)),
+        );
+    }
+
+    await logAudit({
+      firmId: req.user!.firmId,
+      userId: req.user!.id,
+      userName: req.user!.fullName,
+      userRole: req.user!.role,
+      action: AuditAction.TRANSACTION_JOURNAL_LINES_UPDATE,
+      entityType: "transaction",
+      entityId: tx.id,
+      details: `Ajustement des comptes de l'écriture de "${tx.label}"`,
+      ipAddress: req.ip,
+    });
+
+    res.json(
+      UpdateTransactionJournalLinesResponse.parse(
+        await withJournalLines(tx, {
+          clientName: tx.client?.name,
+          documentFileName: tx.document?.fileName,
+          createdByName: tx.createdBy?.fullName,
+          validatedByName: tx.validatedBy?.fullName,
         }),
       ),
     );

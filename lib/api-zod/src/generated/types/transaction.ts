@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PaymentMethod } from './paymentMethod';
+import type { PaymentType } from './paymentType';
 import type { TransactionSource } from './transactionSource';
 import type { TransactionStatus } from './transactionStatus';
 import type { TransactionType } from './transactionType';
@@ -24,7 +25,10 @@ export interface Transaction {
   category?: string | null;
   /** @nullable */
   categoryLabel?: string | null;
+  paymentType: PaymentType;
   paymentMethod?: PaymentMethod | null;
+  /** @nullable */
+  dueDate?: Date | null;
   status: TransactionStatus;
   source: TransactionSource;
   /** @nullable */
@@ -33,6 +37,10 @@ export interface Transaction {
   documentFileName?: string | null;
   /** @nullable */
   clarificationNote?: string | null;
+  /** @nullable */
+  settledAt?: Date | null;
+  /** @nullable */
+  parentTransactionId?: number | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */

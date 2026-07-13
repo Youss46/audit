@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PaymentMethod } from './paymentMethod';
+import type { PaymentType } from './paymentType';
 import type { TransactionType } from './transactionType';
 
 export interface TransactionInput {
@@ -18,7 +19,14 @@ export interface TransactionInput {
   type: TransactionType;
   /** @minLength 1 */
   category: string;
-  paymentMethod: PaymentMethod;
+  paymentType: PaymentType;
+  /** Required when paymentType is "cash"; ignored for "credit". */
+  paymentMethod?: PaymentMethod | null;
+  /**
+     * Required when paymentType is "credit" ("Date d'échéance"); ignored for "cash".
+     * @nullable
+     */
+  dueDate?: Date | null;
   /** @nullable */
   documentId?: number | null;
 }
