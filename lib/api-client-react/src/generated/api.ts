@@ -21,6 +21,14 @@ import type {
 
 import type {
   AmortizationSchedule,
+  AnalyticalAllocation,
+  AnalyticalAxis,
+  AnalyticalAxisInput,
+  AnalyticalAxisUpdate,
+  AnalyticalCode,
+  AnalyticalCodeInput,
+  AnalyticalCodeUpdate,
+  AnalyticalReport,
   ApproveTransactionResult,
   AuditLog,
   AuthResponse,
@@ -65,6 +73,7 @@ import type {
   FixedAssetUpdate,
   GenerateClosingsResult,
   GenerateFinanceJournalEntriesResult,
+  GetAnalyticalReportParams,
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
   GetCompteDeResultatParams,
@@ -72,6 +81,9 @@ import type {
   GetPilotageDashboardParams,
   GrandLivreResult,
   HealthStatus,
+  ListAnalyticalAllocationsParams,
+  ListAnalyticalAxesParams,
+  ListAnalyticalCodesParams,
   ListAssetsParams,
   ListAuditLogsParams,
   ListCashRegistersParams,
@@ -96,6 +108,7 @@ import type {
   PostVatLiquidationResult,
   ProfitabilityReport,
   RegisterInput,
+  SetAllocationsInput,
   TimesheetEntry,
   TimesheetEntryInput,
   TimesheetEntryUpdate,
@@ -6375,6 +6388,842 @@ export const useDeleteTimesheetEntry = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDeleteTimesheetEntryMutationOptions(options));
     }
+
+export const getListAnalyticalAxesUrl = (params: ListAnalyticalAxesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytical/axes?${stringifiedParams}` : `/api/analytical/axes`
+}
+
+/**
+ * @summary List analytical axes for a client (M23)
+ */
+export const listAnalyticalAxes = async (params: ListAnalyticalAxesParams, options?: RequestInit): Promise<AnalyticalAxis[]> => {
+
+  return customFetch<AnalyticalAxis[]>(getListAnalyticalAxesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAnalyticalAxesQueryKey = (params?: ListAnalyticalAxesParams,) => {
+    return [
+    `/api/analytical/axes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAnalyticalAxesQueryOptions = <TData = Awaited<ReturnType<typeof listAnalyticalAxes>>, TError = ErrorType<unknown>>(params: ListAnalyticalAxesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAxes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAnalyticalAxesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAnalyticalAxes>>> = ({ signal }) => listAnalyticalAxes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAxes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAnalyticalAxesQueryResult = NonNullable<Awaited<ReturnType<typeof listAnalyticalAxes>>>
+export type ListAnalyticalAxesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List analytical axes for a client (M23)
+ */
+
+export function useListAnalyticalAxes<TData = Awaited<ReturnType<typeof listAnalyticalAxes>>, TError = ErrorType<unknown>>(
+ params: ListAnalyticalAxesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAxes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAnalyticalAxesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAnalyticalAxisUrl = () => {
+
+
+
+
+  return `/api/analytical/axes`
+}
+
+/**
+ * @summary Create an analytical axis for a client (M23)
+ */
+export const createAnalyticalAxis = async (analyticalAxisInput: AnalyticalAxisInput, options?: RequestInit): Promise<AnalyticalAxis> => {
+
+  return customFetch<AnalyticalAxis>(getCreateAnalyticalAxisUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticalAxisInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAnalyticalAxisMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalAxis>>, TError,{data: BodyType<AnalyticalAxisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalAxis>>, TError,{data: BodyType<AnalyticalAxisInput>}, TContext> => {
+
+const mutationKey = ['createAnalyticalAxis'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAnalyticalAxis>>, {data: BodyType<AnalyticalAxisInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAnalyticalAxis(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAnalyticalAxisMutationResult = NonNullable<Awaited<ReturnType<typeof createAnalyticalAxis>>>
+    export type CreateAnalyticalAxisMutationBody = BodyType<AnalyticalAxisInput>
+    export type CreateAnalyticalAxisMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Create an analytical axis for a client (M23)
+ */
+export const useCreateAnalyticalAxis = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalAxis>>, TError,{data: BodyType<AnalyticalAxisInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAnalyticalAxis>>,
+        TError,
+        {data: BodyType<AnalyticalAxisInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAnalyticalAxisMutationOptions(options));
+    }
+
+export const getUpdateAnalyticalAxisUrl = (id: number,) => {
+
+
+
+
+  return `/api/analytical/axes/${id}`
+}
+
+/**
+ * @summary Update an analytical axis (M23)
+ */
+export const updateAnalyticalAxis = async (id: number,
+    analyticalAxisUpdate: AnalyticalAxisUpdate, options?: RequestInit): Promise<AnalyticalAxis> => {
+
+  return customFetch<AnalyticalAxis>(getUpdateAnalyticalAxisUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticalAxisUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAnalyticalAxisMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalAxis>>, TError,{id: number;data: BodyType<AnalyticalAxisUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalAxis>>, TError,{id: number;data: BodyType<AnalyticalAxisUpdate>}, TContext> => {
+
+const mutationKey = ['updateAnalyticalAxis'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAnalyticalAxis>>, {id: number;data: BodyType<AnalyticalAxisUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAnalyticalAxis(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAnalyticalAxisMutationResult = NonNullable<Awaited<ReturnType<typeof updateAnalyticalAxis>>>
+    export type UpdateAnalyticalAxisMutationBody = BodyType<AnalyticalAxisUpdate>
+    export type UpdateAnalyticalAxisMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update an analytical axis (M23)
+ */
+export const useUpdateAnalyticalAxis = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalAxis>>, TError,{id: number;data: BodyType<AnalyticalAxisUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAnalyticalAxis>>,
+        TError,
+        {id: number;data: BodyType<AnalyticalAxisUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAnalyticalAxisMutationOptions(options));
+    }
+
+export const getDeleteAnalyticalAxisUrl = (id: number,) => {
+
+
+
+
+  return `/api/analytical/axes/${id}`
+}
+
+/**
+ * @summary Delete an analytical axis (M23)
+ */
+export const deleteAnalyticalAxis = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAnalyticalAxisUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAnalyticalAxisMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalAxis>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalAxis>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAnalyticalAxis'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAnalyticalAxis>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAnalyticalAxis(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAnalyticalAxisMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAnalyticalAxis>>>
+
+    export type DeleteAnalyticalAxisMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete an analytical axis (M23)
+ */
+export const useDeleteAnalyticalAxis = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalAxis>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAnalyticalAxis>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAnalyticalAxisMutationOptions(options));
+    }
+
+export const getListAnalyticalCodesUrl = (params?: ListAnalyticalCodesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytical/codes?${stringifiedParams}` : `/api/analytical/codes`
+}
+
+/**
+ * @summary List analytical codes (sections) for an axis (M23)
+ */
+export const listAnalyticalCodes = async (params?: ListAnalyticalCodesParams, options?: RequestInit): Promise<AnalyticalCode[]> => {
+
+  return customFetch<AnalyticalCode[]>(getListAnalyticalCodesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAnalyticalCodesQueryKey = (params?: ListAnalyticalCodesParams,) => {
+    return [
+    `/api/analytical/codes`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAnalyticalCodesQueryOptions = <TData = Awaited<ReturnType<typeof listAnalyticalCodes>>, TError = ErrorType<unknown>>(params?: ListAnalyticalCodesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalCodes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAnalyticalCodesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAnalyticalCodes>>> = ({ signal }) => listAnalyticalCodes(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalCodes>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAnalyticalCodesQueryResult = NonNullable<Awaited<ReturnType<typeof listAnalyticalCodes>>>
+export type ListAnalyticalCodesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List analytical codes (sections) for an axis (M23)
+ */
+
+export function useListAnalyticalCodes<TData = Awaited<ReturnType<typeof listAnalyticalCodes>>, TError = ErrorType<unknown>>(
+ params?: ListAnalyticalCodesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalCodes>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAnalyticalCodesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateAnalyticalCodeUrl = () => {
+
+
+
+
+  return `/api/analytical/codes`
+}
+
+/**
+ * @summary Create an analytical code under an axis (M23)
+ */
+export const createAnalyticalCode = async (analyticalCodeInput: AnalyticalCodeInput, options?: RequestInit): Promise<AnalyticalCode> => {
+
+  return customFetch<AnalyticalCode>(getCreateAnalyticalCodeUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticalCodeInput)
+  }
+);}
+
+
+
+
+
+export const getCreateAnalyticalCodeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalCode>>, TError,{data: BodyType<AnalyticalCodeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalCode>>, TError,{data: BodyType<AnalyticalCodeInput>}, TContext> => {
+
+const mutationKey = ['createAnalyticalCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createAnalyticalCode>>, {data: BodyType<AnalyticalCodeInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createAnalyticalCode(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateAnalyticalCodeMutationResult = NonNullable<Awaited<ReturnType<typeof createAnalyticalCode>>>
+    export type CreateAnalyticalCodeMutationBody = BodyType<AnalyticalCodeInput>
+    export type CreateAnalyticalCodeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create an analytical code under an axis (M23)
+ */
+export const useCreateAnalyticalCode = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createAnalyticalCode>>, TError,{data: BodyType<AnalyticalCodeInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createAnalyticalCode>>,
+        TError,
+        {data: BodyType<AnalyticalCodeInput>},
+        TContext
+      > => {
+      return useMutation(getCreateAnalyticalCodeMutationOptions(options));
+    }
+
+export const getUpdateAnalyticalCodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/analytical/codes/${id}`
+}
+
+/**
+ * @summary Update an analytical code (M23)
+ */
+export const updateAnalyticalCode = async (id: number,
+    analyticalCodeUpdate: AnalyticalCodeUpdate, options?: RequestInit): Promise<AnalyticalCode> => {
+
+  return customFetch<AnalyticalCode>(getUpdateAnalyticalCodeUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(analyticalCodeUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateAnalyticalCodeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalCode>>, TError,{id: number;data: BodyType<AnalyticalCodeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalCode>>, TError,{id: number;data: BodyType<AnalyticalCodeUpdate>}, TContext> => {
+
+const mutationKey = ['updateAnalyticalCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateAnalyticalCode>>, {id: number;data: BodyType<AnalyticalCodeUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateAnalyticalCode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateAnalyticalCodeMutationResult = NonNullable<Awaited<ReturnType<typeof updateAnalyticalCode>>>
+    export type UpdateAnalyticalCodeMutationBody = BodyType<AnalyticalCodeUpdate>
+    export type UpdateAnalyticalCodeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update an analytical code (M23)
+ */
+export const useUpdateAnalyticalCode = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateAnalyticalCode>>, TError,{id: number;data: BodyType<AnalyticalCodeUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateAnalyticalCode>>,
+        TError,
+        {id: number;data: BodyType<AnalyticalCodeUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateAnalyticalCodeMutationOptions(options));
+    }
+
+export const getDeleteAnalyticalCodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/analytical/codes/${id}`
+}
+
+/**
+ * @summary Delete an analytical code (M23)
+ */
+export const deleteAnalyticalCode = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAnalyticalCodeUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteAnalyticalCodeMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalCode>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalCode>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteAnalyticalCode'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAnalyticalCode>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteAnalyticalCode(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAnalyticalCodeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAnalyticalCode>>>
+
+    export type DeleteAnalyticalCodeMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete an analytical code (M23)
+ */
+export const useDeleteAnalyticalCode = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAnalyticalCode>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAnalyticalCode>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteAnalyticalCodeMutationOptions(options));
+    }
+
+export const getListAnalyticalAllocationsUrl = (params: ListAnalyticalAllocationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytical/allocations?${stringifiedParams}` : `/api/analytical/allocations`
+}
+
+/**
+ * @summary List allocations for a journal line (M23)
+ */
+export const listAnalyticalAllocations = async (params: ListAnalyticalAllocationsParams, options?: RequestInit): Promise<AnalyticalAllocation[]> => {
+
+  return customFetch<AnalyticalAllocation[]>(getListAnalyticalAllocationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAnalyticalAllocationsQueryKey = (params?: ListAnalyticalAllocationsParams,) => {
+    return [
+    `/api/analytical/allocations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAnalyticalAllocationsQueryOptions = <TData = Awaited<ReturnType<typeof listAnalyticalAllocations>>, TError = ErrorType<unknown>>(params: ListAnalyticalAllocationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAnalyticalAllocationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAnalyticalAllocations>>> = ({ signal }) => listAnalyticalAllocations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAllocations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAnalyticalAllocationsQueryResult = NonNullable<Awaited<ReturnType<typeof listAnalyticalAllocations>>>
+export type ListAnalyticalAllocationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List allocations for a journal line (M23)
+ */
+
+export function useListAnalyticalAllocations<TData = Awaited<ReturnType<typeof listAnalyticalAllocations>>, TError = ErrorType<unknown>>(
+ params: ListAnalyticalAllocationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAnalyticalAllocations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAnalyticalAllocationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetJournalLineAllocationsUrl = (lineId: number,) => {
+
+
+
+
+  return `/api/analytical/allocations/journal-line/${lineId}`
+}
+
+/**
+ * @summary Replace all analytical allocations for a journal line (M23)
+ */
+export const setJournalLineAllocations = async (lineId: number,
+    setAllocationsInput: SetAllocationsInput, options?: RequestInit): Promise<AnalyticalAllocation[]> => {
+
+  return customFetch<AnalyticalAllocation[]>(getSetJournalLineAllocationsUrl(lineId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setAllocationsInput)
+  }
+);}
+
+
+
+
+
+export const getSetJournalLineAllocationsMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setJournalLineAllocations>>, TError,{lineId: number;data: BodyType<SetAllocationsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setJournalLineAllocations>>, TError,{lineId: number;data: BodyType<SetAllocationsInput>}, TContext> => {
+
+const mutationKey = ['setJournalLineAllocations'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setJournalLineAllocations>>, {lineId: number;data: BodyType<SetAllocationsInput>}> = (props) => {
+          const {lineId,data} = props ?? {};
+
+          return  setJournalLineAllocations(lineId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetJournalLineAllocationsMutationResult = NonNullable<Awaited<ReturnType<typeof setJournalLineAllocations>>>
+    export type SetJournalLineAllocationsMutationBody = BodyType<SetAllocationsInput>
+    export type SetJournalLineAllocationsMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Replace all analytical allocations for a journal line (M23)
+ */
+export const useSetJournalLineAllocations = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setJournalLineAllocations>>, TError,{lineId: number;data: BodyType<SetAllocationsInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setJournalLineAllocations>>,
+        TError,
+        {lineId: number;data: BodyType<SetAllocationsInput>},
+        TContext
+      > => {
+      return useMutation(getSetJournalLineAllocationsMutationOptions(options));
+    }
+
+export const getGetAnalyticalReportUrl = (params: GetAnalyticalReportParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytical/report?${stringifiedParams}` : `/api/analytical/report`
+}
+
+/**
+ * @summary Compute analytical P&L by code for a given axis and year (M23)
+ */
+export const getAnalyticalReport = async (params: GetAnalyticalReportParams, options?: RequestInit): Promise<AnalyticalReport> => {
+
+  return customFetch<AnalyticalReport>(getGetAnalyticalReportUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetAnalyticalReportQueryKey = (params?: GetAnalyticalReportParams,) => {
+    return [
+    `/api/analytical/report`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetAnalyticalReportQueryOptions = <TData = Awaited<ReturnType<typeof getAnalyticalReport>>, TError = ErrorType<unknown>>(params: GetAnalyticalReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalyticalReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetAnalyticalReportQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getAnalyticalReport>>> = ({ signal }) => getAnalyticalReport(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getAnalyticalReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetAnalyticalReportQueryResult = NonNullable<Awaited<ReturnType<typeof getAnalyticalReport>>>
+export type GetAnalyticalReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Compute analytical P&L by code for a given axis and year (M23)
+ */
+
+export function useGetAnalyticalReport<TData = Awaited<ReturnType<typeof getAnalyticalReport>>, TError = ErrorType<unknown>>(
+ params: GetAnalyticalReportParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getAnalyticalReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetAnalyticalReportQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetProfitabilityReportUrl = (year: number,
     month: number,) => {

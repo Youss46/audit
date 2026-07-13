@@ -17,3 +17,4 @@
 - [Executive BI dashboard (Pilotage) design](executive-dashboard-pilotage-design.md) — margin/break-even/cash-basis/expense-nature formulas; extend existing Pilotage module, don't duplicate.
 - [API server codegen restart gotcha](api-server-codegen-restart.md) — after orval codegen, restart the api-server workflow or new response fields silently vanish (no error).
 - [M22 cabinet ops & profitability design](m22-cabinet-ops-design.md) — timesheet hook passes params as first arg; date fields are plain ISO strings; rates upsert via PUT /cabinet-analytics/rates/:userId.
+- [M23 analytical accounting design](m23-analytical-design.md) — fetch transactions separately (not via journalLine with:), use `inArray` for the report alloc query; avoid `with:{transaction}` on journalLines.

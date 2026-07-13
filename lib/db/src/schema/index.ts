@@ -13,4 +13,5 @@ export * from "./closing";
 export * from "./payroll";
 export * from "./vat";
 export * from "./cabinet-ops";
+export * from "./analytical";
 export * from "./relations";

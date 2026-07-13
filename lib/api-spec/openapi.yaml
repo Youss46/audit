@@ -39,6 +39,7 @@ tags:
   - name: tax
     description: Télédéclaration TVA (M21) - Formulaire D-201/VA computation, deductible-VAT annex (État Annexé), and liquidation posting
   - name: cabinet-analytics
+  - name: analytical
     description: Cabinet internal operations (M22) - collaborator timesheets, cost/billing rates, client forfait contracts, and per-client profitability reporting
 paths:
   /healthz:
@@ -2257,6 +2258,282 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # -------------------------------------------------------------------------
+  # Module M23 — Analytical Accounting (Comptabilité Analytique)
+  # -------------------------------------------------------------------------
+
+  /analytical/axes:
+    get:
+      operationId: listAnalyticalAxes
+      tags: [analytical]
+      summary: List analytical axes for a client (M23)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: includeInactive
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: List of axes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyticalAxis"
+    post:
+      operationId: createAnalyticalAxis
+      tags: [analytical]
+      summary: Create an analytical axis for a client (M23)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticalAxisInput"
+      responses:
+        "201":
+          description: Axis created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticalAxis"
+
+  /analytical/axes/{id}:
+    patch:
+      operationId: updateAnalyticalAxis
+      tags: [analytical]
+      summary: Update an analytical axis (M23)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticalAxisUpdate"
+      responses:
+        "200":
+          description: Axis updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticalAxis"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAnalyticalAxis
+      tags: [analytical]
+      summary: Delete an analytical axis (M23)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "409":
+          description: Axis has codes with allocations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytical/codes:
+    get:
+      operationId: listAnalyticalCodes
+      tags: [analytical]
+      summary: List analytical codes (sections) for an axis (M23)
+      parameters:
+        - name: axisId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: clientId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: includeInactive
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: List of codes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyticalCode"
+    post:
+      operationId: createAnalyticalCode
+      tags: [analytical]
+      summary: Create an analytical code under an axis (M23)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticalCodeInput"
+      responses:
+        "201":
+          description: Code created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticalCode"
+        "409":
+          description: Code already exists on this axis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytical/codes/{id}:
+    patch:
+      operationId: updateAnalyticalCode
+      tags: [analytical]
+      summary: Update an analytical code (M23)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AnalyticalCodeUpdate"
+      responses:
+        "200":
+          description: Code updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticalCode"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteAnalyticalCode
+      tags: [analytical]
+      summary: Delete an analytical code (M23)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "409":
+          description: Code has existing allocations
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytical/allocations:
+    get:
+      operationId: listAnalyticalAllocations
+      tags: [analytical]
+      summary: List allocations for a journal line (M23)
+      parameters:
+        - name: journalLineId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of allocations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyticalAllocation"
+
+  /analytical/allocations/journal-line/{lineId}:
+    put:
+      operationId: setJournalLineAllocations
+      tags: [analytical]
+      summary: Replace all analytical allocations for a journal line (M23)
+      parameters:
+        - name: lineId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetAllocationsInput"
+      responses:
+        "200":
+          description: Updated allocations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/AnalyticalAllocation"
+        "400":
+          description: Sum of percentages exceeds 100
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Journal line not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytical/report:
+    get:
+      operationId: getAnalyticalReport
+      tags: [analytical]
+      summary: Compute analytical P&L by code for a given axis and year (M23)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: axisId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Analytical P&L report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AnalyticalReport"
+
   /cabinet-analytics/profitability/{year}/{month}:
     get:
       operationId: getProfitabilityReport
@@ -4057,3 +4334,139 @@ components:
                 $ref: "#/components/schemas/TaskType"
               hours: { type: number }
               pct: { type: number }
+
+    # -------------------------------------------------------------------------
+    # Module M23 — Analytical Axes, Codes, Allocations & Report
+    # -------------------------------------------------------------------------
+
+    AnalyticalAxis:
+      type: object
+      required: [id, firmId, clientId, name, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        name: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AnalyticalAxisInput:
+      type: object
+      required: [clientId, name]
+      properties:
+        clientId: { type: integer }
+        name: { type: string, minLength: 1 }
+        isActive: { type: boolean }
+
+    AnalyticalAxisUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1 }
+        isActive: { type: boolean }
+
+    AnalyticalCode:
+      type: object
+      required: [id, axisId, firmId, clientId, code, label, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        axisId: { type: integer }
+        axisName: { type: string }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        code: { type: string }
+        label: { type: string }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    AnalyticalCodeInput:
+      type: object
+      required: [axisId, code, label]
+      properties:
+        axisId: { type: integer }
+        code: { type: string, minLength: 1 }
+        label: { type: string, minLength: 1 }
+        isActive: { type: boolean }
+
+    AnalyticalCodeUpdate:
+      type: object
+      properties:
+        code: { type: string, minLength: 1 }
+        label: { type: string, minLength: 1 }
+        isActive: { type: boolean }
+
+    AnalyticalAllocation:
+      type: object
+      required: [id, journalLineId, analyticalCodeId, analyticalCodeLabel, analyticalCode, firmId, clientId, percentage, allocatedAmount, createdAt]
+      properties:
+        id: { type: integer }
+        journalLineId: { type: integer }
+        analyticalCodeId: { type: integer }
+        analyticalCode: { type: string }
+        analyticalCodeLabel: { type: string }
+        axisId: { type: integer }
+        axisName: { type: string }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        percentage: { type: number }
+        allocatedAmount: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    AnalyticalAllocationLineItem:
+      type: object
+      required: [analyticalCodeId, percentage]
+      properties:
+        analyticalCodeId: { type: integer }
+        percentage: { type: number, minimum: 0.01, maximum: 100 }
+
+    SetAllocationsInput:
+      type: object
+      required: [allocations]
+      properties:
+        allocations:
+          type: array
+          description: "Replaces all existing allocations for the journal line. Empty array clears all. Sum of percentages must be <= 100."
+          items:
+            $ref: "#/components/schemas/AnalyticalAllocationLineItem"
+
+    AnalyticalReportCodeRow:
+      type: object
+      required: [codeId, code, label, totalRevenue, totalExpense, netMargin, marginPct]
+      properties:
+        codeId: { type: integer }
+        code: { type: string }
+        label: { type: string }
+        totalRevenue: { type: integer }
+        totalExpense: { type: integer }
+        netMargin: { type: integer }
+        marginPct: { type: ["number", "null"] }
+        expenseByAccount:
+          type: array
+          items:
+            type: object
+            required: [accountNumber, accountName, amount]
+            properties:
+              accountNumber: { type: string }
+              accountName: { type: string }
+              amount: { type: integer }
+        revenueByAccount:
+          type: array
+          items:
+            type: object
+            required: [accountNumber, accountName, amount]
+            properties:
+              accountNumber: { type: string }
+              accountName: { type: string }
+              amount: { type: integer }
+
+    AnalyticalReport:
+      type: object
+      required: [clientId, axisId, axisName, year, rows]
+      properties:
+        clientId: { type: integer }
+        axisId: { type: integer }
+        axisName: { type: string }
+        year: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/AnalyticalReportCodeRow"

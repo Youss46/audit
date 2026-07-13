@@ -24,6 +24,7 @@ import ComptabiliteGrandLivre from '@/pages/comptabilite-grand-livre';
 import ComptabiliteEtatsFinanciers from '@/pages/comptabilite-etats-financiers';
 import CaisseExpress from '@/pages/caisse-express';
 import Pilotage from '@/pages/pilotage';
+import Analytique from '@/pages/analytique';
 import Immobilisations from '@/pages/immobilisations';
 import Financements from '@/pages/financements';
 import Paie from '@/pages/paie';
@@ -65,6 +66,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/cloture" component={ClotureAnnuelle} />
         <Route path="/cabinet/client/:clientId/teledeclaration" component={Teledeclaration} />
         <Route path="/cabinet/client/:clientId/pilotage" component={Pilotage} />
+        <Route path="/cabinet/client/:clientId/analytique" component={Analytique} />
         <Route path="/cabinet/interne/rentabilite" component={Rentabilite} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

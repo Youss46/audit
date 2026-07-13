@@ -1409,6 +1409,119 @@ export interface ProfitabilityReport {
   taskBreakdown: ProfitabilityReportTaskBreakdownItem[];
 }
 
+export interface AnalyticalAxis {
+  id: number;
+  firmId: number;
+  clientId: number;
+  name: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AnalyticalAxisInput {
+  clientId: number;
+  /** @minLength 1 */
+  name: string;
+  isActive?: boolean;
+}
+
+export interface AnalyticalAxisUpdate {
+  /** @minLength 1 */
+  name?: string;
+  isActive?: boolean;
+}
+
+export interface AnalyticalCode {
+  id: number;
+  axisId: number;
+  axisName?: string;
+  firmId: number;
+  clientId: number;
+  code: string;
+  label: string;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface AnalyticalCodeInput {
+  axisId: number;
+  /** @minLength 1 */
+  code: string;
+  /** @minLength 1 */
+  label: string;
+  isActive?: boolean;
+}
+
+export interface AnalyticalCodeUpdate {
+  /** @minLength 1 */
+  code?: string;
+  /** @minLength 1 */
+  label?: string;
+  isActive?: boolean;
+}
+
+export interface AnalyticalAllocation {
+  id: number;
+  journalLineId: number;
+  analyticalCodeId: number;
+  analyticalCode: string;
+  analyticalCodeLabel: string;
+  axisId?: number;
+  axisName?: string;
+  firmId: number;
+  clientId: number;
+  percentage: number;
+  allocatedAmount: number;
+  createdAt: string;
+}
+
+export interface AnalyticalAllocationLineItem {
+  analyticalCodeId: number;
+  /**
+     * @minimum 0.01
+     * @maximum 100
+     */
+  percentage: number;
+}
+
+export interface SetAllocationsInput {
+  /** Replaces all existing allocations for the journal line. Empty array clears all. Sum of percentages must be <= 100. */
+  allocations: AnalyticalAllocationLineItem[];
+}
+
+export type AnalyticalReportCodeRowExpenseByAccountItem = {
+  accountNumber: string;
+  accountName: string;
+  amount: number;
+};
+
+export type AnalyticalReportCodeRowRevenueByAccountItem = {
+  accountNumber: string;
+  accountName: string;
+  amount: number;
+};
+
+export interface AnalyticalReportCodeRow {
+  codeId: number;
+  code: string;
+  label: string;
+  totalRevenue: number;
+  totalExpense: number;
+  netMargin: number;
+  /** @nullable */
+  marginPct: number | null;
+  expenseByAccount?: AnalyticalReportCodeRowExpenseByAccountItem[];
+  revenueByAccount?: AnalyticalReportCodeRowRevenueByAccountItem[];
+}
+
+export interface AnalyticalReport {
+  clientId: number;
+  axisId: number;
+  axisName: string;
+  year: number;
+  rows: AnalyticalReportCodeRow[];
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1519,5 +1632,26 @@ userId?: number;
 clientId?: number;
 dateFrom?: string;
 dateTo?: string;
+};
+
+export type ListAnalyticalAxesParams = {
+clientId: number;
+includeInactive?: boolean;
+};
+
+export type ListAnalyticalCodesParams = {
+axisId?: number;
+clientId?: number;
+includeInactive?: boolean;
+};
+
+export type ListAnalyticalAllocationsParams = {
+journalLineId: number;
+};
+
+export type GetAnalyticalReportParams = {
+clientId: number;
+axisId: number;
+year: number;
 };
 

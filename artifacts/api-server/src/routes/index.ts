@@ -16,6 +16,7 @@ import closingRouter from "./closing";
 import payrollRouter from "./payroll";
 import taxRouter from "./tax";
 import cabinetAnalyticsRouter from "./cabinet-analytics";
+import analyticalRouter from "./analytical";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(closingRouter);
 router.use(payrollRouter);
 router.use(taxRouter);
 router.use(cabinetAnalyticsRouter);
+router.use(analyticalRouter);
 
 export default router;

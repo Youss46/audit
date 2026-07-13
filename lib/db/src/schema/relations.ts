@@ -14,6 +14,7 @@ import { fiscalYearClosingsTable } from "./closing";
 import { employeesTable, payslipsTable } from "./payroll";
 import { vatDeclarationsTable } from "./vat";
 import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } from "./cabinet-ops";
+import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable } from "./analytical";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -241,5 +242,36 @@ export const timesheetEntriesRelations = relations(timesheetEntriesTable, ({ one
   client: one(clientsTable, {
     fields: [timesheetEntriesTable.clientId],
     references: [clientsTable.id],
+  }),
+}));
+
+// Module M23 (Analytical Accounting — Comptabilité Analytique).
+export const analyticalAxesRelations = relations(analyticalAxesTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [analyticalAxesTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [analyticalAxesTable.clientId], references: [clientsTable.id] }),
+  codes: many(analyticalCodesTable),
+}));
+
+export const analyticalCodesRelations = relations(analyticalCodesTable, ({ one, many }) => ({
+  axis: one(analyticalAxesTable, { fields: [analyticalCodesTable.axisId], references: [analyticalAxesTable.id] }),
+  firm: one(firmsTable, { fields: [analyticalCodesTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [analyticalCodesTable.clientId], references: [clientsTable.id] }),
+  allocations: many(analyticalAllocationsTable),
+}));
+
+export const analyticalAllocationsRelations = relations(analyticalAllocationsTable, ({ one }) => ({
+  journalLine: one(journalLinesTable, { fields: [analyticalAllocationsTable.journalLineId], references: [journalLinesTable.id] }),
+  analyticalCode: one(analyticalCodesTable, { fields: [analyticalAllocationsTable.analyticalCodeId], references: [analyticalCodesTable.id] }),
+  firm: one(firmsTable, { fields: [analyticalAllocationsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [analyticalAllocationsTable.clientId], references: [clientsTable.id] }),
+}));
+
+// Extend existing journal-line relations to include analytical allocations
+// and the parent transaction (needed for firm-level authorization checks in M23).
+export const journalLinesAnalyticalRelations = relations(journalLinesTable, ({ many, one }) => ({
+  analyticalAllocations: many(analyticalAllocationsTable),
+  transaction: one(transactionsTable, {
+    fields: [journalLinesTable.transactionId],
+    references: [transactionsTable.id],
   }),
 }));

@@ -2621,6 +2621,268 @@ export const DeleteTimesheetEntryResponse = zod.void()
 
 
 /**
+ * @summary List analytical axes for a client (M23)
+ */
+export const ListAnalyticalAxesQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "includeInactive": zod.coerce.boolean().optional()
+})
+
+export const ListAnalyticalAxesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAnalyticalAxesResponse = zod.array(ListAnalyticalAxesResponseItem)
+
+
+/**
+ * @summary Create an analytical axis for a client (M23)
+ */
+
+
+
+export const CreateAnalyticalAxisBody = zod.object({
+  "clientId": zod.number(),
+  "name": zod.string().min(1),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAnalyticalAxisResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an analytical axis (M23)
+ */
+export const UpdateAnalyticalAxisParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateAnalyticalAxisBody = zod.object({
+  "name": zod.string().min(1).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAnalyticalAxisResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete an analytical axis (M23)
+ */
+export const DeleteAnalyticalAxisParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteAnalyticalAxisResponse = zod.void()
+
+
+/**
+ * @summary List analytical codes (sections) for an axis (M23)
+ */
+export const ListAnalyticalCodesQueryParams = zod.object({
+  "axisId": zod.coerce.number().optional(),
+  "clientId": zod.coerce.number().optional(),
+  "includeInactive": zod.coerce.boolean().optional()
+})
+
+export const ListAnalyticalCodesResponseItem = zod.object({
+  "id": zod.number(),
+  "axisId": zod.number(),
+  "axisName": zod.string().optional(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "code": zod.string(),
+  "label": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAnalyticalCodesResponse = zod.array(ListAnalyticalCodesResponseItem)
+
+
+/**
+ * @summary Create an analytical code under an axis (M23)
+ */
+
+
+
+
+export const CreateAnalyticalCodeBody = zod.object({
+  "axisId": zod.number(),
+  "code": zod.string().min(1),
+  "label": zod.string().min(1),
+  "isActive": zod.boolean().optional()
+})
+
+export const CreateAnalyticalCodeResponse = zod.object({
+  "id": zod.number(),
+  "axisId": zod.number(),
+  "axisName": zod.string().optional(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "code": zod.string(),
+  "label": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an analytical code (M23)
+ */
+export const UpdateAnalyticalCodeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateAnalyticalCodeBody = zod.object({
+  "code": zod.string().min(1).optional(),
+  "label": zod.string().min(1).optional(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateAnalyticalCodeResponse = zod.object({
+  "id": zod.number(),
+  "axisId": zod.number(),
+  "axisName": zod.string().optional(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "code": zod.string(),
+  "label": zod.string(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete an analytical code (M23)
+ */
+export const DeleteAnalyticalCodeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteAnalyticalCodeResponse = zod.void()
+
+
+/**
+ * @summary List allocations for a journal line (M23)
+ */
+export const ListAnalyticalAllocationsQueryParams = zod.object({
+  "journalLineId": zod.coerce.number()
+})
+
+export const ListAnalyticalAllocationsResponseItem = zod.object({
+  "id": zod.number(),
+  "journalLineId": zod.number(),
+  "analyticalCodeId": zod.number(),
+  "analyticalCode": zod.string(),
+  "analyticalCodeLabel": zod.string(),
+  "axisId": zod.number().optional(),
+  "axisName": zod.string().optional(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "percentage": zod.number(),
+  "allocatedAmount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const ListAnalyticalAllocationsResponse = zod.array(ListAnalyticalAllocationsResponseItem)
+
+
+/**
+ * @summary Replace all analytical allocations for a journal line (M23)
+ */
+export const SetJournalLineAllocationsParams = zod.object({
+  "lineId": zod.coerce.number()
+})
+
+export const setJournalLineAllocationsBodyAllocationsItemPercentageMin = 0.01;
+export const setJournalLineAllocationsBodyAllocationsItemPercentageMax = 100;
+
+
+
+export const SetJournalLineAllocationsBody = zod.object({
+  "allocations": zod.array(zod.object({
+  "analyticalCodeId": zod.number(),
+  "percentage": zod.number().min(setJournalLineAllocationsBodyAllocationsItemPercentageMin).max(setJournalLineAllocationsBodyAllocationsItemPercentageMax)
+})).describe('Replaces all existing allocations for the journal line. Empty array clears all. Sum of percentages must be <= 100.')
+})
+
+export const SetJournalLineAllocationsResponseItem = zod.object({
+  "id": zod.number(),
+  "journalLineId": zod.number(),
+  "analyticalCodeId": zod.number(),
+  "analyticalCode": zod.string(),
+  "analyticalCodeLabel": zod.string(),
+  "axisId": zod.number().optional(),
+  "axisName": zod.string().optional(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "percentage": zod.number(),
+  "allocatedAmount": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+export const SetJournalLineAllocationsResponse = zod.array(SetJournalLineAllocationsResponseItem)
+
+
+/**
+ * @summary Compute analytical P&L by code for a given axis and year (M23)
+ */
+export const GetAnalyticalReportQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "axisId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetAnalyticalReportResponse = zod.object({
+  "clientId": zod.number(),
+  "axisId": zod.number(),
+  "axisName": zod.string(),
+  "year": zod.number(),
+  "rows": zod.array(zod.object({
+  "codeId": zod.number(),
+  "code": zod.string(),
+  "label": zod.string(),
+  "totalRevenue": zod.number(),
+  "totalExpense": zod.number(),
+  "netMargin": zod.number(),
+  "marginPct": zod.number().nullable(),
+  "expenseByAccount": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "amount": zod.number()
+})).optional(),
+  "revenueByAccount": zod.array(zod.object({
+  "accountNumber": zod.string(),
+  "accountName": zod.string(),
+  "amount": zod.number()
+})).optional()
+}))
+})
+
+
+/**
  * @summary Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
  */
 export const GetProfitabilityReportParams = zod.object({

@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRoute } from "wouter"
 import {
   useListTransactions,
@@ -8,6 +8,12 @@ import {
   useUpdateTransactionJournalLines,
   getListAssetsQueryKey,
   useListClients,
+  useListAnalyticalAxes,
+  useListAnalyticalCodes,
+  useListAnalyticalAllocations,
+  useSetJournalLineAllocations,
+  getListAnalyticalAxesQueryKey,
+  getListAnalyticalCodesQueryKey,
   TransactionStatus,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
@@ -25,7 +31,7 @@ import {
   formatFcfa,
   isVatAccount,
 } from "@/lib/status"
-import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert, GitMerge, Trash2, Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -42,7 +48,220 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+
+// ---------------------------------------------------------------------------
+// M23 Ventiler Dialog — analytical allocation split for Class 6/7 lines
+// ---------------------------------------------------------------------------
+
+interface VentilerDialogProps {
+  lineId: number
+  lineLabel: string
+  lineAmount: number
+  clientId: number
+  open: boolean
+  onClose: () => void
+}
+
+function VentilerDialog({ lineId, lineLabel, lineAmount, clientId, open, onClose }: VentilerDialogProps) {
+  const qc = useQueryClient()
+  const setAllocs = useSetJournalLineAllocations()
+
+  const { data: axes = [] } = useListAnalyticalAxes(
+    { clientId },
+    { query: { enabled: open, queryKey: getListAnalyticalAxesQueryKey({ clientId }) } },
+  )
+  const { data: codes = [] } = useListAnalyticalCodes(
+    { clientId },
+    { query: { enabled: open, queryKey: getListAnalyticalCodesQueryKey({ clientId }) } },
+  )
+  const { data: existingAllocs = [] } = useListAnalyticalAllocations(
+    { journalLineId: lineId },
+    { query: { enabled: open, queryKey: ["listAnalyticalAllocations", lineId] } },
+  )
+
+  // Local state: rows of { codeId, pct }
+  const [rows, setRows] = useState<{ codeId: number; pct: string }[]>([])
+  const [error, setError] = useState<string | null>(null)
+
+  // Initialise rows from existing allocations when dialog opens.
+  const [initialised, setInitialised] = useState(false)
+  if (open && !initialised && existingAllocs.length >= 0) {
+    setRows(existingAllocs.map((a) => ({ codeId: a.analyticalCodeId, pct: String(a.percentage) })))
+    setInitialised(true)
+  }
+  if (!open && initialised) {
+    setInitialised(false)
+    setRows([])
+    setError(null)
+  }
+
+  const totalPct = useMemo(
+    () => rows.reduce((s, r) => s + (parseFloat(r.pct) || 0), 0),
+    [rows],
+  )
+
+  const codeById = useMemo(() => new Map(codes.map((c) => [c.id, c])), [codes])
+  const usedCodeIds = new Set(rows.map((r) => r.codeId))
+  const availableCodes = codes.filter((c) => c.isActive && !usedCodeIds.has(c.id))
+
+  const byAxis = useMemo(() => {
+    const map = new Map<number, { axisName: string; codes: typeof codes }>()
+    for (const ax of axes) {
+      const axCodes = availableCodes.filter((c) => c.axisId === ax.id)
+      if (axCodes.length > 0) map.set(ax.id, { axisName: ax.name, codes: axCodes })
+    }
+    return map
+  }, [axes, availableCodes])
+
+  function addRow(codeId: number) {
+    setRows((prev) => [...prev, { codeId, pct: "" }])
+  }
+
+  function removeRow(idx: number) {
+    setRows((prev) => prev.filter((_, i) => i !== idx))
+  }
+
+  function updatePct(idx: number, val: string) {
+    setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, pct: val } : r)))
+  }
+
+  async function handleSave() {
+    setError(null)
+    const parsed = rows.map((r) => ({ analyticalCodeId: r.codeId, percentage: parseFloat(r.pct) || 0 }))
+    const total = parsed.reduce((s, r) => s + r.percentage, 0)
+    if (parsed.some((r) => r.percentage <= 0)) {
+      setError("Chaque pourcentage doit être supérieur à 0.")
+      return
+    }
+    if (total > 100.01) {
+      setError(`Total : ${total.toFixed(2)} % — dépasse 100 %.`)
+      return
+    }
+    try {
+      await setAllocs.mutateAsync({ lineId, data: { allocations: parsed } })
+      qc.invalidateQueries({ queryKey: ["listAnalyticalAllocations", lineId] })
+      onClose()
+    } catch {
+      setError("Erreur lors de l'enregistrement.")
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GitMerge className="h-4 w-4 text-primary" />
+            Ventilation analytique
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            <span className="font-mono">{lineLabel}</span> — {formatFcfa(lineAmount)}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          {rows.map((row, idx) => {
+            const code = codeById.get(row.codeId)
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold truncate">{code?.label ?? "—"}</p>
+                  <p className="text-[11px] text-muted-foreground font-mono">{code?.code}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="number"
+                    min={0.01}
+                    max={100}
+                    step={0.01}
+                    value={row.pct}
+                    onChange={(e) => updatePct(idx, e.target.value)}
+                    className="h-7 w-20 text-right text-xs"
+                    placeholder="0.00"
+                  />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+                <span className="text-xs text-muted-foreground tabular-nums w-20 text-right">
+                  {row.pct ? formatFcfa(Math.round((lineAmount * (parseFloat(row.pct) || 0)) / 100)) : ""}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 text-destructive hover:text-destructive"
+                  onClick={() => removeRow(idx)}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            )
+          })}
+
+          {/* Add row selector */}
+          {availableCodes.length > 0 && (
+            <div className="pt-1">
+              <Select onValueChange={(v) => addRow(Number(v))}>
+                <SelectTrigger className="h-7 text-xs">
+                  <span className="flex items-center gap-1 text-muted-foreground">
+                    <Plus className="h-3 w-3" /> Ajouter une section…
+                  </span>
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from(byAxis.values()).map(({ axisName, codes: axCodes }) => (
+                    <div key={axisName}>
+                      <div className="px-2 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">{axisName}</div>
+                      {axCodes.map((c) => (
+                        <SelectItem key={c.id} value={String(c.id)}>
+                          <span className="font-mono text-xs mr-1">{c.code}</span> {c.label}
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {codes.length === 0 && (
+            <p className="text-xs text-muted-foreground italic text-center py-4">
+              Aucune section analytique configurée pour ce client.
+            </p>
+          )}
+        </div>
+
+        {/* Total bar */}
+        {rows.length > 0 && (
+          <div className={`flex justify-between text-xs font-semibold px-1 border-t pt-2 ${totalPct > 100 ? "text-red-600" : totalPct === 100 ? "text-emerald-600" : "text-muted-foreground"}`}>
+            <span>Total ventilé</span>
+            <span>{totalPct.toFixed(2)} %</span>
+          </div>
+        )}
+
+        {error && <p className="text-sm text-destructive">{error}</p>}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Annuler</Button>
+          {rows.length === 0 ? (
+            <Button onClick={handleSave} disabled={setAllocs.isPending} variant="destructive">
+              {setAllocs.isPending ? "…" : "Effacer la ventilation"}
+            </Button>
+          ) : (
+            <Button onClick={handleSave} disabled={setAllocs.isPending}>
+              {setAllocs.isPending ? "…" : "Enregistrer"}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 // Module M3 (Comptabilité et Travaux): the accountant's ledger review
 // workspace. Every plain-language PME entry ("à valider") is shown next to
@@ -60,6 +279,9 @@ export default function ComptabiliteCabinet() {
   // queue down to only the entries the anomaly detector flagged.
   const [anomaliesOnly, setAnomaliesOnly] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<number | null>(null)
+  const [ventilerTarget, setVentilerTarget] = useState<{
+    lineId: number; lineLabel: string; lineAmount: number; clientId: number
+  } | null>(null)
   const [clarificationNote, setClarificationNote] = useState("")
   // Journal-line account numbers currently being edited, keyed by
   // `${transactionId}:${lineId}` -> account number. Only relevant for credit
@@ -474,6 +696,30 @@ export default function ComptabiliteCabinet() {
                               <td className="text-right py-1.5">
                                 {line.creditAmount > 0 ? formatFcfa(line.creditAmount) : ""}
                               </td>
+                              <td className="py-1.5 pl-1.5">
+                                {(line.accountNumber[0] === "6" || line.accountNumber[0] === "7") && (
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 text-primary hover:text-primary"
+                                        onClick={() =>
+                                          setVentilerTarget({
+                                            lineId: line.id,
+                                            lineLabel: line.accountNumber + (line.label ? ` ${line.label}` : ""),
+                                            lineAmount: line.debitAmount > 0 ? line.debitAmount : line.creditAmount,
+                                            clientId: t.clientId,
+                                          })
+                                        }
+                                      >
+                                        <GitMerge className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </TooltipTrigger>
+                                    <TooltipContent>Ventiler analytiquement</TooltipContent>
+                                  </Tooltip>
+                                )}
+                              </td>
                             </tr>
                           )
                         })}
@@ -495,6 +741,14 @@ export default function ComptabiliteCabinet() {
             )
           })}
         </div>
+      )}
+
+      {ventilerTarget && (
+        <VentilerDialog
+          {...ventilerTarget}
+          open={ventilerTarget !== null}
+          onClose={() => setVentilerTarget(null)}
+        />
       )}
 
       <Dialog open={rejectTarget != null} onOpenChange={(open) => !open && setRejectTarget(null)}>
