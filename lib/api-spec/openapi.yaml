@@ -4470,3 +4470,74 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/AnalyticalReportCodeRow"
+
+    # -------------------------------------------------------------------------
+    # Module M24 — DSF (Liasse Fiscale SYSCOHADA Révisé)
+    # -------------------------------------------------------------------------
+
+    DsfBilanActifLine:
+      type: object
+      required: [lineCode, label, isSubtotal, isSectionHeader, brut, amortissements, netN]
+      properties:
+        lineCode: { type: string }
+        label: { type: string }
+        isSubtotal: { type: boolean }
+        isSectionHeader: { type: boolean }
+        brut: { type: integer }
+        amortissements: { type: integer }
+        netN: { type: integer }
+
+    DsfBilanPassifLine:
+      type: object
+      required: [lineCode, label, isSubtotal, isSectionHeader, montantN]
+      properties:
+        lineCode: { type: string }
+        label: { type: string }
+        isSubtotal: { type: boolean }
+        isSectionHeader: { type: boolean }
+        montantN: { type: integer }
+
+    DsfCompteResultatLine:
+      type: object
+      required: [lineCode, label, produits, charges, solde, isIntermediate, isSectionHeader]
+      properties:
+        lineCode: { type: string }
+        label: { type: string }
+        produits: { type: integer }
+        charges: { type: integer }
+        solde: { type: integer }
+        isIntermediate: { type: boolean }
+        isSectionHeader: { type: boolean }
+
+    DsfTftLine:
+      type: object
+      required: [lineCode, label, montantN, isSubtotal, isSectionHeader]
+      properties:
+        lineCode: { type: string }
+        label: { type: string }
+        montantN: { type: integer }
+        isSubtotal: { type: boolean }
+        isSectionHeader: { type: boolean }
+
+    DsfResult:
+      type: object
+      required: [bilanActif, bilanPassif, compteResultat, tft, totalBilanActif, totalBilanPassif, balanceEquilibre, bilanEquilibre, totalDebits, totalCredits]
+      properties:
+        bilanActif:
+          type: array
+          items: { $ref: "#/components/schemas/DsfBilanActifLine" }
+        bilanPassif:
+          type: array
+          items: { $ref: "#/components/schemas/DsfBilanPassifLine" }
+        compteResultat:
+          type: array
+          items: { $ref: "#/components/schemas/DsfCompteResultatLine" }
+        tft:
+          type: array
+          items: { $ref: "#/components/schemas/DsfTftLine" }
+        totalBilanActif: { type: integer }
+        totalBilanPassif: { type: integer }
+        balanceEquilibre: { type: boolean }
+        bilanEquilibre: { type: boolean }
+        totalDebits: { type: integer }
+        totalCredits: { type: integer }
