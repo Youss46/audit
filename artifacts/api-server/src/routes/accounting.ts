@@ -525,7 +525,11 @@ router.post(
           firmId: req.user!.firmId,
           clientId: tx.clientId,
           accountNumber: line.accountNumber,
-          label: line.label || tx.label,
+          // Prefer the transaction's own description (the invoice/operation
+          // label the accountant entered) over the journal line's label,
+          // which is usually just the generic counterpart-account name
+          // (e.g. "Autres charges externes") and not useful in the registry.
+          label: tx.label || line.label || "",
           acquisitionDate: tx.date,
           acquisitionCost: line.debitAmount,
           depreciationType: null,   // accountant must complete

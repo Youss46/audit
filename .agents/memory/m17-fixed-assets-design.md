@@ -33,3 +33,19 @@ Route registration order is safe regardless of declaration order.
 
 **How to apply:** Any new cabinet-only tab (not under /comptabilite/) must be added
 to CABINET_TABS in ClientAccountingNav so routing and client-switching work correctly.
+
+## Class 2 auto-sync bridge (validation → fixed assets registry)
+A validated transaction's Class 2 debit lines (accounts starting "2", excluding "27x")
+auto-create pending-setup asset stubs (`depreciationType`/`usefulLifeYears` null,
+`pendingSetup: true`) in the accounting approve route.
+
+**Why:** an invoice initially booked to a generic expense account (e.g. 628) only becomes
+a fixed asset once the accountant redirects its journal-line account to a Class 2 code via
+the M3 "ajuster les comptes" (PATCH journal-lines) feature, then approves — that's the real
+trigger path, not a dedicated "buy an asset" form.
+
+**How to apply:** the new asset's `label` must come from the transaction's own label first,
+falling back to the journal line's label only if empty — the line's label is usually just
+the generic counterpart-account name (e.g. "Autres charges externes") and is useless in the
+registry. Getting this fallback order backwards makes every auto-synced asset show a
+meaningless label.
