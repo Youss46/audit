@@ -298,7 +298,7 @@ router.get("/payslips", async (req, res) => {
 
 // ---------------------------------------------------------------------------
 // POST /payroll/calculate/:clientId/:period — bulk payroll processing:
-// runs the CNPS/IS/CN/ITS engine for every active employee of the client
+// runs the CNPS/ITS engine for every active employee of the client
 // and upserts one payslip per employee for that period. Recalculating an
 // un-posted period simply replaces the previous figures (e.g. after
 // editing an employee's salary) — already-posted payslips are frozen and

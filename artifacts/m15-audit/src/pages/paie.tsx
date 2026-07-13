@@ -557,7 +557,7 @@ export default function Paie() {
                               <AlertDialogDescription>
                                 Une écriture unique et équilibrée sera générée&nbsp;:
                                 débit 661 (salaires bruts) et 664 (charges patronales), crédit
-                                422 (net à payer), 431 (CNPS) et 447 (ITS/IS/CN/FDFP), pour un
+                                422 (net à payer), 431 (CNPS) et 447 (ITS/FDFP), pour un
                                 total de {fcfa(totalTaxes)} FCFA d&apos;impôts et {fcfa(totalCnps)} FCFA de
                                 CNPS. Cette écriture est directement validée et ne peut plus être
                                 modifiée.
@@ -579,9 +579,7 @@ export default function Paie() {
                               <TableHead className="pl-6">Employé</TableHead>
                               <TableHead className="text-right">Brut</TableHead>
                               <TableHead className="text-right">CNPS (sal.)</TableHead>
-                              <TableHead className="text-right">IS</TableHead>
-                              <TableHead className="text-right">CN</TableHead>
-                              <TableHead className="text-right">ITS/IGR</TableHead>
+                              <TableHead className="text-right">ITS</TableHead>
                               <TableHead className="text-right font-semibold">Net à payer</TableHead>
                               <TableHead className="text-right">Charges patronales</TableHead>
                               <TableHead className="pr-6">Statut</TableHead>
@@ -593,8 +591,6 @@ export default function Paie() {
                                 <TableCell className="pl-6 font-medium">{p.employeeName}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.grossSalary)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.cnpsEmployeeAmount)}</TableCell>
-                                <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.isAmount)}</TableCell>
-                                <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.cnAmount)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.itsAmount)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm font-semibold text-primary">{fcfa(p.netSalary)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm text-muted-foreground">
@@ -648,7 +644,7 @@ export default function Paie() {
           <DialogHeader>
             <DialogTitle>{editingEmployeeId ? "Modifier l'employé" : "Ajouter un employé"}</DialogTitle>
             <DialogDescription>
-              Les cotisations CNPS et impôts sur salaire (IS, CN, ITS/IGR) seront calculés
+              Les cotisations CNPS et l&apos;impôt sur salaire (ITS) seront calculés
               automatiquement lors du traitement de la paie.
             </DialogDescription>
           </DialogHeader>
