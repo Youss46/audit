@@ -14,3 +14,5 @@
 - [M20 Ivorian payroll design](m20-payroll-design.md) — classical IS+CN+ITS/quotient-familial breakdown (not post-2024 unified ITS); postedTransactionId is the anti-double-post boundary.
 - [pdfmake esbuild externalize](pdfmake-esbuild-externalize.md) — pdfmake must be externalized + loaded via createRequire, never top-level ESM default import.
 - [M21 VAT-exemption (non-assujetti) handling](m21-vat-exemption-design.md) — taxRegime/isVatRegistered already exist end-to-end; check before assuming a "VAT exemption" request is unimplemented.
+- [Executive BI dashboard (Pilotage) design](executive-dashboard-pilotage-design.md) — margin/break-even/cash-basis/expense-nature formulas; extend existing Pilotage module, don't duplicate.
+- [API server codegen restart gotcha](api-server-codegen-restart.md) — after orval codegen, restart the api-server workflow or new response fields silently vanish (no error).

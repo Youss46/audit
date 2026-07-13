@@ -63,6 +63,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/paie" component={Paie} />
         <Route path="/cabinet/client/:clientId/cloture" component={ClotureAnnuelle} />
         <Route path="/cabinet/client/:clientId/teledeclaration" component={Teledeclaration} />
+        <Route path="/cabinet/client/:clientId/pilotage" component={Pilotage} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/cabinet/compliance" component={Compliance} />

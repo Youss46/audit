@@ -1463,16 +1463,24 @@ export const GetGrandLivreResponse = zod.object({
  */
 export const GetPilotageDashboardQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "year": zod.coerce.number()
+  "year": zod.coerce.number(),
+  "basis": zod.enum(['engagement', 'tresorerie']).optional().describe('Module M21: \'engagement\' (comptabilité d\'engagement, default) or \'tresorerie\' (comptabilité de trésorerie -- credit operations count only once settled)')
 })
 
 export const getPilotageDashboardResponseChiffreAffairesParMoisItemMonthMax = 12;
+
+export const getPilotageDashboardResponseChargesParMoisItemMonthMax = 12;
+
+export const getPilotageDashboardResponseMargeBruteParMoisItemMonthMax = 12;
+
+export const getPilotageDashboardResponseTresorerieParMoisItemMonthMax = 12;
 
 
 
 export const GetPilotageDashboardResponse = zod.object({
   "clientId": zod.number(),
   "year": zod.number(),
+  "basis": zod.enum(['engagement', 'tresorerie']),
   "tresorerieNette": zod.number(),
   "chiffreAffairesParMois": zod.array(zod.object({
   "year": zod.number(),
@@ -1484,7 +1492,62 @@ export const GetPilotageDashboardResponse = zod.object({
   "categoryKey": zod.string(),
   "label": zod.string(),
   "total": zod.number()
+})),
+  "chargesParMois": zod.array(zod.object({
+  "year": zod.number(),
+  "month": zod.number().min(1).max(getPilotageDashboardResponseChargesParMoisItemMonthMax),
+  "label": zod.string(),
+  "total": zod.number()
+})),
+  "margeBruteParMois": zod.array(zod.object({
+  "year": zod.number(),
+  "month": zod.number().min(1).max(getPilotageDashboardResponseMargeBruteParMoisItemMonthMax),
+  "label": zod.string(),
+  "chiffreAffaires": zod.number(),
+  "margeBrute": zod.number(),
+  "tauxMarge": zod.number().nullable()
+})),
+  "tresorerieParMois": zod.array(zod.object({
+  "year": zod.number(),
+  "month": zod.number().min(1).max(getPilotageDashboardResponseTresorerieParMoisItemMonthMax),
+  "label": zod.string(),
+  "total": zod.number()
+})),
+  "depensesParNature": zod.array(zod.object({
+  "natureKey": zod.string(),
+  "label": zod.string(),
+  "total": zod.number()
+})),
+  "seuilRentabilite": zod.object({
+  "chiffreAffairesAnnuel": zod.number(),
+  "chargesFixesAnnuelles": zod.number(),
+  "chargesVariablesAnnuelles": zod.number(),
+  "tauxMargeSurCoutsVariables": zod.number().nullable(),
+  "seuilRentabilite": zod.number().nullable()
+}),
+  "kpis": zod.object({
+  "chiffreAffaires": zod.object({
+  "moisCourant": zod.number(),
+  "moisPrecedent": zod.number(),
+  "variationPct": zod.number().nullable()
+}),
+  "margeBrute": zod.object({
+  "moisCourant": zod.number(),
+  "moisPrecedent": zod.number(),
+  "variationPct": zod.number().nullable()
+}).and(zod.object({
+  "tauxMargeMoisCourant": zod.number().nullable(),
+  "tauxMargeMoisPrecedent": zod.number().nullable()
+})),
+  "tresorerie": zod.object({
+  "moisCourant": zod.number(),
+  "moisPrecedent": zod.number(),
+  "variationPct": zod.number().nullable()
+}).and(zod.object({
+  "seuilCritique": zod.number(),
+  "enAlerte": zod.boolean()
 }))
+})
 })
 
 

@@ -5,8 +5,13 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { GetPilotageDashboardBasis } from './getPilotageDashboardBasis';
 
 export type GetPilotageDashboardParams = {
 clientId: number;
 year: number;
+/**
+ * Module M21: 'engagement' (comptabilité d'engagement, default) or 'tresorerie' (comptabilité de trésorerie -- credit operations count only once settled)
+ */
+basis?: GetPilotageDashboardBasis;
 };

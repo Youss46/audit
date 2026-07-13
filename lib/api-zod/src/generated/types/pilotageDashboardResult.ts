@@ -5,13 +5,25 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { ExecutiveDashboardKpis } from './executiveDashboardKpis';
 import type { ExpenseBreakdownEntry } from './expenseBreakdownEntry';
+import type { MonthlyMarginPoint } from './monthlyMarginPoint';
 import type { MonthlyRevenuePoint } from './monthlyRevenuePoint';
+import type { NatureBreakdownEntry } from './natureBreakdownEntry';
+import type { PilotageDashboardResultBasis } from './pilotageDashboardResultBasis';
+import type { SeuilRentabilite } from './seuilRentabilite';
 
 export interface PilotageDashboardResult {
   clientId: number;
   year: number;
+  basis: PilotageDashboardResultBasis;
   tresorerieNette: number;
   chiffreAffairesParMois: MonthlyRevenuePoint[];
   topDepenses: ExpenseBreakdownEntry[];
+  chargesParMois: MonthlyRevenuePoint[];
+  margeBruteParMois: MonthlyMarginPoint[];
+  tresorerieParMois: MonthlyRevenuePoint[];
+  depensesParNature: NatureBreakdownEntry[];
+  seuilRentabilite: SeuilRentabilite;
+  kpis: ExecutiveDashboardKpis;
 }

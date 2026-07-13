@@ -1213,6 +1213,13 @@ paths:
           required: true
           schema:
             type: integer
+        - name: basis
+          in: query
+          required: false
+          description: "Module M21: 'engagement' (comptabilité d'engagement, default) or 'tresorerie' (comptabilité de trésorerie -- credit operations count only once settled)"
+          schema:
+            type: string
+            enum: [engagement, tresorerie]
       responses:
         "200":
           description: Pilotage dashboard aggregates
@@ -2905,10 +2912,27 @@ components:
 
     PilotageDashboardResult:
       type: object
-      required: [clientId, year, tresorerieNette, chiffreAffairesParMois, topDepenses]
+      required:
+        [
+          clientId,
+          year,
+          basis,
+          tresorerieNette,
+          chiffreAffairesParMois,
+          topDepenses,
+          chargesParMois,
+          margeBruteParMois,
+          tresorerieParMois,
+          depensesParNature,
+          seuilRentabilite,
+          kpis,
+        ]
       properties:
         clientId: { type: integer }
         year: { type: integer }
+        basis:
+          type: string
+          enum: [engagement, tresorerie]
         tresorerieNette: { type: integer }
         chiffreAffairesParMois:
           type: array
@@ -2918,6 +2942,111 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/ExpenseBreakdownEntry"
+        chargesParMois:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyRevenuePoint"
+        margeBruteParMois:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyMarginPoint"
+        tresorerieParMois:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonthlyRevenuePoint"
+        depensesParNature:
+          type: array
+          items:
+            $ref: "#/components/schemas/NatureBreakdownEntry"
+        seuilRentabilite:
+          $ref: "#/components/schemas/SeuilRentabilite"
+        kpis:
+          $ref: "#/components/schemas/ExecutiveDashboardKpis"
+
+    MonthlyMarginPoint:
+      type: object
+      required: [year, month, label, chiffreAffaires, margeBrute, tauxMarge]
+      properties:
+        year: { type: integer }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        label: { type: string }
+        chiffreAffaires: { type: integer }
+        margeBrute: { type: integer }
+        tauxMarge:
+          type: number
+          nullable: true
+
+    NatureBreakdownEntry:
+      type: object
+      required: [natureKey, label, total]
+      properties:
+        natureKey: { type: string }
+        label: { type: string }
+        total: { type: integer }
+
+    SeuilRentabilite:
+      type: object
+      required:
+        [
+          chiffreAffairesAnnuel,
+          chargesFixesAnnuelles,
+          chargesVariablesAnnuelles,
+          tauxMargeSurCoutsVariables,
+          seuilRentabilite,
+        ]
+      properties:
+        chiffreAffairesAnnuel: { type: integer }
+        chargesFixesAnnuelles: { type: integer }
+        chargesVariablesAnnuelles: { type: integer }
+        tauxMargeSurCoutsVariables:
+          type: number
+          nullable: true
+        seuilRentabilite:
+          type: number
+          nullable: true
+
+    DashboardKpi:
+      type: object
+      required: [moisCourant, moisPrecedent, variationPct]
+      properties:
+        moisCourant: { type: number }
+        moisPrecedent: { type: number }
+        variationPct:
+          type: number
+          nullable: true
+
+    MargeBruteKpi:
+      allOf:
+        - $ref: "#/components/schemas/DashboardKpi"
+        - type: object
+          required: [tauxMargeMoisCourant, tauxMargeMoisPrecedent]
+          properties:
+            tauxMargeMoisCourant:
+              type: number
+              nullable: true
+            tauxMargeMoisPrecedent:
+              type: number
+              nullable: true
+
+    TresorerieKpi:
+      allOf:
+        - $ref: "#/components/schemas/DashboardKpi"
+        - type: object
+          required: [seuilCritique, enAlerte]
+          properties:
+            seuilCritique: { type: number }
+            enAlerte: { type: boolean }
+
+    ExecutiveDashboardKpis:
+      type: object
+      required: [chiffreAffaires, margeBrute, tresorerie]
+      properties:
+        chiffreAffaires:
+          $ref: "#/components/schemas/DashboardKpi"
+        margeBrute:
+          $ref: "#/components/schemas/MargeBruteKpi"
+        tresorerie:
+          $ref: "#/components/schemas/TresorerieKpi"
 
     ExportLiasseFiscaleInput:
       type: object

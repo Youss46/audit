@@ -708,12 +708,76 @@ export interface ExpenseBreakdownEntry {
   total: number;
 }
 
+export type PilotageDashboardResultBasis = typeof PilotageDashboardResultBasis[keyof typeof PilotageDashboardResultBasis];
+
+
+export const PilotageDashboardResultBasis = {
+  engagement: 'engagement',
+  tresorerie: 'tresorerie',
+} as const;
+
+export interface MonthlyMarginPoint {
+  year: number;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  month: number;
+  label: string;
+  chiffreAffaires: number;
+  margeBrute: number;
+  tauxMarge: number | null;
+}
+
+export interface NatureBreakdownEntry {
+  natureKey: string;
+  label: string;
+  total: number;
+}
+
+export interface SeuilRentabilite {
+  chiffreAffairesAnnuel: number;
+  chargesFixesAnnuelles: number;
+  chargesVariablesAnnuelles: number;
+  tauxMargeSurCoutsVariables: number | null;
+  seuilRentabilite: number | null;
+}
+
+export interface DashboardKpi {
+  moisCourant: number;
+  moisPrecedent: number;
+  variationPct: number | null;
+}
+
+export type MargeBruteKpi = DashboardKpi & ({
+  tauxMargeMoisCourant: number | null;
+  tauxMargeMoisPrecedent: number | null;
+});
+
+export type TresorerieKpi = DashboardKpi & {
+  seuilCritique: number;
+  enAlerte: boolean;
+};
+
+export interface ExecutiveDashboardKpis {
+  chiffreAffaires: DashboardKpi;
+  margeBrute: MargeBruteKpi;
+  tresorerie: TresorerieKpi;
+}
+
 export interface PilotageDashboardResult {
   clientId: number;
   year: number;
+  basis: PilotageDashboardResultBasis;
   tresorerieNette: number;
   chiffreAffairesParMois: MonthlyRevenuePoint[];
   topDepenses: ExpenseBreakdownEntry[];
+  chargesParMois: MonthlyRevenuePoint[];
+  margeBruteParMois: MonthlyMarginPoint[];
+  tresorerieParMois: MonthlyRevenuePoint[];
+  depensesParNature: NatureBreakdownEntry[];
+  seuilRentabilite: SeuilRentabilite;
+  kpis: ExecutiveDashboardKpis;
 }
 
 export type ExportLiasseFiscaleInputReportType = typeof ExportLiasseFiscaleInputReportType[keyof typeof ExportLiasseFiscaleInputReportType];
@@ -1262,7 +1326,19 @@ year: number;
 export type GetPilotageDashboardParams = {
 clientId: number;
 year: number;
+/**
+ * Module M21: 'engagement' (comptabilité d'engagement, default) or 'tresorerie' (comptabilité de trésorerie -- credit operations count only once settled)
+ */
+basis?: GetPilotageDashboardBasis;
 };
+
+export type GetPilotageDashboardBasis = typeof GetPilotageDashboardBasis[keyof typeof GetPilotageDashboardBasis];
+
+
+export const GetPilotageDashboardBasis = {
+  engagement: 'engagement',
+  tresorerie: 'tresorerie',
+} as const;
 
 export type ListAssetsParams = {
 clientId: number;

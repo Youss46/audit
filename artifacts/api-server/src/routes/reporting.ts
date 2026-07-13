@@ -76,6 +76,10 @@ async function fetchValidatedLedgerLines(clientId: number, firmId: number): Prom
       category: transactionsTable.category,
       lineLabel: journalLinesTable.label,
       transactionLabel: transactionsTable.label,
+      // Module M21: needed to reconstruct the "comptabilité de trésorerie"
+      // (cash-basis) view of the dashboard.
+      transactionPaymentType: transactionsTable.paymentType,
+      transactionSettledAt: transactionsTable.settledAt,
     })
     .from(journalLinesTable)
     .innerJoin(transactionsTable, eq(journalLinesTable.transactionId, transactionsTable.id))
@@ -108,6 +112,8 @@ async function fetchValidatedLedgerLines(clientId: number, firmId: number): Prom
       transactionType: row.transactionType,
       category: row.category,
       label: row.lineLabel ?? row.transactionLabel,
+      transactionPaymentType: row.transactionPaymentType,
+      transactionSettledAt: row.transactionSettledAt,
     };
   });
 }
@@ -195,10 +201,11 @@ router.get("/reports/grand-livre", async (req, res) => {
   res.json(GetGrandLivreResponse.parse({ clientId, year, accounts }));
 });
 
-// Module P4 (Pilotage Dirigeant): plain-language dashboard for the PME
-// director.
+// Module P4/M21 (Tableau de Bord Dirigeant): plain-language dashboard for
+// the PME director, plus the richer executive KPIs (marge, trésorerie
+// mensuelle, seuil de rentabilité, répartition par nature) added by M21.
 router.get("/reports/pilotage", async (req, res) => {
-  const { clientId, year } = GetPilotageDashboardQueryParams.parse(req.query);
+  const { clientId, year, basis } = GetPilotageDashboardQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -210,17 +217,26 @@ router.get("/reports/pilotage", async (req, res) => {
   const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
-  const aggregates = computePilotageAggregates(lines, yearStart, yearEndExclusive, new Date());
+  const aggregates = computePilotageAggregates(
+    lines,
+    yearStart,
+    yearEndExclusive,
+    new Date(),
+    basis ?? "engagement",
+  );
+
+  const monthLabel = (point: { year: number; month: number }) => `${MOIS_FR[point.month - 1]} ${point.year}`;
 
   res.json(
     GetPilotageDashboardResponse.parse({
       clientId,
       year,
+      basis: basis ?? "engagement",
       tresorerieNette: aggregates.tresorerieNette,
       chiffreAffairesParMois: aggregates.chiffreAffairesParMois.map((point) => ({
         year: point.year,
         month: point.month,
-        label: `${MOIS_FR[point.month - 1]} ${point.year}`,
+        label: monthLabel(point),
         total: point.total,
       })),
       topDepenses: aggregates.topDepenses.map((entry) => ({
@@ -228,6 +244,29 @@ router.get("/reports/pilotage", async (req, res) => {
         label: CATEGORY_RULES[entry.categoryKey]?.label ?? entry.categoryKey,
         total: entry.total,
       })),
+      chargesParMois: aggregates.chargesParMois.map((point) => ({
+        year: point.year,
+        month: point.month,
+        label: monthLabel(point),
+        total: point.total,
+      })),
+      margeBruteParMois: aggregates.margeBruteParMois.map((point) => ({
+        year: point.year,
+        month: point.month,
+        label: monthLabel(point),
+        chiffreAffaires: point.chiffreAffaires,
+        margeBrute: point.margeBrute,
+        tauxMarge: point.tauxMarge,
+      })),
+      tresorerieParMois: aggregates.tresorerieParMois.map((point) => ({
+        year: point.year,
+        month: point.month,
+        label: monthLabel(point),
+        total: point.total,
+      })),
+      depensesParNature: aggregates.depensesParNature,
+      seuilRentabilite: aggregates.seuilRentabilite,
+      kpis: aggregates.kpis,
     }),
   );
 });

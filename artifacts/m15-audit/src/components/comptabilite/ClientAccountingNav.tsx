@@ -63,6 +63,7 @@ function getAccountingSystemBadgeClass(system: AccountingSystem | string | null 
 //   paie             → /cabinet/client/:id/paie
 //   cloture          → /cabinet/client/:id/cloture
 //   teledeclaration  → /cabinet/client/:id/teledeclaration
+//   pilotage (M21)   → /cabinet/client/:id/pilotage
 // ---------------------------------------------------------------------------
 
 const TABS = [
@@ -75,10 +76,18 @@ const TABS = [
   { slug: "paie",             label: "Gestion de la Paie"    },
   { slug: "cloture",          label: "Clôture Annuelle"     },
   { slug: "teledeclaration",  label: "Télédéclaration TVA"  },
+  { slug: "pilotage",         label: "Tableau de Bord"       },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
-const CABINET_TABS = new Set<string>(["immobilisations", "finance", "paie", "cloture", "teledeclaration"])
+const CABINET_TABS = new Set<string>([
+  "immobilisations",
+  "finance",
+  "paie",
+  "cloture",
+  "teledeclaration",
+  "pilotage",
+])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
 
@@ -92,7 +101,8 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, financeParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/finance")
   const [, paieParams]    = useRoute<{ clientId: string }>("/cabinet/client/:clientId/paie")
   const [, teledeclParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/teledeclaration")
-  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams
+  const [, pilotageParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/pilotage")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.
