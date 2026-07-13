@@ -18,6 +18,17 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 
 const PUBLIC_ROUTES = ["/login", "/register"]
 
@@ -171,16 +182,33 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {getRoleLabel(user?.role)}
           </span>
         </div>
-        <Button 
-          variant="ghost" 
-          size="icon" 
-          onClick={logout} 
-          className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent shrink-0"
-          data-testid="button-logout"
-          title="Déconnexion"
-        >
-          <LogOut className="h-4 w-4" />
-        </Button>
+        <AlertDialog>
+          <AlertDialogTrigger asChild>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent shrink-0"
+              data-testid="button-logout"
+              title="Déconnexion"
+            >
+              <LogOut className="h-4 w-4" />
+            </Button>
+          </AlertDialogTrigger>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Se déconnecter ?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Vous devrez vous reconnecter avec votre email et votre mot de passe pour accéder à nouveau à votre espace.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-logout">Annuler</AlertDialogCancel>
+              <AlertDialogAction onClick={logout} data-testid="button-confirm-logout">
+                Se déconnecter
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </div>
   )
