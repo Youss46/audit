@@ -49,6 +49,10 @@ export const AuditAction = {
   // Module M19 (Clôture d'Exercice Comptable): official year-end closing.
   // The LOCKED status is permanent and cannot be reversed through the UI.
   PERIOD_CLOSE: "PERIOD_CLOSE",
+  // Module M20 (Gestion de la Paie, ITS & CNPS).
+  EMPLOYEE_CREATE: "EMPLOYEE_CREATE",
+  EMPLOYEE_UPDATE: "EMPLOYEE_UPDATE",
+  PAYROLL_POST: "PAYROLL_POST",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

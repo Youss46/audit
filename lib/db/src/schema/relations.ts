@@ -11,6 +11,7 @@ import { cashRegistersTable, dailyClosuresTable } from "./caisse";
 import { fixedAssetsTable } from "./fixed-assets";
 import { financialAssetsLoansTable } from "./financial-assets-loans";
 import { fiscalYearClosingsTable } from "./closing";
+import { employeesTable, payslipsTable } from "./payroll";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -169,6 +170,34 @@ export const fiscalYearClosingsRelations = relations(fiscalYearClosingsTable, ({
   }),
   lockedBy: one(usersTable, {
     fields: [fiscalYearClosingsTable.lockedById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M20 (Gestion de la Paie, ITS & CNPS).
+export const employeesRelations = relations(employeesTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [employeesTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [employeesTable.clientId], references: [clientsTable.id] }),
+  createdBy: one(usersTable, {
+    fields: [employeesTable.createdById],
+    references: [usersTable.id],
+  }),
+  payslips: many(payslipsTable),
+}));
+
+export const payslipsRelations = relations(payslipsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [payslipsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [payslipsTable.clientId], references: [clientsTable.id] }),
+  employee: one(employeesTable, {
+    fields: [payslipsTable.employeeId],
+    references: [employeesTable.id],
+  }),
+  postedTransaction: one(transactionsTable, {
+    fields: [payslipsTable.postedTransactionId],
+    references: [transactionsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [payslipsTable.createdById],
     references: [usersTable.id],
   }),
 }));

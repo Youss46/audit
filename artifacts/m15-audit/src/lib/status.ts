@@ -281,6 +281,31 @@ export function getFinancialItemStatusColor(status: string | null | undefined) {
   }
 }
 
+// Module M20 (Gestion de la Paie, ITS & CNPS).
+export function getMaritalStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'CELIBATAIRE': return 'Célibataire'
+    case 'MARIE': return 'Marié(e)'
+    default: return '—'
+  }
+}
+
+export function getEmployeeStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'Actif'
+    case 'INACTIF': return 'Inactif'
+    default: return '—'
+  }
+}
+
+export function getEmployeeStatusColor(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+    case 'INACTIF': return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
+
 export function getPaymentFrequencyLabel(frequency: string | null | undefined) {
   switch (frequency) {
     case 'MENSUEL': return 'Mensuelle'

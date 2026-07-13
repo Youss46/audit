@@ -1914,6 +1914,265 @@ export const GetClosingStatusResponse = zod.object({
 
 
 /**
+ * @summary List employees for a client (M20)
+ */
+export const ListEmployeesQueryParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const ListEmployeesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']),
+  "dependentChildren": zod.number(),
+  "baseSalary": zod.number(),
+  "transportAllowance": zod.number(),
+  "otherTaxablePrimes": zod.number(),
+  "workAccidentRate": zod.number(),
+  "status": zod.enum(['ACTIF', 'INACTIF']),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListEmployeesResponse = zod.array(ListEmployeesResponseItem)
+
+
+/**
+ * @summary Register a new employee (M20)
+ */
+
+
+export const createEmployeeBodyDependentChildrenMin = 0;
+
+
+export const createEmployeeBodyTransportAllowanceMin = 0;
+
+export const createEmployeeBodyOtherTaxablePrimesMin = 0;
+
+export const createEmployeeBodyWorkAccidentRateMin = 0;
+
+
+
+export const CreateEmployeeBody = zod.object({
+  "clientId": zod.number(),
+  "firstName": zod.string().min(1),
+  "lastName": zod.string().min(1),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']).optional(),
+  "dependentChildren": zod.number().min(createEmployeeBodyDependentChildrenMin).optional(),
+  "baseSalary": zod.number().min(1),
+  "transportAllowance": zod.number().min(createEmployeeBodyTransportAllowanceMin).optional(),
+  "otherTaxablePrimes": zod.number().min(createEmployeeBodyOtherTaxablePrimesMin).optional(),
+  "workAccidentRate": zod.number().min(createEmployeeBodyWorkAccidentRateMin).optional()
+})
+
+export const CreateEmployeeResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']),
+  "dependentChildren": zod.number(),
+  "baseSalary": zod.number(),
+  "transportAllowance": zod.number(),
+  "otherTaxablePrimes": zod.number(),
+  "workAccidentRate": zod.number(),
+  "status": zod.enum(['ACTIF', 'INACTIF']),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a single employee (M20)
+ */
+export const GetEmployeeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetEmployeeResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']),
+  "dependentChildren": zod.number(),
+  "baseSalary": zod.number(),
+  "transportAllowance": zod.number(),
+  "otherTaxablePrimes": zod.number(),
+  "workAccidentRate": zod.number(),
+  "status": zod.enum(['ACTIF', 'INACTIF']),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update an employee's profile, salary components, or status (M20)
+ */
+export const UpdateEmployeeParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+export const updateEmployeeBodyDependentChildrenMin = 0;
+
+
+export const updateEmployeeBodyTransportAllowanceMin = 0;
+
+export const updateEmployeeBodyOtherTaxablePrimesMin = 0;
+
+export const updateEmployeeBodyWorkAccidentRateMin = 0;
+
+
+
+export const UpdateEmployeeBody = zod.object({
+  "firstName": zod.string().min(1).optional(),
+  "lastName": zod.string().min(1).optional(),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']).optional(),
+  "dependentChildren": zod.number().min(updateEmployeeBodyDependentChildrenMin).optional(),
+  "baseSalary": zod.number().min(1).optional(),
+  "transportAllowance": zod.number().min(updateEmployeeBodyTransportAllowanceMin).optional(),
+  "otherTaxablePrimes": zod.number().min(updateEmployeeBodyOtherTaxablePrimesMin).optional(),
+  "workAccidentRate": zod.number().min(updateEmployeeBodyWorkAccidentRateMin).optional(),
+  "status": zod.enum(['ACTIF', 'INACTIF']).optional()
+})
+
+export const UpdateEmployeeResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "firstName": zod.string(),
+  "lastName": zod.string(),
+  "cnpsNumber": zod.string().nullish(),
+  "maritalStatus": zod.enum(['CELIBATAIRE', 'MARIE']),
+  "dependentChildren": zod.number(),
+  "baseSalary": zod.number(),
+  "transportAllowance": zod.number(),
+  "otherTaxablePrimes": zod.number(),
+  "workAccidentRate": zod.number(),
+  "status": zod.enum(['ACTIF', 'INACTIF']),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List calculated payslips for a client, optionally filtered by period (M20)
+ */
+export const ListPayslipsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().optional().describe('Pay period, format YYYY-MM')
+})
+
+export const ListPayslipsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().nullish(),
+  "period": zod.string(),
+  "grossSalary": zod.number(),
+  "grossTaxable": zod.number(),
+  "cnpsEmployeeAmount": zod.number(),
+  "isAmount": zod.number(),
+  "cnAmount": zod.number(),
+  "itsAmount": zod.number(),
+  "netSalary": zod.number(),
+  "cnpsEmployerRetraite": zod.number(),
+  "cnpsEmployerPrestationsFamiliales": zod.number(),
+  "cnpsEmployerAccidentTravail": zod.number(),
+  "taxeApprentissage": zod.number(),
+  "taxeFormationContinue": zod.number(),
+  "totalEmployerCost": zod.number(),
+  "fiscalParts": zod.number(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPayslipsResponse = zod.array(ListPayslipsResponseItem)
+
+
+/**
+ * @summary Run the CNPS/IS/CN/ITS payroll engine for every active employee of a client/period (M20)
+ */
+export const CalculatePayrollParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().describe('Pay period, format YYYY-MM')
+})
+
+export const CalculatePayrollResponse = zod.object({
+  "clientId": zod.number(),
+  "period": zod.string(),
+  "payslips": zod.array(zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "employeeId": zod.number(),
+  "employeeName": zod.string().nullish(),
+  "period": zod.string(),
+  "grossSalary": zod.number(),
+  "grossTaxable": zod.number(),
+  "cnpsEmployeeAmount": zod.number(),
+  "isAmount": zod.number(),
+  "cnAmount": zod.number(),
+  "itsAmount": zod.number(),
+  "netSalary": zod.number(),
+  "cnpsEmployerRetraite": zod.number(),
+  "cnpsEmployerPrestationsFamiliales": zod.number(),
+  "cnpsEmployerAccidentTravail": zod.number(),
+  "taxeApprentissage": zod.number(),
+  "taxeFormationContinue": zod.number(),
+  "totalEmployerCost": zod.number(),
+  "fiscalParts": zod.number(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdAt": zod.coerce.date()
+})),
+  "skipped": zod.array(zod.object({
+  "employeeId": zod.number(),
+  "employeeName": zod.string(),
+  "reason": zod.string()
+}))
+})
+
+
+/**
+ * @summary Aggregate all calculated payslips for a client/period into one balanced OD journal entry (M20)
+ */
+export const PostPayrollLedgerParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "period": zod.coerce.string().describe('Pay period, format YYYY-MM')
+})
+
+export const PostPayrollLedgerResponse = zod.object({
+  "transactionId": zod.number(),
+  "period": zod.string(),
+  "payslipsPosted": zod.number(),
+  "totalDebit661": zod.number(),
+  "totalDebit664": zod.number(),
+  "totalCredit422": zod.number(),
+  "totalCredit431": zod.number(),
+  "totalCredit447": zod.number()
+})
+
+
+/**
  * Runs the full 4-step SYSCOHADA year-end closing routine: (1) generate and auto-validate pending depreciation dotations and financial installments, (2) compute net result from Class 6/7 balances and post the clearing entry to account 131 or 139, (3) lock the period so no further ledger entries are accepted for this client/year, (4) generate the Journal des À-nouveaux carrying forward Class 1-5 balances to year+1. Restricted to expert_comptable.
  * @summary Lock a fiscal year (Clôturer définitivement)
  */

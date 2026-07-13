@@ -26,6 +26,7 @@ import CaisseExpress from '@/pages/caisse-express';
 import Pilotage from '@/pages/pilotage';
 import Immobilisations from '@/pages/immobilisations';
 import Financements from '@/pages/financements';
+import Paie from '@/pages/paie';
 import ClotureAnnuelle from '@/pages/cloture-annuelle';
 import NotFound from '@/pages/not-found';
 
@@ -58,6 +59,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/immobilisations" component={Immobilisations} />
         <Route path="/financements" component={Financements} />
         <Route path="/cabinet/client/:clientId/finance" component={Financements} />
+        <Route path="/cabinet/client/:clientId/paie" component={Paie} />
         <Route path="/cabinet/client/:clientId/cloture" component={ClotureAnnuelle} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

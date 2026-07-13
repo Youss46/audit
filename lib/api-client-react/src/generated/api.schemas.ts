@@ -993,6 +993,138 @@ export interface ClosePeriodResult {
   step4: ClosePeriodResultStep4;
 }
 
+export type MaritalStatus = typeof MaritalStatus[keyof typeof MaritalStatus];
+
+
+export const MaritalStatus = {
+  CELIBATAIRE: 'CELIBATAIRE',
+  MARIE: 'MARIE',
+} as const;
+
+export type EmployeeStatus = typeof EmployeeStatus[keyof typeof EmployeeStatus];
+
+
+export const EmployeeStatus = {
+  ACTIF: 'ACTIF',
+  INACTIF: 'INACTIF',
+} as const;
+
+export interface Employee {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  firstName: string;
+  lastName: string;
+  /** @nullable */
+  cnpsNumber?: string | null;
+  maritalStatus: MaritalStatus;
+  dependentChildren: number;
+  baseSalary: number;
+  transportAllowance: number;
+  otherTaxablePrimes: number;
+  workAccidentRate: number;
+  status: EmployeeStatus;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EmployeeInput {
+  clientId: number;
+  /** @minLength 1 */
+  firstName: string;
+  /** @minLength 1 */
+  lastName: string;
+  /** @nullable */
+  cnpsNumber?: string | null;
+  maritalStatus?: MaritalStatus;
+  /** @minimum 0 */
+  dependentChildren?: number;
+  /** @minimum 1 */
+  baseSalary: number;
+  /** @minimum 0 */
+  transportAllowance?: number;
+  /** @minimum 0 */
+  otherTaxablePrimes?: number;
+  /** @minimum 0 */
+  workAccidentRate?: number;
+}
+
+export interface EmployeeUpdate {
+  /** @minLength 1 */
+  firstName?: string;
+  /** @minLength 1 */
+  lastName?: string;
+  /** @nullable */
+  cnpsNumber?: string | null;
+  maritalStatus?: MaritalStatus;
+  /** @minimum 0 */
+  dependentChildren?: number;
+  /** @minimum 1 */
+  baseSalary?: number;
+  /** @minimum 0 */
+  transportAllowance?: number;
+  /** @minimum 0 */
+  otherTaxablePrimes?: number;
+  /** @minimum 0 */
+  workAccidentRate?: number;
+  status?: EmployeeStatus;
+}
+
+export interface Payslip {
+  id: number;
+  firmId: number;
+  clientId: number;
+  employeeId: number;
+  /** @nullable */
+  employeeName?: string | null;
+  period: string;
+  grossSalary: number;
+  grossTaxable: number;
+  cnpsEmployeeAmount: number;
+  isAmount: number;
+  cnAmount: number;
+  itsAmount: number;
+  netSalary: number;
+  cnpsEmployerRetraite: number;
+  cnpsEmployerPrestationsFamiliales: number;
+  cnpsEmployerAccidentTravail: number;
+  taxeApprentissage: number;
+  taxeFormationContinue: number;
+  totalEmployerCost: number;
+  fiscalParts: number;
+  /** @nullable */
+  postedTransactionId?: number | null;
+  createdAt: string;
+}
+
+export type CalculatePayrollResultSkippedItem = {
+  employeeId: number;
+  employeeName: string;
+  reason: string;
+};
+
+export interface CalculatePayrollResult {
+  clientId: number;
+  period: string;
+  payslips: Payslip[];
+  skipped: CalculatePayrollResultSkippedItem[];
+}
+
+export interface PostPayrollLedgerResult {
+  transactionId: number;
+  period: string;
+  payslipsPosted: number;
+  totalDebit661: number;
+  totalDebit664: number;
+  totalCredit422: number;
+  totalCredit431: number;
+  totalCredit447: number;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1065,5 +1197,17 @@ year?: number;
 export type ListFinancialItemsParams = {
 clientId: number;
 type?: FinancialItemType;
+};
+
+export type ListEmployeesParams = {
+clientId: number;
+};
+
+export type ListPayslipsParams = {
+clientId: number;
+/**
+ * Pay period, format YYYY-MM
+ */
+period?: string;
 };
 

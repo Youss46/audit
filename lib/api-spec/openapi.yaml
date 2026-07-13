@@ -1594,6 +1594,232 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /employees:
+    get:
+      operationId: listEmployees
+      tags: [payroll]
+      summary: List employees for a client (M20)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of employees
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Employee"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createEmployee
+      tags: [payroll]
+      summary: Register a new employee (M20)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeInput"
+      responses:
+        "201":
+          description: Employee created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /employees/{id}:
+    get:
+      operationId: getEmployee
+      tags: [payroll]
+      summary: Get a single employee (M20)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Employee
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateEmployee
+      tags: [payroll]
+      summary: Update an employee's profile, salary components, or status (M20)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/EmployeeUpdate"
+      responses:
+        "200":
+          description: Employee updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Employee"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payslips:
+    get:
+      operationId: listPayslips
+      tags: [payroll]
+      summary: List calculated payslips for a client, optionally filtered by period (M20)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: query
+          required: false
+          schema: { type: string }
+          description: "Pay period, format YYYY-MM"
+      responses:
+        "200":
+          description: List of payslips
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Payslip"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payroll/calculate/{clientId}/{period}:
+    post:
+      operationId: calculatePayroll
+      tags: [payroll]
+      summary: Run the CNPS/IS/CN/ITS payroll engine for every active employee of a client/period (M20)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: "Pay period, format YYYY-MM"
+      responses:
+        "200":
+          description: Calculated payslips (preview), plus any employees skipped because already posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalculatePayrollResult"
+        "403":
+          description: Fiscal period is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /payroll/post-ledger/{clientId}/{period}:
+    post:
+      operationId: postPayrollLedger
+      tags: [payroll]
+      summary: Aggregate all calculated payslips for a client/period into one balanced OD journal entry (M20)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: period
+          in: path
+          required: true
+          schema: { type: string }
+          description: "Pay period, format YYYY-MM"
+      responses:
+        "200":
+          description: Ledger posting summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PostPayrollLedgerResult"
+        "400":
+          description: No calculated payslips found for this period
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Fiscal period is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Period already posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /ledger/close-period/{clientId}/{year}:
     post:
       operationId: closePeriod
@@ -2908,3 +3134,146 @@ components:
           properties:
             accountsCarriedForward: { type: integer }
             openingTransactionId: { type: ["integer", "null"] }
+
+    # -------------------------------------------------------------------------
+    # Module M20 — Gestion de la Paie, ITS & CNPS
+    # -------------------------------------------------------------------------
+
+    MaritalStatus:
+      type: string
+      enum: [CELIBATAIRE, MARIE]
+
+    EmployeeStatus:
+      type: string
+      enum: [ACTIF, INACTIF]
+
+    Employee:
+      type: object
+      required:
+        [
+          id, firmId, clientId, firstName, lastName, maritalStatus, dependentChildren,
+          baseSalary, transportAllowance, otherTaxablePrimes, workAccidentRate, status,
+          createdAt, updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        firstName: { type: string }
+        lastName: { type: string }
+        cnpsNumber: { type: ["string", "null"] }
+        maritalStatus:
+          $ref: "#/components/schemas/MaritalStatus"
+        dependentChildren: { type: integer }
+        baseSalary: { type: integer }
+        transportAllowance: { type: integer }
+        otherTaxablePrimes: { type: integer }
+        workAccidentRate: { type: number }
+        status:
+          $ref: "#/components/schemas/EmployeeStatus"
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    EmployeeInput:
+      type: object
+      required: [clientId, firstName, lastName, baseSalary]
+      properties:
+        clientId: { type: integer }
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string, minLength: 1 }
+        cnpsNumber: { type: ["string", "null"] }
+        maritalStatus:
+          $ref: "#/components/schemas/MaritalStatus"
+        dependentChildren: { type: integer, minimum: 0 }
+        baseSalary: { type: integer, minimum: 1 }
+        transportAllowance: { type: integer, minimum: 0 }
+        otherTaxablePrimes: { type: integer, minimum: 0 }
+        workAccidentRate: { type: number, minimum: 0 }
+
+    EmployeeUpdate:
+      type: object
+      properties:
+        firstName: { type: string, minLength: 1 }
+        lastName: { type: string, minLength: 1 }
+        cnpsNumber: { type: ["string", "null"] }
+        maritalStatus:
+          $ref: "#/components/schemas/MaritalStatus"
+        dependentChildren: { type: integer, minimum: 0 }
+        baseSalary: { type: integer, minimum: 1 }
+        transportAllowance: { type: integer, minimum: 0 }
+        otherTaxablePrimes: { type: integer, minimum: 0 }
+        workAccidentRate: { type: number, minimum: 0 }
+        status:
+          $ref: "#/components/schemas/EmployeeStatus"
+
+    Payslip:
+      type: object
+      required:
+        [
+          id, firmId, clientId, employeeId, period, grossSalary, grossTaxable,
+          cnpsEmployeeAmount, isAmount, cnAmount, itsAmount, netSalary,
+          cnpsEmployerRetraite, cnpsEmployerPrestationsFamiliales, cnpsEmployerAccidentTravail,
+          taxeApprentissage, taxeFormationContinue, totalEmployerCost, fiscalParts, createdAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        employeeId: { type: integer }
+        employeeName: { type: ["string", "null"] }
+        period: { type: string }
+        grossSalary: { type: integer }
+        grossTaxable: { type: integer }
+        cnpsEmployeeAmount: { type: integer }
+        isAmount: { type: integer }
+        cnAmount: { type: integer }
+        itsAmount: { type: integer }
+        netSalary: { type: integer }
+        cnpsEmployerRetraite: { type: integer }
+        cnpsEmployerPrestationsFamiliales: { type: integer }
+        cnpsEmployerAccidentTravail: { type: integer }
+        taxeApprentissage: { type: integer }
+        taxeFormationContinue: { type: integer }
+        totalEmployerCost: { type: integer }
+        fiscalParts: { type: number }
+        postedTransactionId: { type: ["integer", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    CalculatePayrollResult:
+      type: object
+      required: [clientId, period, payslips, skipped]
+      properties:
+        clientId: { type: integer }
+        period: { type: string }
+        payslips:
+          type: array
+          items:
+            $ref: "#/components/schemas/Payslip"
+        skipped:
+          type: array
+          items:
+            type: object
+            required: [employeeId, employeeName, reason]
+            properties:
+              employeeId: { type: integer }
+              employeeName: { type: string }
+              reason: { type: string }
+
+    PostPayrollLedgerResult:
+      type: object
+      required:
+        [
+          transactionId, period, payslipsPosted, totalDebit661, totalDebit664,
+          totalCredit422, totalCredit431, totalCredit447,
+        ]
+      properties:
+        transactionId: { type: integer }
+        period: { type: string }
+        payslipsPosted: { type: integer }
+        totalDebit661: { type: integer }
+        totalDebit664: { type: integer }
+        totalCredit422: { type: integer }
+        totalCredit431: { type: integer }
+        totalCredit447: { type: integer }

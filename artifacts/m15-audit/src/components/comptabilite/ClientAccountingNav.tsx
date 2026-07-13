@@ -60,6 +60,7 @@ function getAccountingSystemBadgeClass(system: AccountingSystem | string | null 
 //     → /comptabilite/:id/<slug>
 //   immobilisations  → /cabinet/client/:id/immobilisations
 //   finance          → /cabinet/client/:id/finance
+//   paie             → /cabinet/client/:id/paie
 //   cloture          → /cabinet/client/:id/cloture
 // ---------------------------------------------------------------------------
 
@@ -70,11 +71,12 @@ const TABS = [
   { slug: "etats-financiers", label: "États Financiers"     },
   { slug: "immobilisations",  label: "Immobilisations"      },
   { slug: "finance",          label: "Financements & Dettes" },
+  { slug: "paie",             label: "Gestion de la Paie"    },
   { slug: "cloture",          label: "Clôture Annuelle"     },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
-const CABINET_TABS = new Set<string>(["immobilisations", "finance", "cloture"])
+const CABINET_TABS = new Set<string>(["immobilisations", "finance", "paie", "cloture"])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
 
@@ -86,7 +88,8 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, clotureParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/cloture")
   const [, immobParams]   = useRoute<{ clientId: string }>("/cabinet/client/:clientId/immobilisations")
   const [, financeParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/finance")
-  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams
+  const [, paieParams]    = useRoute<{ clientId: string }>("/cabinet/client/:clientId/paie")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.

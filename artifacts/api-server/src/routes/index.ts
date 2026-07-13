@@ -13,6 +13,7 @@ import reportingRouter from "./reporting";
 import fixedAssetsRouter from "./fixed-assets";
 import financialItemsRouter from "./financial-items";
 import closingRouter from "./closing";
+import payrollRouter from "./payroll";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(reportingRouter);
 router.use(fixedAssetsRouter);
 router.use(financialItemsRouter);
 router.use(closingRouter);
+router.use(payrollRouter);
 
 export default router;
