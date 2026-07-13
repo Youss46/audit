@@ -34,6 +34,7 @@ import {
 } from "@workspace/api-zod";
 import { canAccessClient, requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+import { auditInterceptor } from "../middlewares/audit-interceptor";
 import {
   AccountingEngineError,
   CATEGORY_RULES,
@@ -46,6 +47,9 @@ import { detectAnomalies } from "../lib/anomaly-detector";
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Module M14: safety net for the "Transactions" critical module -- see
+// middlewares/audit-interceptor.ts.
+router.use(auditInterceptor("transaction"));
 
 function serializeTransaction(
   tx: typeof transactionsTable.$inferSelect,
@@ -755,6 +759,18 @@ router.patch(
       .where(eq(transactionsTable.id, tx.id))
       .returning();
 
+    // Module M14: capture the exact "before"/"after" account numbers so the
+    // compliance log can show precisely what the accountant changed --
+    // this is the same shape used for an AI_OVERRIDE (module M13), just
+    // sourced from a manual edit instead of an AI pre-fill being corrected.
+    const beforeAccounts: Record<string, unknown> = {};
+    const afterAccounts: Record<string, unknown> = {};
+    for (const line of body.lines) {
+      const original = tx.journalLines.find((l) => l.id === line.id);
+      beforeAccounts[`line_${line.id}`] = original?.accountNumber ?? null;
+      afterAccounts[`line_${line.id}`] = line.accountNumber;
+    }
+
     await logAudit({
       firmId: req.user!.firmId,
       userId: req.user!.id,
@@ -765,6 +781,7 @@ router.patch(
       entityId: tx.id,
       details: `Ajustement des comptes de l'écriture de "${tx.label}"`,
       ipAddress: req.ip,
+      changesPayload: { before: beforeAccounts, after: afterAccounts },
     });
 
     res.json(

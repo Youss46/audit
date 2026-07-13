@@ -15,10 +15,14 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+import { auditInterceptor } from "../middlewares/audit-interceptor";
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Module M14: safety net for the "Documents" critical module -- see
+// middlewares/audit-interceptor.ts.
+router.use(auditInterceptor("document"));
 
 // Module P2 (Espace PME): documents uploaded by a client_pme account always
 // land in this fixed GED folder/category so the accounting firm can spot

@@ -16,6 +16,7 @@ import Missions from '@/pages/missions';
 import GestionDocumentaire from '@/pages/ged';
 import Users from '@/pages/users';
 import AuditLog from '@/pages/audit-log';
+import Compliance from '@/pages/compliance';
 import ComptabilitePme from '@/pages/comptabilite-pme';
 import ComptabiliteCabinet from '@/pages/comptabilite-cabinet';
 import CaisseExpress from '@/pages/caisse-express';
@@ -45,6 +46,7 @@ function Router() {
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
+        <Route path="/cabinet/compliance" component={Compliance} />
         <Route component={NotFound} />
       </Switch>
     </Shell>

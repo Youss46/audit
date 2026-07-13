@@ -53,6 +53,48 @@ export function getRoleBadgeColor(role: UserRole | string | null | undefined) {
   }
 }
 
+// Module M14 (Journal de Conformité - Espace Cabinet): human-readable
+// French sentence per backend action_type code, for the compliance log.
+// Backend codes stay English/upper-snake-case (see AuditAction in
+// artifacts/api-server/src/lib/audit.ts) -- this is purely the display
+// layer, following the same split as getAnomalyLabel/getAnomalyShortLabel.
+export function getAuditActionLabel(action: string, entityId?: string | null) {
+  const ref = entityId ? ` #${entityId}` : ''
+  switch (action) {
+    case 'AUTH_REGISTER': return 'Création du cabinet et du premier compte Expert-comptable'
+    case 'AUTH_LOGIN': return 'Connexion à la plateforme'
+    case 'CLIENT_CREATE': return `Création du dossier client${ref}`
+    case 'CLIENT_UPDATE': return `Modification du dossier client${ref}`
+    case 'CLIENT_DELETE': return `Suppression du dossier client${ref}`
+    case 'MISSION_CREATE': return `Ouverture d'une mission de visa${ref}`
+    case 'MISSION_UPDATE': return `Mise à jour d'une mission de visa${ref}`
+    case 'CHECKLIST_VALIDATE': return `Validation d'un point de la checklist${ref}`
+    case 'CHECKLIST_NOTE': return `Ajout d'une note sur la checklist${ref}`
+    case 'VISA_ISSUED': return `Émission du visa de conformité${ref}`
+    case 'DOCUMENT_UPLOAD': return `Téléversement d'un document${ref}`
+    case 'DOCUMENT_DELETE': return `Suppression d'un document${ref}`
+    case 'USER_CREATE': return `Création d'un compte collaborateur${ref}`
+    case 'USER_UPDATE': return `Modification d'un compte collaborateur${ref}`
+    case 'USER_DELETE': return `Suppression d'un compte collaborateur${ref}`
+    case 'TRANSACTION_CREATE': return `Déclaration d'une nouvelle opération${ref}`
+    case 'TRANSACTION_APPROVE': return `Validation et comptabilisation de l'écriture${ref}`
+    case 'TRANSACTION_REJECT': return `Invalidation d'une opération${ref}`
+    case 'TRANSACTION_SETTLE': return `Règlement d'une facture à crédit${ref}`
+    case 'TRANSACTION_JOURNAL_LINES_UPDATE': return `Ajustement des comptes de l'écriture${ref}`
+    case 'CASH_REGISTER_CREATE': return `Ouverture d'une caisse${ref}`
+    case 'DAILY_CLOSURE_CLOSE': return `Clôture de caisse du jour${ref}`
+    case 'CASH_ENTRIES_SYNC': return `Synchronisation des mouvements de caisse${ref}`
+    case 'LIASSE_FISCALE_EXPORT': return `Export de la liasse fiscale${ref}`
+    case 'TRANSACTION_FORCE_VALIDATE': return `Validation forcée d'une écriture en anomalie${ref}`
+    case 'AI_OVERRIDE': return `Correction manuelle d'une valeur pré-remplie par l'IA${ref}`
+    default: return action
+  }
+}
+
+export function isAiOverrideAction(action: string) {
+  return action === 'AI_OVERRIDE'
+}
+
 // Modules P3/M3 (Comptabilité simplifiée & Comptabilité et travaux): shared
 // French labels/colors for the journal-entry (transaction) workflow.
 export function getTransactionStatusLabel(status: TransactionStatus | string | null | undefined) {

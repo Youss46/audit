@@ -213,6 +213,22 @@ paths:
           required: false
           schema:
             type: string
+        - name: action
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: userRole
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: aiOverrideOnly
+          in: query
+          required: false
+          description: Module M14 - when true, return only AI_OVERRIDE entries (Espace Cabinet compliance log highlight).
+          schema:
+            type: boolean
       responses:
         "200":
           description: List of audit log entries
@@ -1310,6 +1326,14 @@ components:
         entityId: { type: ["string", "null"] }
         details: { type: ["string", "null"] }
         ipAddress: { type: ["string", "null"] }
+        # Module M14: "before"/"after" snapshot for a modification (e.g. an
+        # AI_OVERRIDE, where the accountant corrected an AI-extracted
+        # value). Null for pure creations.
+        changesPayload:
+          type: ["object", "null"]
+          properties:
+            before: { type: ["object", "null"], additionalProperties: true }
+            after: { type: ["object", "null"], additionalProperties: true }
         createdAt: { type: string, format: date-time }
 
     Sector:

@@ -5,6 +5,7 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AuditLogChangesPayload } from './auditLogChangesPayload';
 
 export interface AuditLog {
   id: number;
@@ -23,5 +24,7 @@ export interface AuditLog {
   details?: string | null;
   /** @nullable */
   ipAddress?: string | null;
+  /** @nullable */
+  changesPayload?: AuditLogChangesPayload;
   createdAt: Date;
 }

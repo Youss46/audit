@@ -8,4 +8,10 @@
 
 export type ListAuditLogsParams = {
 entityType?: string;
+action?: string;
+userRole?: string;
+/**
+ * Module M14 - when true, return only AI_OVERRIDE entries (Espace Cabinet compliance log highlight).
+ */
+aiOverrideOnly?: boolean;
 };

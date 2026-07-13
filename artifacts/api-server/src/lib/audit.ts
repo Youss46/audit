@@ -1,8 +1,10 @@
 import { db, auditLogsTable } from "@workspace/db";
+import { markAuditRecorded, getAuditContext } from "./audit-context";
 
-// Standardized action-type identifiers for the audit trail (module M9),
-// used for SYSCOHADA/ISA compliance review. Keep these upper-snake-case and
-// English so the log is unambiguous regardless of the UI's display locale.
+// Standardized action-type identifiers for the audit trail (modules
+// M9/M14), used for SYSCOHADA/ISA compliance review. Keep these
+// upper-snake-case and English so the log is unambiguous regardless of the
+// UI's display locale.
 export const AuditAction = {
   AUTH_REGISTER: "AUTH_REGISTER",
   AUTH_LOGIN: "AUTH_LOGIN",
@@ -29,9 +31,21 @@ export const AuditAction = {
   CASH_ENTRIES_SYNC: "CASH_ENTRIES_SYNC",
   LIASSE_FISCALE_EXPORT: "LIASSE_FISCALE_EXPORT",
   TRANSACTION_FORCE_VALIDATE: "TRANSACTION_FORCE_VALIDATE",
+  // Module M14: an accountant manually overwrote a value that had been
+  // pre-filled by the AI extraction pipeline (module M13/OCR "Scan & Go").
+  // Not yet emitted anywhere -- that AI pipeline was descoped pending the
+  // Anthropic API key -- but the action type, schema support
+  // (changesPayload), and compliance-UI highlighting are wired up now so
+  // wiring in the emitter later is a one-line change at the override site.
+  AI_OVERRIDE: "AI_OVERRIDE",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];
+
+export interface AuditChangesPayload {
+  before?: Record<string, unknown> | null;
+  after?: Record<string, unknown> | null;
+}
 
 export interface LogAuditInput {
   firmId: number;
@@ -43,22 +57,73 @@ export interface LogAuditInput {
   entityId?: string | number | null;
   details?: string | null;
   ipAddress?: string | null;
+  changesPayload?: AuditChangesPayload | null;
 }
 
-// Writes one audit trail entry (module M9). Called from every mutating route
-// (and on login) so the firm's activity log stays complete for legal /
-// compliance review. `userRole` and `ipAddress` are captured at the time of
-// the action, since a user's role can change later.
-export async function logAudit(input: LogAuditInput): Promise<void> {
-  await db.insert(auditLogsTable).values({
-    firmId: input.firmId,
-    userId: input.userId ?? null,
-    userName: input.userName ?? null,
-    userRole: input.userRole ?? null,
-    action: input.action,
-    entityType: input.entityType,
-    entityId: input.entityId != null ? String(input.entityId) : null,
-    details: input.details ?? null,
-    ipAddress: input.ipAddress ?? null,
-  });
+/**
+ * Module M14 (Immutable Audit Trail & Activity Logging).
+ *
+ * The ONLY supported operation on the audit trail is `record` (INSERT).
+ * There is intentionally no `update`/`delete` method on this service --
+ * the audit_logs table is legally required to be append-only, so the API
+ * surface simply does not offer a way to mutate a past entry. As a second,
+ * independent layer of defense (in case a future route or a direct SQL
+ * client tries anyway), a Postgres trigger
+ * (`audit_logs_prevent_mutation`, see
+ * lib/db/src/enforce-audit-immutability.ts) rejects any UPDATE/DELETE
+ * against this table at the database level. `assertAppendOnlyOperation`
+ * below is what an admin-facing route must call before doing anything to
+ * an audit log row other than reading it, so the rejection surfaces as a
+ * clean 403 instead of a raw Postgres error.
+ */
+export const AuditLogService = {
+  async record(input: LogAuditInput): Promise<void> {
+    const ctx = getAuditContext();
+    await db.insert(auditLogsTable).values({
+      firmId: input.firmId,
+      userId: input.userId ?? null,
+      userName: input.userName ?? null,
+      userRole: input.userRole ?? null,
+      action: input.action,
+      entityType: input.entityType,
+      entityId: input.entityId != null ? String(input.entityId) : null,
+      details: input.details ?? null,
+      ipAddress: input.ipAddress ?? ctx?.ipAddress ?? null,
+      changesPayload: input.changesPayload ?? null,
+      requestId: ctx?.requestId ?? null,
+    });
+    // Signals the safety-net interceptor that this request already
+    // produced a granular log entry, so it should not also write a
+    // generic fallback one.
+    markAuditRecorded();
+  },
+};
+
+/**
+ * Class of error thrown by `assertAppendOnlyOperation`. Route error
+ * handlers should map this to HTTP 403.
+ */
+export class AuditTrailImmutableError extends Error {
+  readonly statusCode = 403;
+  constructor(operation: "UPDATE" | "DELETE") {
+    super(
+      `Le journal d'audit est en lecture/ajout uniquement : l'opération ${operation} est interdite.`,
+    );
+    this.name = "AuditTrailImmutableError";
+  }
 }
+
+/**
+ * Call this at the top of any route that would UPDATE or DELETE an audit
+ * log row. It always throws -- there is no legitimate case where that
+ * should succeed -- turning the attempt into a strict, explicit 403
+ * instead of relying solely on the underlying Postgres trigger to fail
+ * the query.
+ */
+export function assertAppendOnlyOperation(operation: "UPDATE" | "DELETE"): never {
+  throw new AuditTrailImmutableError(operation);
+}
+
+// Backward-compatible alias -- existing call sites across the codebase use
+// `logAudit(...)`. Keep this thin wrapper so none of them need to change.
+export const logAudit = AuditLogService.record;

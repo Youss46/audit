@@ -8,6 +8,9 @@
 
 export * from './accountingSystem';
 export * from './auditLog';
+export * from './auditLogChangesPayload';
+export * from './auditLogChangesPayloadAfter';
+export * from './auditLogChangesPayloadBefore';
 export * from './authResponse';
 export * from './balanceDesComptesResult';
 export * from './balanceRow';

@@ -92,6 +92,26 @@ export interface UserUpdate {
   clientId?: number | null;
 }
 
+/**
+ * @nullable
+ */
+export type AuditLogChangesPayloadBefore = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type AuditLogChangesPayloadAfter = { [key: string]: unknown } | null;
+
+/**
+ * @nullable
+ */
+export type AuditLogChangesPayload = {
+  /** @nullable */
+  before?: AuditLogChangesPayloadBefore;
+  /** @nullable */
+  after?: AuditLogChangesPayloadAfter;
+} | null;
+
 export interface AuditLog {
   id: number;
   firmId: number;
@@ -109,6 +129,8 @@ export interface AuditLog {
   details?: string | null;
   /** @nullable */
   ipAddress?: string | null;
+  /** @nullable */
+  changesPayload?: AuditLogChangesPayload;
   createdAt: string;
 }
 
@@ -659,6 +681,12 @@ export interface ExportLiasseFiscaleResult {
 
 export type ListAuditLogsParams = {
 entityType?: string;
+action?: string;
+userRole?: string;
+/**
+ * Module M14 - when true, return only AI_OVERRIDE entries (Espace Cabinet compliance log highlight).
+ */
+aiOverrideOnly?: boolean;
 };
 
 export type ListClientsParams = {

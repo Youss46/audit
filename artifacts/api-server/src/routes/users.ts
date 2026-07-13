@@ -13,10 +13,14 @@ import {
 import { hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+import { auditInterceptor } from "../middlewares/audit-interceptor";
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+// Module M14: safety net for the "Users" critical module -- see
+// middlewares/audit-interceptor.ts.
+router.use(auditInterceptor("user"));
 
 function serializeUser(user: typeof usersTable.$inferSelect) {
   return {

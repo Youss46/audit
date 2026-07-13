@@ -191,7 +191,10 @@ export const DeleteUserResponse = zod.void()
  * @summary List the firm's audit trail (who did what, when)
  */
 export const ListAuditLogsQueryParams = zod.object({
-  "entityType": zod.coerce.string().optional()
+  "entityType": zod.coerce.string().optional(),
+  "action": zod.coerce.string().optional(),
+  "userRole": zod.coerce.string().optional(),
+  "aiOverrideOnly": zod.coerce.boolean().optional().describe('Module M14 - when true, return only AI_OVERRIDE entries (Espace Cabinet compliance log highlight).')
 })
 
 export const ListAuditLogsResponseItem = zod.object({
@@ -205,6 +208,10 @@ export const ListAuditLogsResponseItem = zod.object({
   "entityId": zod.string().nullish(),
   "details": zod.string().nullish(),
   "ipAddress": zod.string().nullish(),
+  "changesPayload": zod.object({
+  "before": zod.record(zod.string(), zod.unknown()).nullish(),
+  "after": zod.record(zod.string(), zod.unknown()).nullish()
+}).nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListAuditLogsResponse = zod.array(ListAuditLogsResponseItem)

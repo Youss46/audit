@@ -15,6 +15,7 @@ import {
   BookOpenCheck,
   Banknote,
   Gauge,
+  ShieldCheck,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -66,7 +67,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Espace PME (client_pme) accounts have their own dedicated portal and
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/cabinet/compliance"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -91,6 +92,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, user, location, setLocation])
 
+  // Module M14: the Journal de Conformité is a senior-accountant/admin
+  // surface -- collaborateur and stagiaire accounts see the general
+  // "/audit-log" instead, matching the backend's
+  // requireRole("expert_comptable") guard on GET /audit-logs.
+  React.useEffect(() => {
+    if (!isLoading && user && user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
+      setLocation(user.role === "client_pme" ? "/portal" : "/dashboard")
+    }
+  }, [isLoading, user, location, setLocation])
+
   // If on login/register, don't show the shell
   if (isPublicRoute) {
     return <>{children}</>
@@ -110,6 +121,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background" />
   }
   if (user.role !== "client_pme" && (location.startsWith("/mes-operations") || location.startsWith("/caisse") || location.startsWith("/pilotage"))) {
+    return <div className="min-h-screen bg-background" />
+  }
+  if (user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
     return <div className="min-h-screen bg-background" />
   }
 
@@ -228,6 +242,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Files className="h-5 w-5" />
             Journal d'Audit
           </Link>
+
+          {user?.role === "expert_comptable" && (
+            <Link href="/cabinet/compliance" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/cabinet/compliance")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-compliance">
+              <ShieldCheck className="h-5 w-5" />
+              Journal de Conformité
+            </Link>
+          )}
         </>
       )}
     </nav>
