@@ -40,9 +40,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Redirect away from login/register once already authenticated.
   React.useEffect(() => {
     if (!isLoading && user && isPublicRoute) {
-      setLocation("/dashboard")
+      setLocation(user.role === "client_pme" ? "/portal" : "/dashboard")
     }
   }, [isLoading, user, isPublicRoute, setLocation])
+
+  // Espace PME (client_pme) accounts have their own dedicated portal and
+  // must never reach the cabinet-facing screens (dashboard, client list,
+  // team, audit log) even if they navigate there directly by URL.
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/users", "/audit-log"]
+  React.useEffect(() => {
+    if (
+      !isLoading &&
+      user?.role === "client_pme" &&
+      (location === "/" || CABINET_ONLY_PREFIXES.some((p) => location.startsWith(p)))
+    ) {
+      setLocation("/portal")
+    }
+  }, [isLoading, user, location, setLocation])
 
   // If on login/register, don't show the shell
   if (isPublicRoute) {
@@ -56,8 +70,27 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background" />
   }
 
+  // Same reasoning while the Espace PME redirect above is about to fire —
+  // don't flash cabinet-only pages/data to a client_pme user.
+  const isCabinetOnlyRoute = location === "/" || CABINET_ONLY_PREFIXES.some((p) => location.startsWith(p))
+  if (user.role === "client_pme" && isCabinetOnlyRoute) {
+    return <div className="min-h-screen bg-background" />
+  }
+
   const NavItems = () => (
     <nav className="space-y-1 mt-6 px-3" data-testid="nav-menu">
+      {user?.role === 'client_pme' ? (
+        <Link href="/portal" className={cn(
+          "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+          location.startsWith("/portal")
+            ? "bg-primary text-primary-foreground"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+        )} data-testid="link-portal">
+          <Building2 className="h-5 w-5" />
+          Espace PME
+        </Link>
+      ) : (
+        <>
       <Link href="/dashboard" className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
         location === "/dashboard" 
@@ -78,9 +111,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         Dossiers Clients
       </Link>
       
-      {/* Hide users & audit log from clients */}
-      {user?.role !== 'client_pme' && (
-        <>
           <Link href="/users" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
             location.startsWith("/users") 

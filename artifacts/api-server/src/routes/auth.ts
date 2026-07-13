@@ -22,6 +22,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     fullName: user.fullName,
     role: user.role,
     status: user.status,
+    clientId: user.clientId ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -34,7 +35,7 @@ router.post("/auth/register", async (req, res) => {
     where: eq(usersTable.email, body.email),
   });
   if (existing) {
-    res.status(409).json({ message: "Cet email est déjà utilisé." });
+    res.status(409).json({ error: "Cet email est déjà utilisé." });
     return;
   }
 
@@ -72,6 +73,7 @@ router.post("/auth/register", async (req, res) => {
     role: user.role,
     email: user.email,
     fullName: user.fullName,
+    clientId: user.clientId,
   });
 
   res.status(201).json(
@@ -87,13 +89,13 @@ router.post("/auth/login", async (req, res) => {
     where: eq(usersTable.email, body.email),
   });
   if (!user || user.status === "disabled") {
-    res.status(401).json({ message: "Email ou mot de passe incorrect." });
+    res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
   const valid = await comparePassword(body.password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ message: "Email ou mot de passe incorrect." });
+    res.status(401).json({ error: "Email ou mot de passe incorrect." });
     return;
   }
 
@@ -112,6 +114,7 @@ router.post("/auth/login", async (req, res) => {
     role: user.role,
     email: user.email,
     fullName: user.fullName,
+    clientId: user.clientId,
   });
 
   res.json(LoginResponse.parse({ token, user: serializeUser(user) }));
@@ -122,7 +125,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     where: eq(usersTable.id, req.user!.id),
   });
   if (!user) {
-    res.status(404).json({ message: "Utilisateur introuvable." });
+    res.status(404).json({ error: "Utilisateur introuvable." });
     return;
   }
   res.json(GetCurrentUserResponse.parse(serializeUser(user)));

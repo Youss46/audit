@@ -46,6 +46,7 @@ export const RegisterResponse = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 })
@@ -72,6 +73,7 @@ export const LoginResponse = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 })
@@ -87,6 +89,7 @@ export const GetCurrentUserResponse = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 
@@ -101,6 +104,7 @@ export const ListUsersResponseItem = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -121,7 +125,8 @@ export const CreateUserBody = zod.object({
   "email": zod.string().min(createUserBodyEmailMin),
   "fullName": zod.string().min(createUserBodyFullNameMin),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
-  "password": zod.string().min(createUserBodyPasswordMin)
+  "password": zod.string().min(createUserBodyPasswordMin),
+  "clientId": zod.number().optional().describe('Required when role is client_pme; links the portal account to its client dossier.')
 })
 
 export const CreateUserResponse = zod.object({
@@ -131,6 +136,7 @@ export const CreateUserResponse = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 
@@ -149,7 +155,8 @@ export const updateUserBodyFullNameMin = 2;
 export const UpdateUserBody = zod.object({
   "fullName": zod.string().min(updateUserBodyFullNameMin).optional(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']).optional(),
-  "status": zod.enum(['active', 'invited', 'disabled']).optional()
+  "status": zod.enum(['active', 'invited', 'disabled']).optional(),
+  "clientId": zod.number().nullish()
 })
 
 export const UpdateUserResponse = zod.object({
@@ -159,6 +166,7 @@ export const UpdateUserResponse = zod.object({
   "fullName": zod.string(),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
   "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
   "createdAt": zod.coerce.date()
 })
 

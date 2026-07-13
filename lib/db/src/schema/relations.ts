@@ -14,12 +14,14 @@ export const firmsRelations = relations(firmsTable, ({ many }) => ({
 
 export const usersRelations = relations(usersTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [usersTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [usersTable.clientId], references: [clientsTable.id] }),
 }));
 
 export const clientsRelations = relations(clientsTable, ({ one, many }) => ({
   firm: one(firmsTable, { fields: [clientsTable.firmId], references: [firmsTable.id] }),
   missions: many(missionsTable),
   documents: many(documentsTable),
+  portalUsers: many(usersTable),
 }));
 
 export const missionsRelations = relations(missionsTable, ({ one, many }) => ({

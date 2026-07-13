@@ -17,6 +17,9 @@ export interface AuthTokenPayload {
   role: UserRole;
   email: string;
   fullName: string;
+  // Only present for "client_pme" accounts: scopes the Espace PME portal
+  // session to a single client dossier (module P2).
+  clientId?: number | null;
 }
 
 export async function hashPassword(password: string): Promise<string> {

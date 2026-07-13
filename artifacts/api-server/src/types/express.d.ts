@@ -11,6 +11,7 @@ declare global {
         role: UserRole;
         email: string;
         fullName: string;
+        clientId?: number | null;
       };
     }
   }

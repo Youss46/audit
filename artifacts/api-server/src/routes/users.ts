@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, usersTable } from "@workspace/db";
+import { db, usersTable, clientsTable } from "@workspace/db";
 import {
   ListUsersResponse,
   CreateUserBody,
@@ -26,6 +26,7 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     fullName: user.fullName,
     role: user.role,
     status: user.status,
+    clientId: user.clientId ?? null,
     createdAt: user.createdAt,
   };
 }
@@ -45,8 +46,26 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     where: eq(usersTable.email, body.email),
   });
   if (existing) {
-    res.status(409).json({ message: "Cet email est déjà utilisé." });
+    res.status(409).json({ error: "Cet email est déjà utilisé." });
     return;
+  }
+
+  // An Espace PME (client_pme) account must be bound to exactly one client
+  // dossier in this firm -- that's how portal access is scoped.
+  if (body.role === "client_pme") {
+    if (!body.clientId) {
+      res.status(400).json({
+        error: "Un compte Espace PME doit être associé à un dossier client.",
+      });
+      return;
+    }
+    const client = await db.query.clientsTable.findFirst({
+      where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
+    });
+    if (!client) {
+      res.status(404).json({ error: "Client introuvable." });
+      return;
+    }
   }
 
   const passwordHash = await hashPassword(body.password);
@@ -58,6 +77,7 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
       passwordHash,
       fullName: body.fullName,
       role: body.role,
+      clientId: body.role === "client_pme" ? body.clientId : null,
       status: "invited",
     })
     .returning();
@@ -86,8 +106,18 @@ router.patch(
       where: and(eq(usersTable.id, id), eq(usersTable.firmId, req.user!.firmId)),
     });
     if (!existing) {
-      res.status(404).json({ message: "Utilisateur introuvable." });
+      res.status(404).json({ error: "Utilisateur introuvable." });
       return;
+    }
+
+    if (body.clientId) {
+      const client = await db.query.clientsTable.findFirst({
+        where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
+      });
+      if (!client) {
+        res.status(404).json({ error: "Client introuvable." });
+        return;
+      }
     }
 
     const [updated] = await db
@@ -119,7 +149,7 @@ router.delete(
       where: and(eq(usersTable.id, id), eq(usersTable.firmId, req.user!.firmId)),
     });
     if (!existing) {
-      res.status(404).json({ message: "Utilisateur introuvable." });
+      res.status(404).json({ error: "Utilisateur introuvable." });
       return;
     }
 

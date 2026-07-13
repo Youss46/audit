@@ -22,7 +22,7 @@ import {
   UpdateMissionChecklistItemBody,
   UpdateMissionChecklistItemResponse,
 } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { logAudit } from "../lib/audit";
 import {
   assertValidMissionTransition,
@@ -92,8 +92,18 @@ async function syncMissionAnomalyState(mission: typeof missionsTable.$inferSelec
 router.get("/missions", async (req, res) => {
   const { clientId, status } = ListMissionsQueryParams.parse(req.query);
 
+  // Espace PME (client_pme) accounts only ever see missions for their own
+  // client dossier, regardless of what clientId was requested.
+  if (req.user!.role === "client_pme") {
+    if (!req.user!.clientId || (clientId && clientId !== req.user!.clientId)) {
+      res.json(ListMissionsResponse.parse([]));
+      return;
+    }
+  }
+  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+
   const conditions = [eq(missionsTable.firmId, req.user!.firmId)];
-  if (clientId) conditions.push(eq(missionsTable.clientId, clientId));
+  if (effectiveClientId) conditions.push(eq(missionsTable.clientId, effectiveClientId));
   if (status) conditions.push(eq(missionsTable.status, status));
 
   const missions = await db.query.missionsTable.findMany({
@@ -112,7 +122,10 @@ router.get("/missions", async (req, res) => {
 // Opens a new visa mission: auto-determines the SYSCOHADA accounting system
 // from the client's sector/turnover and generates the matching control
 // checklist (module M4/P2).
-router.post("/missions", async (req, res) => {
+router.post(
+  "/missions",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
   const body = CreateMissionBody.parse(req.body);
 
   const client = await db.query.clientsTable.findFirst({
@@ -183,6 +196,7 @@ router.get("/missions/:id", async (req, res) => {
     res.status(404).json({ error: "Mission introuvable." });
     return;
   }
+  if (!requireOwnClient(req, res, mission.clientId)) return;
 
   const checklist = await db.query.checklistItemsTable.findMany({
     where: eq(checklistItemsTable.missionId, id),
@@ -193,7 +207,10 @@ router.get("/missions/:id", async (req, res) => {
   res.json(GetMissionResponse.parse({ ...counts, checklist }));
 });
 
-router.patch("/missions/:id", async (req, res) => {
+router.patch(
+  "/missions/:id",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
   const { id } = UpdateMissionParams.parse(req.params);
   const body = UpdateMissionBody.parse(req.body);
 
@@ -271,6 +288,7 @@ router.get("/missions/:id/checklist", async (req, res) => {
     res.status(404).json({ error: "Mission introuvable." });
     return;
   }
+  if (!requireOwnClient(req, res, mission.clientId)) return;
 
   const items = await db.query.checklistItemsTable.findMany({
     where: eq(checklistItemsTable.missionId, id),
@@ -280,7 +298,10 @@ router.get("/missions/:id/checklist", async (req, res) => {
   res.json(ListMissionChecklistItemsResponse.parse(items));
 });
 
-router.patch("/missions/:id/checklist/:itemId", async (req, res) => {
+router.patch(
+  "/missions/:id/checklist/:itemId",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
   const { id, itemId } = UpdateMissionChecklistItemParams.parse(req.params);
   const body = UpdateMissionChecklistItemBody.parse(req.body);
 

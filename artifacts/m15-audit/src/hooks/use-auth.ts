@@ -32,7 +32,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation("/dashboard");
+        setLocation(data.user.role === "client_pme" ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({
@@ -49,7 +49,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation("/dashboard");
+        setLocation(data.user.role === "client_pme" ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({

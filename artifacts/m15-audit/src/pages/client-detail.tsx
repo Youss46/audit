@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useState, useRef, type ReactNode } from "react"
 import { useRoute, Link } from "wouter"
 import { 
   useGetClient, 
@@ -110,6 +110,105 @@ function bytesToSize(bytes: number) {
   if (bytes === 0) return '0 Byte'
   const i = parseInt(Math.floor(Math.log(bytes) / Math.log(1024)).toString())
   return Math.round(bytes / Math.pow(1024, i)) + ' ' + sizes[i]
+}
+
+type DocumentRow = {
+  id: number
+  fileName: string
+  category: string
+  fileSize: number
+  createdAt: string
+  uploadedByName?: string | null
+}
+
+// Module M6 (GED): a single folder card in the document tree. Highlights
+// files that arrived through the Espace PME client portal (module P2) so
+// the cabinet can spot new client submissions at a glance.
+function DocumentFolder({
+  title,
+  description,
+  docs,
+  canDelete,
+  onDelete,
+  onDownload,
+  action,
+}: {
+  title: string
+  description: string
+  docs: DocumentRow[]
+  canDelete: boolean
+  onDelete: (id: number) => void
+  onDownload: () => void
+  action?: ReactNode
+}) {
+  return (
+    <div className="rounded-lg border">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/30 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+          <div>
+            <p className="text-sm font-semibold">{title}</p>
+            <p className="text-xs text-muted-foreground">{description}</p>
+          </div>
+        </div>
+        {action}
+      </div>
+      {docs.length === 0 ? (
+        <p className="px-4 py-4 text-sm text-muted-foreground">Aucun document dans ce dossier.</p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nom du fichier</TableHead>
+              <TableHead>Catégorie</TableHead>
+              <TableHead>Taille</TableHead>
+              <TableHead>Ajouté le</TableHead>
+              <TableHead>Par</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {docs.map((doc) => (
+              <TableRow key={doc.id}>
+                <TableCell className="font-medium flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="truncate max-w-[200px] block" title={doc.fileName}>{doc.fileName}</span>
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={doc.category === "Procédure de Visa" ? "default" : "secondary"}
+                    className="font-normal"
+                  >
+                    {doc.category}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">{bytesToSize(doc.fileSize)}</TableCell>
+                <TableCell className="text-muted-foreground text-xs">{formatDateTime(doc.createdAt)}</TableCell>
+                <TableCell className="text-sm">{doc.uploadedByName || '-'}</TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="icon" title="Ouvrir / Télécharger (Simulation)" onClick={onDownload}>
+                      <Download className="h-4 w-4" />
+                    </Button>
+                    {canDelete && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => onDelete(doc.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  )
 }
 
 export default function ClientDetail() {
@@ -258,6 +357,23 @@ export default function ClientDetail() {
   const latestVisaMission = missions
     ?.filter((m) => m.status === 'visa_emis' && m.visaStampCode)
     .sort((a, b) => b.fiscalYear - a.fiscalYear)[0]
+
+  // Module M6 (GED): group the flat document list into a folder tree so the
+  // cabinet can navigate "Permanents" vs. per-exercise documents, and spot
+  // at a glance what the client uploaded through the Espace PME portal.
+  const missionById = new Map((missions ?? []).map((m) => [m.id, m]))
+  const permanentDocs = (documents ?? []).filter((d) => d.missionId == null)
+  const docsByMission = new Map<number, typeof documents>()
+  for (const doc of documents ?? []) {
+    if (doc.missionId == null) continue
+    const list = docsByMission.get(doc.missionId) ?? []
+    list.push(doc)
+    docsByMission.set(doc.missionId, list as any)
+  }
+  const missionFolders = (missions ?? [])
+    .slice()
+    .sort((a, b) => b.fiscalYear - a.fiscalYear)
+    .map((m) => ({ mission: m, docs: docsByMission.get(m.id) ?? [] }))
 
   if (isClientLoading) {
     return <div className="h-[50vh] flex items-center justify-center">
@@ -615,7 +731,7 @@ export default function ClientDetail() {
                 </DialogContent>
               </Dialog>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
               {isDocsLoading ? (
                 <div className="py-8 text-center text-muted-foreground">Chargement des documents...</div>
               ) : !documents || documents.length === 0 ? (
@@ -628,53 +744,34 @@ export default function ClientDetail() {
                   </Button>
                 </div>
               ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nom du fichier</TableHead>
-                      <TableHead>Catégorie</TableHead>
-                      <TableHead>Taille</TableHead>
-                      <TableHead>Ajouté le</TableHead>
-                      <TableHead>Par</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {documents.map((doc) => (
-                      <TableRow key={doc.id}>
-                        <TableCell className="font-medium flex items-center gap-2">
-                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="truncate max-w-[200px] block" title={doc.fileName}>{doc.fileName}</span>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="secondary" className="font-normal">{doc.category}</Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{bytesToSize(doc.fileSize)}</TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{formatDateTime(doc.createdAt)}</TableCell>
-                        <TableCell className="text-sm">{doc.uploadedByName || '-'}</TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex justify-end gap-2">
-                            <Button variant="ghost" size="icon" title="Ouvrir / Télécharger (Simulation)" onClick={() => {
-                              toast({ description: "Fonction de téléchargement simulée." })
-                            }}>
-                              <Download className="h-4 w-4" />
-                            </Button>
-                            {user?.role !== 'client_pme' && (
-                              <Button 
-                                variant="ghost" 
-                                size="icon" 
-                                className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                                onClick={() => setDocToDelete(doc.id)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                <>
+                  <DocumentFolder
+                    title="Permanents"
+                    description="Documents rattachés au dossier client, hors exercice."
+                    docs={permanentDocs}
+                    canDelete={user?.role !== 'client_pme'}
+                    onDelete={setDocToDelete}
+                    onDownload={() => toast({ description: "Fonction de téléchargement simulée." })}
+                  />
+                  {missionFolders.map(({ mission, docs }) => (
+                    <DocumentFolder
+                      key={mission.id}
+                      title={`Exercice ${mission.fiscalYear}`}
+                      description={`Mission ${getStatusLabel(mission.status).toLowerCase()} — système ${mission.accountingSystem}.`}
+                      docs={docs ?? []}
+                      canDelete={user?.role !== 'client_pme'}
+                      onDelete={setDocToDelete}
+                      onDownload={() => toast({ description: "Fonction de téléchargement simulée." })}
+                      action={
+                        <Link href={`/clients/${clientId}/missions/${mission.id}`}>
+                          <Button variant="outline" size="sm">
+                            <Stamp className="mr-2 h-4 w-4" /> Voir la checklist visa
+                          </Button>
+                        </Link>
+                      }
+                    />
+                  ))}
+                </>
               )}
             </CardContent>
           </Card>

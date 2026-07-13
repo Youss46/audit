@@ -39,6 +39,11 @@ export interface User {
   fullName: string;
   role: UserRole;
   status: UserStatus;
+  /**
+     * Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+     * @nullable
+     */
+  clientId?: number | null;
   createdAt: string;
 }
 
@@ -72,6 +77,8 @@ export interface UserInput {
   role: UserRole;
   /** @minLength 8 */
   password: string;
+  /** Required when role is client_pme; links the portal account to its client dossier. */
+  clientId?: number;
 }
 
 export interface UserUpdate {
@@ -79,6 +86,8 @@ export interface UserUpdate {
   fullName?: string;
   role?: UserRole;
   status?: UserStatus;
+  /** @nullable */
+  clientId?: number | null;
 }
 
 export interface AuditLog {

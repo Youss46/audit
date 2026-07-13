@@ -13,7 +13,7 @@ import {
   UpdateClientResponse,
   DeleteClientParams,
 } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { logAudit } from "../lib/audit";
 import { determineAccountingSystem } from "../lib/visa-engine";
 
@@ -24,20 +24,28 @@ router.use(requireAuth);
 router.get("/clients", async (req, res) => {
   const { missionStatus } = ListClientsQueryParams.parse(req.query);
 
+  // Espace PME (client_pme) accounts only ever see their own dossier.
+  if (req.user!.role === "client_pme") {
+    if (!req.user!.clientId) {
+      res.json(ListClientsResponse.parse([]));
+      return;
+    }
+    if (!requireOwnClient(req, res, req.user!.clientId)) return;
+  }
+
+  const conditions = [eq(clientsTable.firmId, req.user!.firmId)];
+  if (missionStatus) conditions.push(eq(clientsTable.missionStatus, missionStatus));
+  if (req.user!.role === "client_pme") conditions.push(eq(clientsTable.id, req.user!.clientId!));
+
   const clients = await db.query.clientsTable.findMany({
-    where: missionStatus
-      ? and(
-          eq(clientsTable.firmId, req.user!.firmId),
-          eq(clientsTable.missionStatus, missionStatus),
-        )
-      : eq(clientsTable.firmId, req.user!.firmId),
+    where: and(...conditions),
     orderBy: (t, { asc }) => [asc(t.name)],
   });
 
   res.json(ListClientsResponse.parse(clients));
 });
 
-router.post("/clients", async (req, res) => {
+router.post("/clients", requireRole("expert_comptable", "collaborateur", "stagiaire"), async (req, res) => {
   const body = CreateClientBody.parse(req.body);
 
   // Compute the applicable SYSCOHADA system immediately if the turnover is
@@ -67,6 +75,7 @@ router.post("/clients", async (req, res) => {
 
 router.get("/clients/:id", async (req, res) => {
   const { id } = GetClientParams.parse(req.params);
+  if (!requireOwnClient(req, res, id)) return;
 
   const client = await db.query.clientsTable.findFirst({
     where: and(eq(clientsTable.id, id), eq(clientsTable.firmId, req.user!.firmId)),
@@ -79,7 +88,10 @@ router.get("/clients/:id", async (req, res) => {
   res.json(GetClientResponse.parse(client));
 });
 
-router.patch("/clients/:id", async (req, res) => {
+router.patch(
+  "/clients/:id",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
   const { id } = UpdateClientParams.parse(req.params);
   const body = UpdateClientBody.parse(req.body);
 
@@ -118,7 +130,10 @@ router.patch("/clients/:id", async (req, res) => {
   res.json(UpdateClientResponse.parse(updated));
 });
 
-router.delete("/clients/:id", async (req, res) => {
+router.delete(
+  "/clients/:id",
+  requireRole("expert_comptable", "collaborateur"),
+  async (req, res) => {
   const { id } = DeleteClientParams.parse(req.params);
 
   const existing = await db.query.clientsTable.findFirst({

@@ -10,6 +10,7 @@ import {
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { firmsTable } from "./firms";
+import { clientsTable } from "./clients";
 
 // RBAC roles for module M9 (Administration & Auth).
 export const USER_ROLES = [
@@ -30,6 +31,12 @@ export const usersTable = pgTable(
     firmId: integer("firm_id")
       .notNull()
       .references(() => firmsTable.id, { onDelete: "cascade" }),
+    // Only set for the "client_pme" role: scopes an Espace PME portal
+    // account to a single client dossier so it can never see another
+    // client's missions/documents within the same firm.
+    clientId: integer("client_id").references(() => clientsTable.id, {
+      onDelete: "cascade",
+    }),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
     fullName: text("full_name").notNull(),

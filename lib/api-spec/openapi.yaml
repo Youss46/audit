@@ -645,6 +645,9 @@ components:
           $ref: "#/components/schemas/UserRole"
         status:
           $ref: "#/components/schemas/UserStatus"
+        clientId:
+          type: ["integer", "null"]
+          description: Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
         createdAt: { type: string, format: date-time }
 
     RegisterInput:
@@ -680,6 +683,9 @@ components:
         role:
           $ref: "#/components/schemas/UserRole"
         password: { type: string, minLength: 8 }
+        clientId:
+          type: integer
+          description: Required when role is client_pme; links the portal account to its client dossier.
 
     UserUpdate:
       type: object
@@ -689,6 +695,8 @@ components:
           $ref: "#/components/schemas/UserRole"
         status:
           $ref: "#/components/schemas/UserStatus"
+        clientId:
+          type: ["integer", "null"]
 
     AuditLog:
       type: object

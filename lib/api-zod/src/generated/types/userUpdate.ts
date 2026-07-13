@@ -13,4 +13,6 @@ export interface UserUpdate {
   fullName?: string;
   role?: UserRole;
   status?: UserStatus;
+  /** @nullable */
+  clientId?: number | null;
 }

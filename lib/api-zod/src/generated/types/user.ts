@@ -15,5 +15,10 @@ export interface User {
   fullName: string;
   role: UserRole;
   status: UserStatus;
+  /**
+     * Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+     * @nullable
+     */
+  clientId?: number | null;
   createdAt: Date;
 }

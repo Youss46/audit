@@ -15,4 +15,6 @@ export interface UserInput {
   role: UserRole;
   /** @minLength 8 */
   password: string;
+  /** Required when role is client_pme; links the portal account to its client dossier. */
+  clientId?: number;
 }
