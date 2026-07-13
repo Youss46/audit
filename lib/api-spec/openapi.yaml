@@ -38,6 +38,8 @@ tags:
     description: Ivorian payroll (M20) - CNPS, IS, CN, ITS and aggregated ledger posting
   - name: tax
     description: Télédéclaration TVA (M21) - Formulaire D-201/VA computation, deductible-VAT annex (État Annexé), and liquidation posting
+  - name: cabinet-analytics
+    description: Cabinet internal operations (M22) - collaborator timesheets, cost/billing rates, client forfait contracts, and per-client profitability reporting
 paths:
   /healthz:
     get:
@@ -2014,6 +2016,269 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/rates:
+    get:
+      operationId: listUserRates
+      tags: [cabinet-analytics]
+      summary: List cost/billing hourly rates for every cabinet collaborator (M22)
+      responses:
+        "200":
+          description: List of collaborator rates
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CabinetUserRate"
+
+  /cabinet-analytics/rates/{userId}:
+    put:
+      operationId: upsertUserRate
+      tags: [cabinet-analytics]
+      summary: Set (create or update) a collaborator's cost/billing hourly rates (M22)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserRateInput"
+      responses:
+        "200":
+          description: Rate saved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CabinetUserRate"
+        "404":
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/contracts:
+    get:
+      operationId: listClientContracts
+      tags: [cabinet-analytics]
+      summary: List client forfait (monthly flat-fee) contracts (M22)
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of contracts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ClientContract"
+    post:
+      operationId: createClientContract
+      tags: [cabinet-analytics]
+      summary: Create a new forfait contract for a client (M22)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientContractInput"
+      responses:
+        "201":
+          description: Contract created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientContract"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/contracts/{id}:
+    patch:
+      operationId: updateClientContract
+      tags: [cabinet-analytics]
+      summary: Update a client's forfait contract (M22)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ClientContractUpdate"
+      responses:
+        "200":
+          description: Contract updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ClientContract"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteClientContract
+      tags: [cabinet-analytics]
+      summary: Delete a client's forfait contract (M22)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/timesheet-entries:
+    get:
+      operationId: listTimesheetEntries
+      tags: [cabinet-analytics]
+      summary: List timesheet entries (own entries only, unless expert_comptable) (M22)
+      parameters:
+        - name: userId
+          in: query
+          required: false
+          description: Only honored for expert_comptable callers; others always see their own entries.
+          schema: { type: integer }
+        - name: clientId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: dateFrom
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+        - name: dateTo
+          in: query
+          required: false
+          schema: { type: string, format: date-time }
+      responses:
+        "200":
+          description: List of timesheet entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/TimesheetEntry"
+    post:
+      operationId: createTimesheetEntry
+      tags: [cabinet-analytics]
+      summary: Log a new timesheet entry for the current user (M22)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimesheetEntryInput"
+      responses:
+        "201":
+          description: Entry created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimesheetEntry"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/timesheet-entries/{id}:
+    patch:
+      operationId: updateTimesheetEntry
+      tags: [cabinet-analytics]
+      summary: Update a timesheet entry (own entries only, unless expert_comptable) (M22)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TimesheetEntryUpdate"
+      responses:
+        "200":
+          description: Entry updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TimesheetEntry"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteTimesheetEntry
+      tags: [cabinet-analytics]
+      summary: Delete a timesheet entry (own entries only, unless expert_comptable) (M22)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/profitability/{year}/{month}:
+    get:
+      operationId: getProfitabilityReport
+      tags: [cabinet-analytics]
+      summary: Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
+      parameters:
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: month
+          in: path
+          required: true
+          schema: { type: integer }
+          description: 1-12
+      responses:
+        "200":
+          description: Profitability report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProfitabilityReport"
 
 components:
   schemas:

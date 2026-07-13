@@ -13,6 +13,7 @@ import { financialAssetsLoansTable } from "./financial-assets-loans";
 import { fiscalYearClosingsTable } from "./closing";
 import { employeesTable, payslipsTable } from "./payroll";
 import { vatDeclarationsTable } from "./vat";
+import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } from "./cabinet-ops";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -217,5 +218,28 @@ export const vatDeclarationsRelations = relations(vatDeclarationsTable, ({ one }
   createdBy: one(usersTable, {
     fields: [vatDeclarationsTable.createdById],
     references: [usersTable.id],
+  }),
+}));
+
+// Module M22 (Cabinet Internal Operations, Timesheet & Client Profitability).
+export const cabinetUserRatesRelations = relations(cabinetUserRatesTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [cabinetUserRatesTable.firmId], references: [firmsTable.id] }),
+  user: one(usersTable, { fields: [cabinetUserRatesTable.userId], references: [usersTable.id] }),
+}));
+
+export const clientContractsRelations = relations(clientContractsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [clientContractsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, {
+    fields: [clientContractsTable.clientId],
+    references: [clientsTable.id],
+  }),
+}));
+
+export const timesheetEntriesRelations = relations(timesheetEntriesTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [timesheetEntriesTable.firmId], references: [firmsTable.id] }),
+  user: one(usersTable, { fields: [timesheetEntriesTable.userId], references: [usersTable.id] }),
+  client: one(clientsTable, {
+    fields: [timesheetEntriesTable.clientId],
+    references: [clientsTable.id],
   }),
 }));
