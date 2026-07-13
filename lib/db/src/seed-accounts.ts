@@ -10,12 +10,17 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "106", name: "Réserves", accountClass: 1 },
   { accountNumber: "120", name: "Résultat net de l'exercice", accountClass: 1 },
   { accountNumber: "162", name: "Emprunts auprès des établissements de crédit", accountClass: 1 },
+  // Module M18 (Immobilisations Financières & Emprunts).
+  { accountNumber: "161", name: "Emprunts auprès des établissements de crédit", accountClass: 1 },
 
   // Classe 2 - Comptes d'actif immobilisé
   { accountNumber: "211", name: "Frais de développement", accountClass: 2 },
   { accountNumber: "231", name: "Bâtiments", accountClass: 2 },
   { accountNumber: "244", name: "Matériel et mobilier", accountClass: 2 },
   { accountNumber: "245", name: "Matériel de transport", accountClass: 2 },
+  // Module M18 (Immobilisations Financières & Emprunts).
+  { accountNumber: "274", name: "Prêts au personnel", accountClass: 2 },
+  { accountNumber: "275", name: "Dépôts et cautionnements versés", accountClass: 2 },
 
   // Classe 3 - Comptes de stocks
   { accountNumber: "311", name: "Marchandises", accountClass: 3 },
@@ -49,12 +54,16 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "658", name: "Charges diverses", accountClass: 6 },
   { accountNumber: "661", name: "Appointements, salaires et commissions", accountClass: 6 },
   { accountNumber: "681", name: "Dotations aux amortissements", accountClass: 6 },
+  // Module M18 (Immobilisations Financières & Emprunts).
+  { accountNumber: "671", name: "Intérêts des emprunts", accountClass: 6 },
 
   // Classe 7 - Comptes de produits
   { accountNumber: "701", name: "Ventes de marchandises", accountClass: 7 },
   { accountNumber: "706", name: "Services vendus", accountClass: 7 },
   { accountNumber: "758", name: "Produits divers", accountClass: 7 },
   { accountNumber: "781", name: "Reprises d'amortissements", accountClass: 7 },
+  // Module M18 (Immobilisations Financières & Emprunts).
+  { accountNumber: "771", name: "Intérêts des prêts", accountClass: 7 },
 
   // Classe 8 - Comptes des autres charges et produits
   { accountNumber: "831", name: "Charges HAO", accountClass: 8 },

@@ -1668,3 +1668,206 @@ export const GenerateDepreciationClosingsResponse = zod.object({
 })
 
 
+/**
+ * @summary List financial assets & loans for a client with computed schedule columns (M18)
+ */
+export const ListFinancialItemsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']).optional()
+})
+
+export const ListFinancialItemsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListFinancialItemsResponse = zod.array(ListFinancialItemsResponseItem)
+
+
+/**
+ * @summary Register a new loan or financial asset (M18)
+ */
+
+
+
+export const createFinancialItemBodyAnnualInterestRateMin = 0;
+
+export const createFinancialItemBodyTermMonthsMax = 600;
+
+
+
+export const CreateFinancialItemBody = zod.object({
+  "clientId": zod.number(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string().min(1),
+  "label": zod.string().min(1),
+  "principalAmount": zod.number().min(1),
+  "annualInterestRate": zod.number().min(createFinancialItemBodyAnnualInterestRateMin).optional(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number().min(1).max(createFinancialItemBodyTermMonthsMax),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL'])
+})
+
+export const CreateFinancialItemResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a single financial asset or loan (M18)
+ */
+export const GetFinancialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFinancialItemResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a financial item's status or label (M18)
+ */
+export const UpdateFinancialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const UpdateFinancialItemBody = zod.object({
+  "status": zod.enum(['ACTIF', 'SOLDE']).optional(),
+  "label": zod.string().min(1).optional()
+})
+
+export const UpdateFinancialItemResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get the full tableau d'amortissement for a loan or financial asset (M18)
+ */
+export const GetFinancialItemScheduleParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetFinancialItemScheduleResponse = zod.object({
+  "itemId": zod.number(),
+  "rows": zod.array(zod.object({
+  "installmentNumber": zod.number(),
+  "dueDate": zod.coerce.date(),
+  "annuity": zod.number(),
+  "interestAmount": zod.number(),
+  "principalAmount": zod.number(),
+  "remainingCapital": zod.number(),
+  "posted": zod.boolean()
+}))
+})
+
+
+/**
+ * @summary Book journal entries for every due, unposted installment across a client's active loans & financial assets (M18)
+ */
+export const GenerateFinanceJournalEntriesParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const GenerateFinanceJournalEntriesResponse = zod.object({
+  "clientId": zod.number(),
+  "generated": zod.array(zod.object({
+  "itemId": zod.number(),
+  "itemLabel": zod.string(),
+  "installmentsGenerated": zod.number(),
+  "transactionIds": zod.array(zod.number())
+})),
+  "skipped": zod.array(zod.object({
+  "itemId": zod.number(),
+  "itemLabel": zod.string(),
+  "reason": zod.string()
+}))
+})
+
+

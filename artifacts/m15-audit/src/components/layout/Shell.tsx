@@ -17,6 +17,7 @@ import {
   Gauge,
   ShieldCheck,
   Layers,
+  Landmark,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -68,7 +69,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Espace PME (client_pme) accounts have their own dedicated portal and
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/cabinet/client", "/cabinet/compliance"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/cabinet/client", "/cabinet/compliance"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -226,12 +227,22 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       <Link href="/immobilisations" className={cn(
         "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        (location.startsWith("/immobilisations") || location.startsWith("/cabinet/client"))
+        (location.startsWith("/immobilisations") || (location.startsWith("/cabinet/client") && location.includes("/immobilisations")))
           ? "bg-primary text-primary-foreground"
           : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
       )} data-testid="link-immobilisations">
         <Layers className="h-5 w-5" />
         Immobilisations
+      </Link>
+
+      <Link href="/financements" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        (location.startsWith("/financements") || (location.startsWith("/cabinet/client") && location.includes("/finance")))
+          ? "bg-primary text-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-financements">
+        <Landmark className="h-5 w-5" />
+        Financements &amp; Dettes
       </Link>
       
           <Link href="/users" className={cn(

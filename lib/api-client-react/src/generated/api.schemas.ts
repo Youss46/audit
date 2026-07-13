@@ -806,6 +806,120 @@ export interface GenerateClosingsResult {
   skipped: GenerateClosingsResultSkippedItem[];
 }
 
+export type FinancialItemType = typeof FinancialItemType[keyof typeof FinancialItemType];
+
+
+export const FinancialItemType = {
+  IMMOBILISATION_FINANCIERE: 'IMMOBILISATION_FINANCIERE',
+  EMPRUNT_BANCAIRE: 'EMPRUNT_BANCAIRE',
+} as const;
+
+export type PaymentFrequency = typeof PaymentFrequency[keyof typeof PaymentFrequency];
+
+
+export const PaymentFrequency = {
+  MENSUEL: 'MENSUEL',
+  TRIMESTRIEL: 'TRIMESTRIEL',
+  ANNUEL: 'ANNUEL',
+} as const;
+
+export type FinancialItemStatus = typeof FinancialItemStatus[keyof typeof FinancialItemStatus];
+
+
+export const FinancialItemStatus = {
+  ACTIF: 'ACTIF',
+  SOLDE: 'SOLDE',
+} as const;
+
+export interface FinancialItem {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  type: FinancialItemType;
+  accountNumber: string;
+  label: string;
+  principalAmount: number;
+  annualInterestRate: number;
+  startDate: string;
+  termMonths: number;
+  paymentFrequency: PaymentFrequency;
+  status: FinancialItemStatus;
+  installmentsPosted: number;
+  totalInstallments: number;
+  remainingCapital: number;
+  totalInterest: number;
+  /** @nullable */
+  nextDueDate?: string | null;
+  /** @nullable */
+  nextInstallmentNumber?: number | null;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FinancialItemInput {
+  clientId: number;
+  type: FinancialItemType;
+  /** @minLength 1 */
+  accountNumber: string;
+  /** @minLength 1 */
+  label: string;
+  /** @minimum 1 */
+  principalAmount: number;
+  /** @minimum 0 */
+  annualInterestRate?: number;
+  startDate: string;
+  /**
+     * @minimum 1
+     * @maximum 600
+     */
+  termMonths: number;
+  paymentFrequency: PaymentFrequency;
+}
+
+export interface FinancialItemUpdate {
+  status?: FinancialItemStatus;
+  /** @minLength 1 */
+  label?: string;
+}
+
+export interface AmortizationRow {
+  installmentNumber: number;
+  dueDate: string;
+  annuity: number;
+  interestAmount: number;
+  principalAmount: number;
+  remainingCapital: number;
+  posted: boolean;
+}
+
+export interface AmortizationSchedule {
+  itemId: number;
+  rows: AmortizationRow[];
+}
+
+export type GenerateFinanceJournalEntriesResultGeneratedItem = {
+  itemId: number;
+  itemLabel: string;
+  installmentsGenerated: number;
+  transactionIds: number[];
+};
+
+export type GenerateFinanceJournalEntriesResultSkippedItem = {
+  itemId: number;
+  itemLabel: string;
+  reason: string;
+};
+
+export interface GenerateFinanceJournalEntriesResult {
+  clientId: number;
+  generated: GenerateFinanceJournalEntriesResultGeneratedItem[];
+  skipped: GenerateFinanceJournalEntriesResultSkippedItem[];
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -873,5 +987,10 @@ clientId: number;
  * Fiscal year for cumulative depreciation and VNC (defaults to current year)
  */
 year?: number;
+};
+
+export type ListFinancialItemsParams = {
+clientId: number;
+type?: FinancialItemType;
 };
 

@@ -20,6 +20,7 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  AmortizationSchedule,
   AuditLog,
   AuthResponse,
   BalanceDesComptesResult,
@@ -45,10 +46,14 @@ import type {
   ErrorResponse,
   ExportLiasseFiscaleInput,
   ExportLiasseFiscaleResult,
+  FinancialItem,
+  FinancialItemInput,
+  FinancialItemUpdate,
   FixedAsset,
   FixedAssetInput,
   FixedAssetUpdate,
   GenerateClosingsResult,
+  GenerateFinanceJournalEntriesResult,
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
   GetCompteDeResultatParams,
@@ -61,6 +66,7 @@ import type {
   ListCashRegistersParams,
   ListClientsParams,
   ListDocumentsParams,
+  ListFinancialItemsParams,
   ListMissionsParams,
   ListTransactionCategoriesParams,
   ListTransactionsParams,
@@ -4146,5 +4152,457 @@ export const useGenerateDepreciationClosings = <TError = ErrorType<ErrorResponse
         TContext
       > => {
       return useMutation(getGenerateDepreciationClosingsMutationOptions(options));
+    }
+
+export const getListFinancialItemsUrl = (params: ListFinancialItemsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/financial-items?${stringifiedParams}` : `/api/financial-items`
+}
+
+/**
+ * @summary List financial assets & loans for a client with computed schedule columns (M18)
+ */
+export const listFinancialItems = async (params: ListFinancialItemsParams, options?: RequestInit): Promise<FinancialItem[]> => {
+
+  return customFetch<FinancialItem[]>(getListFinancialItemsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFinancialItemsQueryKey = (params?: ListFinancialItemsParams,) => {
+    return [
+    `/api/financial-items`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFinancialItemsQueryOptions = <TData = Awaited<ReturnType<typeof listFinancialItems>>, TError = ErrorType<ErrorResponse>>(params: ListFinancialItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFinancialItemsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFinancialItems>>> = ({ signal }) => listFinancialItems(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFinancialItems>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFinancialItemsQueryResult = NonNullable<Awaited<ReturnType<typeof listFinancialItems>>>
+export type ListFinancialItemsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List financial assets & loans for a client with computed schedule columns (M18)
+ */
+
+export function useListFinancialItems<TData = Awaited<ReturnType<typeof listFinancialItems>>, TError = ErrorType<ErrorResponse>>(
+ params: ListFinancialItemsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFinancialItems>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFinancialItemsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateFinancialItemUrl = () => {
+
+
+
+
+  return `/api/financial-items`
+}
+
+/**
+ * @summary Register a new loan or financial asset (M18)
+ */
+export const createFinancialItem = async (financialItemInput: FinancialItemInput, options?: RequestInit): Promise<FinancialItem> => {
+
+  return customFetch<FinancialItem>(getCreateFinancialItemUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialItemInput)
+  }
+);}
+
+
+
+
+
+export const getCreateFinancialItemMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancialItem>>, TError,{data: BodyType<FinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createFinancialItem>>, TError,{data: BodyType<FinancialItemInput>}, TContext> => {
+
+const mutationKey = ['createFinancialItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createFinancialItem>>, {data: BodyType<FinancialItemInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createFinancialItem(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateFinancialItemMutationResult = NonNullable<Awaited<ReturnType<typeof createFinancialItem>>>
+    export type CreateFinancialItemMutationBody = BodyType<FinancialItemInput>
+    export type CreateFinancialItemMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Register a new loan or financial asset (M18)
+ */
+export const useCreateFinancialItem = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createFinancialItem>>, TError,{data: BodyType<FinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createFinancialItem>>,
+        TError,
+        {data: BodyType<FinancialItemInput>},
+        TContext
+      > => {
+      return useMutation(getCreateFinancialItemMutationOptions(options));
+    }
+
+export const getGetFinancialItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/financial-items/${id}`
+}
+
+/**
+ * @summary Get a single financial asset or loan (M18)
+ */
+export const getFinancialItem = async (id: number, options?: RequestInit): Promise<FinancialItem> => {
+
+  return customFetch<FinancialItem>(getGetFinancialItemUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancialItemQueryKey = (id: number,) => {
+    return [
+    `/api/financial-items/${id}`
+    ] as const;
+    }
+
+
+export const getGetFinancialItemQueryOptions = <TData = Awaited<ReturnType<typeof getFinancialItem>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancialItemQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancialItem>>> = ({ signal }) => getFinancialItem(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancialItem>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancialItemQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancialItem>>>
+export type GetFinancialItemQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single financial asset or loan (M18)
+ */
+
+export function useGetFinancialItem<TData = Awaited<ReturnType<typeof getFinancialItem>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialItem>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancialItemQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateFinancialItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/financial-items/${id}`
+}
+
+/**
+ * @summary Update a financial item's status or label (M18)
+ */
+export const updateFinancialItem = async (id: number,
+    financialItemUpdate: FinancialItemUpdate, options?: RequestInit): Promise<FinancialItem> => {
+
+  return customFetch<FinancialItem>(getUpdateFinancialItemUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(financialItemUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateFinancialItemMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancialItem>>, TError,{id: number;data: BodyType<FinancialItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateFinancialItem>>, TError,{id: number;data: BodyType<FinancialItemUpdate>}, TContext> => {
+
+const mutationKey = ['updateFinancialItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateFinancialItem>>, {id: number;data: BodyType<FinancialItemUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateFinancialItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateFinancialItemMutationResult = NonNullable<Awaited<ReturnType<typeof updateFinancialItem>>>
+    export type UpdateFinancialItemMutationBody = BodyType<FinancialItemUpdate>
+    export type UpdateFinancialItemMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a financial item's status or label (M18)
+ */
+export const useUpdateFinancialItem = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateFinancialItem>>, TError,{id: number;data: BodyType<FinancialItemUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateFinancialItem>>,
+        TError,
+        {id: number;data: BodyType<FinancialItemUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateFinancialItemMutationOptions(options));
+    }
+
+export const getGetFinancialItemScheduleUrl = (id: number,) => {
+
+
+
+
+  return `/api/financial-items/${id}/schedule`
+}
+
+/**
+ * @summary Get the full tableau d'amortissement for a loan or financial asset (M18)
+ */
+export const getFinancialItemSchedule = async (id: number, options?: RequestInit): Promise<AmortizationSchedule> => {
+
+  return customFetch<AmortizationSchedule>(getGetFinancialItemScheduleUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFinancialItemScheduleQueryKey = (id: number,) => {
+    return [
+    `/api/financial-items/${id}/schedule`
+    ] as const;
+    }
+
+
+export const getGetFinancialItemScheduleQueryOptions = <TData = Awaited<ReturnType<typeof getFinancialItemSchedule>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialItemSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFinancialItemScheduleQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFinancialItemSchedule>>> = ({ signal }) => getFinancialItemSchedule(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFinancialItemSchedule>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFinancialItemScheduleQueryResult = NonNullable<Awaited<ReturnType<typeof getFinancialItemSchedule>>>
+export type GetFinancialItemScheduleQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get the full tableau d'amortissement for a loan or financial asset (M18)
+ */
+
+export function useGetFinancialItemSchedule<TData = Awaited<ReturnType<typeof getFinancialItemSchedule>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFinancialItemSchedule>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFinancialItemScheduleQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGenerateFinanceJournalEntriesUrl = (clientId: number,) => {
+
+
+
+
+  return `/api/finance/generate-journal-entries/${clientId}`
+}
+
+/**
+ * @summary Book journal entries for every due, unposted installment across a client's active loans & financial assets (M18)
+ */
+export const generateFinanceJournalEntries = async (clientId: number, options?: RequestInit): Promise<GenerateFinanceJournalEntriesResult> => {
+
+  return customFetch<GenerateFinanceJournalEntriesResult>(getGenerateFinanceJournalEntriesUrl(clientId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getGenerateFinanceJournalEntriesMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateFinanceJournalEntries>>, TError,{clientId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof generateFinanceJournalEntries>>, TError,{clientId: number}, TContext> => {
+
+const mutationKey = ['generateFinanceJournalEntries'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof generateFinanceJournalEntries>>, {clientId: number}> = (props) => {
+          const {clientId} = props ?? {};
+
+          return  generateFinanceJournalEntries(clientId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type GenerateFinanceJournalEntriesMutationResult = NonNullable<Awaited<ReturnType<typeof generateFinanceJournalEntries>>>
+
+    export type GenerateFinanceJournalEntriesMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Book journal entries for every due, unposted installment across a client's active loans & financial assets (M18)
+ */
+export const useGenerateFinanceJournalEntries = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof generateFinanceJournalEntries>>, TError,{clientId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof generateFinanceJournalEntries>>,
+        TError,
+        {clientId: number},
+        TContext
+      > => {
+      return useMutation(getGenerateFinanceJournalEntriesMutationOptions(options));
     }
 

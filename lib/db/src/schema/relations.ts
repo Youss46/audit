@@ -9,6 +9,7 @@ import { auditLogsTable } from "./audit-logs";
 import { transactionsTable, journalLinesTable } from "./accounting";
 import { cashRegistersTable, dailyClosuresTable } from "./caisse";
 import { fixedAssetsTable } from "./fixed-assets";
+import { financialAssetsLoansTable } from "./financial-assets-loans";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -135,6 +136,22 @@ export const fixedAssetsRelations = relations(fixedAssetsTable, ({ one }) => ({
   }),
   createdBy: one(usersTable, {
     fields: [fixedAssetsTable.createdById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M18 (Immobilisations Financières & Emprunts).
+export const financialAssetsLoansRelations = relations(financialAssetsLoansTable, ({ one }) => ({
+  firm: one(firmsTable, {
+    fields: [financialAssetsLoansTable.firmId],
+    references: [firmsTable.id],
+  }),
+  client: one(clientsTable, {
+    fields: [financialAssetsLoansTable.clientId],
+    references: [clientsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [financialAssetsLoansTable.createdById],
     references: [usersTable.id],
   }),
 }));

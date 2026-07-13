@@ -9,3 +9,4 @@
 - [Anthropic AI integration blocked without phone verification](anthropic-integration-phone-verification-blocker.md) — Replit AI Integrations setup for Anthropic can require account phone verification; have a fallback ready.
 - [M8 anomaly detector rule design](m8-anomaly-detector-design.md) — duplicate/incoherence/spike rules run at creation and after journal-line edits; warnings never block approval, only relabel it as forced.
 - [M17 fixed assets & depreciation engine design](m17-fixed-assets-design.md) — generate-closings does a direct DB insert (bypassing createTransactionEntry); query hooks require explicit queryKey alongside enabled.
+- [M18 financial assets & loans design](m18-financial-assets-loans-design.md) — schedule computed on-the-fly; `installmentsPosted` counter is the anti-double-post boundary; per-client batch generate-entries.

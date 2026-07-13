@@ -25,6 +25,7 @@ import ComptabiliteEtatsFinanciers from '@/pages/comptabilite-etats-financiers';
 import CaisseExpress from '@/pages/caisse-express';
 import Pilotage from '@/pages/pilotage';
 import Immobilisations from '@/pages/immobilisations';
+import Financements from '@/pages/financements';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -54,6 +55,8 @@ function Router() {
         <Route path="/comptabilite/:clientId/etats-financiers" component={ComptabiliteEtatsFinanciers} />
         <Route path="/immobilisations" component={Immobilisations} />
         <Route path="/cabinet/client/:clientId/immobilisations" component={Immobilisations} />
+        <Route path="/financements" component={Financements} />
+        <Route path="/cabinet/client/:clientId/finance" component={Financements} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/cabinet/compliance" component={Compliance} />

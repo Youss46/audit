@@ -11,6 +11,7 @@ import accountingRouter from "./accounting";
 import caisseRouter from "./caisse";
 import reportingRouter from "./reporting";
 import fixedAssetsRouter from "./fixed-assets";
+import financialItemsRouter from "./financial-items";
 
 const router: IRouter = Router();
 
@@ -26,5 +27,6 @@ router.use(accountingRouter);
 router.use(caisseRouter);
 router.use(reportingRouter);
 router.use(fixedAssetsRouter);
+router.use(financialItemsRouter);
 
 export default router;

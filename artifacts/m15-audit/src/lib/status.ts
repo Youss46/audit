@@ -91,6 +91,10 @@ export function getAuditActionLabel(action: string, entityId?: string | null) {
     case 'FIXED_ASSET_CREATE': return `Enregistrement d'une immobilisation${ref}`
     case 'FIXED_ASSET_UPDATE': return `Mise à jour d'une immobilisation${ref}`
     case 'DEPRECIATION_CLOSING_GENERATE': return `Génération des dotations aux amortissements${ref}`
+    // Module M18 (Immobilisations Financières & Emprunts).
+    case 'FINANCIAL_ITEM_CREATE': return `Enregistrement d'un emprunt ou d'une immobilisation financière${ref}`
+    case 'FINANCIAL_ITEM_UPDATE': return `Mise à jour d'un emprunt ou d'une immobilisation financière${ref}`
+    case 'FINANCIAL_ENTRY_GENERATE': return `Génération des écritures d'échéances financières${ref}`
     default: return action
   }
 }
@@ -249,5 +253,39 @@ export function getAuditActionLabelM17(action: string, entityId?: string | null)
     case 'FIXED_ASSET_UPDATE': return `Mise à jour d'une immobilisation${ref}`
     case 'DEPRECIATION_CLOSING_GENERATE': return `Génération des dotations aux amortissements${ref}`
     default: return null
+  }
+}
+
+// Module M18 (Immobilisations Financières & Emprunts).
+export function getFinancialItemTypeLabel(type: string | null | undefined) {
+  switch (type) {
+    case 'EMPRUNT_BANCAIRE': return 'Emprunt bancaire'
+    case 'IMMOBILISATION_FINANCIERE': return 'Immobilisation financière'
+    default: return type ?? '—'
+  }
+}
+
+export function getFinancialItemStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'Actif'
+    case 'SOLDE': return 'Soldé'
+    default: return status ?? '—'
+  }
+}
+
+export function getFinancialItemStatusColor(status: string | null | undefined) {
+  switch (status) {
+    case 'ACTIF': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+    case 'SOLDE': return 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400'
+    default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+  }
+}
+
+export function getPaymentFrequencyLabel(frequency: string | null | undefined) {
+  switch (frequency) {
+    case 'MENSUEL': return 'Mensuelle'
+    case 'TRIMESTRIEL': return 'Trimestrielle'
+    case 'ANNUEL': return 'Annuelle'
+    default: return frequency ?? '—'
   }
 }

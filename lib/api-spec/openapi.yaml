@@ -1404,6 +1404,166 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /financial-items:
+    get:
+      operationId: listFinancialItems
+      tags: [financial-items]
+      summary: List financial assets & loans for a client with computed schedule columns (M18)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: type
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/FinancialItemType"
+      responses:
+        "200":
+          description: List of financial assets & loans
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FinancialItem"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createFinancialItem
+      tags: [financial-items]
+      summary: Register a new loan or financial asset (M18)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialItemInput"
+      responses:
+        "201":
+          description: Financial item created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialItem"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /financial-items/{id}:
+    get:
+      operationId: getFinancialItem
+      tags: [financial-items]
+      summary: Get a single financial asset or loan (M18)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Financial item with computed schedule columns
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateFinancialItem
+      tags: [financial-items]
+      summary: Update a financial item's status or label (M18)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FinancialItemUpdate"
+      responses:
+        "200":
+          description: Financial item updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialItem"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /financial-items/{id}/schedule:
+    get:
+      operationId: getFinancialItemSchedule
+      tags: [financial-items]
+      summary: Get the full tableau d'amortissement for a loan or financial asset (M18)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Full amortization schedule
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AmortizationSchedule"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /finance/generate-journal-entries/{clientId}:
+    post:
+      operationId: generateFinanceJournalEntries
+      tags: [financial-items]
+      summary: Book journal entries for every due, unposted installment across a client's active loans & financial assets (M18)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Summary of generated installment entries
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateFinanceJournalEntriesResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -2424,4 +2584,156 @@ components:
             properties:
               assetId: { type: integer }
               assetLabel: { type: string }
+              reason: { type: string }
+
+    # -------------------------------------------------------------------------
+    # Module M18 — Immobilisations Financières & Emprunts
+    # -------------------------------------------------------------------------
+
+    FinancialItemType:
+      type: string
+      enum: [IMMOBILISATION_FINANCIERE, EMPRUNT_BANCAIRE]
+
+    PaymentFrequency:
+      type: string
+      enum: [MENSUEL, TRIMESTRIEL, ANNUEL]
+
+    FinancialItemStatus:
+      type: string
+      enum: [ACTIF, SOLDE]
+
+    FinancialItem:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          type,
+          accountNumber,
+          label,
+          principalAmount,
+          annualInterestRate,
+          startDate,
+          termMonths,
+          paymentFrequency,
+          status,
+          installmentsPosted,
+          totalInstallments,
+          remainingCapital,
+          totalInterest,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        type:
+          $ref: "#/components/schemas/FinancialItemType"
+        accountNumber: { type: string }
+        label: { type: string }
+        principalAmount: { type: integer }
+        annualInterestRate: { type: number }
+        startDate: { type: string, format: date-time }
+        termMonths: { type: integer }
+        paymentFrequency:
+          $ref: "#/components/schemas/PaymentFrequency"
+        status:
+          $ref: "#/components/schemas/FinancialItemStatus"
+        installmentsPosted: { type: integer }
+        # Computed fields.
+        totalInstallments: { type: integer }
+        remainingCapital: { type: integer }
+        totalInterest: { type: integer }
+        nextDueDate: { type: ["string", "null"], format: date-time }
+        nextInstallmentNumber: { type: ["integer", "null"] }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    FinancialItemInput:
+      type: object
+      required:
+        [clientId, type, accountNumber, label, principalAmount, startDate, termMonths, paymentFrequency]
+      properties:
+        clientId: { type: integer }
+        type:
+          $ref: "#/components/schemas/FinancialItemType"
+        accountNumber:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        principalAmount:
+          type: integer
+          minimum: 1
+        annualInterestRate:
+          type: number
+          minimum: 0
+        startDate: { type: string, format: date-time }
+        termMonths:
+          type: integer
+          minimum: 1
+          maximum: 600
+        paymentFrequency:
+          $ref: "#/components/schemas/PaymentFrequency"
+
+    FinancialItemUpdate:
+      type: object
+      properties:
+        status:
+          $ref: "#/components/schemas/FinancialItemStatus"
+        label: { type: string, minLength: 1 }
+
+    AmortizationRow:
+      type: object
+      required:
+        [installmentNumber, dueDate, annuity, interestAmount, principalAmount, remainingCapital, posted]
+      properties:
+        installmentNumber: { type: integer }
+        dueDate: { type: string, format: date-time }
+        annuity: { type: integer }
+        interestAmount: { type: integer }
+        principalAmount: { type: integer }
+        remainingCapital: { type: integer }
+        posted: { type: boolean }
+
+    AmortizationSchedule:
+      type: object
+      required: [itemId, rows]
+      properties:
+        itemId: { type: integer }
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/AmortizationRow"
+
+    GenerateFinanceJournalEntriesResult:
+      type: object
+      required: [clientId, generated, skipped]
+      properties:
+        clientId: { type: integer }
+        generated:
+          type: array
+          items:
+            type: object
+            required: [itemId, itemLabel, installmentsGenerated, transactionIds]
+            properties:
+              itemId: { type: integer }
+              itemLabel: { type: string }
+              installmentsGenerated: { type: integer }
+              transactionIds:
+                type: array
+                items: { type: integer }
+        skipped:
+          type: array
+          items:
+            type: object
+            required: [itemId, itemLabel, reason]
+            properties:
+              itemId: { type: integer }
+              itemLabel: { type: string }
               reason: { type: string }
