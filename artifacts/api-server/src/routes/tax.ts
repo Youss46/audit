@@ -29,6 +29,7 @@ import {
   NoVatActivityError,
   type VatTransactionGroup,
 } from "../lib/vat-engine";
+import { generateVatAnnexExcel } from "../lib/export-engine";
 
 const router: IRouter = Router();
 
@@ -151,6 +152,55 @@ router.get("/tax/vat-annex/:clientId/:period", async (req, res) => {
   const rows = computeVatAnnex(groups);
 
   res.json(GetVatAnnexResponse.parse(rows.map((r) => ({ ...r, date: r.date.toISOString() }))));
+});
+
+// ---------------------------------------------------------------------------
+// GET /tax/exports/vat-annex?clientId=N&period=YYYY-MM — État Annexé D-201/VA
+// (Excel), matching the official annex layout for upload on e-impots.gouv.ci.
+// Query-param download route (not part of the typed OpenAPI/Orval contract),
+// same convention as /reports/exports/* in reporting.ts.
+// ---------------------------------------------------------------------------
+
+router.get("/tax/exports/vat-annex", async (req, res) => {
+  const clientId = parseInt(String(req.query.clientId));
+  const period = String(req.query.period ?? "");
+  if (isNaN(clientId) || !PERIOD_RE.test(period)) {
+    res.status(400).json({ error: "Paramètres invalides (clientId, period au format AAAA-MM requis)." });
+    return;
+  }
+  if (!requireOwnClient(req, res, clientId)) return;
+
+  const client = await findClient(req, clientId);
+  if (!client) {
+    res.status(404).json({ error: "Client introuvable." });
+    return;
+  }
+
+  const groups = await fetchVatTransactionGroups(clientId, req.user!.firmId, period);
+  const rows = computeVatAnnex(groups);
+
+  const buffer = await generateVatAnnexExcel(client.name, period, rows);
+  const slug = `${client.name.replace(/[^a-zA-Z0-9]/g, "_")}_EtatAnnexeTVA_${period}`;
+
+  res.setHeader(
+    "Content-Type",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  res.setHeader("Content-Disposition", `attachment; filename="${slug}.xlsx"`);
+  res.setHeader("Cache-Control", "no-store");
+  res.end(buffer);
+
+  logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    userRole: req.user!.role,
+    action: AuditAction.VAT_ANNEX_EXPORT,
+    entityType: "client",
+    entityId: clientId,
+    details: `Export Annexe D-201/VA — État des Taxes Déductibles (période ${period}, format Excel) pour "${client.name}"`,
+    ipAddress: req.ip,
+  });
 });
 
 // ---------------------------------------------------------------------------

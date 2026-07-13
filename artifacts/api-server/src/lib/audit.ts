@@ -56,6 +56,7 @@ export const AuditAction = {
   // Module M21 (Télédéclaration TVA - Formulaire D-201/VA).
   VAT_SUPPLIER_INFO_UPDATE: "VAT_SUPPLIER_INFO_UPDATE",
   VAT_LIQUIDATION_POST: "VAT_LIQUIDATION_POST",
+  VAT_ANNEX_EXPORT: "VAT_ANNEX_EXPORT",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

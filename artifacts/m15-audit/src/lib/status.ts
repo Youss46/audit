@@ -95,6 +95,16 @@ export function getAuditActionLabel(action: string, entityId?: string | null) {
     case 'FINANCIAL_ITEM_CREATE': return `Enregistrement d'un emprunt ou d'une immobilisation financière${ref}`
     case 'FINANCIAL_ITEM_UPDATE': return `Mise à jour d'un emprunt ou d'une immobilisation financière${ref}`
     case 'FINANCIAL_ENTRY_GENERATE': return `Génération des écritures d'échéances financières${ref}`
+    // Module M19 (Clôture d'Exercice Comptable).
+    case 'PERIOD_CLOSE': return `Clôture de la période comptable${ref}`
+    // Module M20 (Gestion de la Paie, ITS & CNPS).
+    case 'EMPLOYEE_CREATE': return `Création d'une fiche employé${ref}`
+    case 'EMPLOYEE_UPDATE': return `Mise à jour d'une fiche employé${ref}`
+    case 'PAYROLL_POST': return `Comptabilisation de la paie${ref}`
+    // Module M21 (Télédéclaration TVA - Formulaire D-201/VA).
+    case 'VAT_SUPPLIER_INFO_UPDATE': return `Correction des informations fournisseur (NCC)${ref}`
+    case 'VAT_LIQUIDATION_POST': return `Comptabilisation de la liquidation de TVA${ref}`
+    case 'VAT_ANNEX_EXPORT': return `Export de l'annexe D-201/VA (état des taxes déductibles)${ref}`
     default: return action
   }
 }
