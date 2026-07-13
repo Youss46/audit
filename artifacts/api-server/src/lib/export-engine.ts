@@ -375,7 +375,7 @@ export async function generateBalanceExcel(
   genRow.getCell(1).font = { italic: true, size: 8, color: { argb: "FF888888" } };
   ws.mergeCells(`A${genRow.number}:F${genRow.number}`);
 
-  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+  return wb.xlsx.writeBuffer() as unknown as Promise<Buffer>;
 }
 
 // ---------------------------------------------------------------------------
@@ -513,7 +513,7 @@ export async function generateVatAnnexExcel(
   genRow.getCell(1).font = { italic: true, size: 8, color: { argb: "FF888888" } };
   ws.mergeCells(`A${genRow.number}:H${genRow.number}`);
 
-  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+  return wb.xlsx.writeBuffer() as unknown as Promise<Buffer>;
 }
 
 // ---------------------------------------------------------------------------
@@ -928,5 +928,5 @@ export async function generateFinancialStatementsExcel(
     };
   });
 
-  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+  return wb.xlsx.writeBuffer() as unknown as Promise<Buffer>;
 }

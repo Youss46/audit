@@ -1267,6 +1267,148 @@ export interface PostVatLiquidationResult {
   sectionC: VatSectionC;
 }
 
+export type TaskType = typeof TaskType[keyof typeof TaskType];
+
+
+export const TaskType = {
+  SAISIE: 'SAISIE',
+  REVISION: 'REVISION',
+  CONSEIL: 'CONSEIL',
+  SOCIAL: 'SOCIAL',
+  FISCALITE: 'FISCALITE',
+  ADMINISTRATIF: 'ADMINISTRATIF',
+} as const;
+
+export interface CabinetUserRate {
+  id: number;
+  firmId: number;
+  userId: number;
+  userFullName: string;
+  hourlyCostRate: number;
+  billingHourlyRate: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserRateInput {
+  /** @minimum 0 */
+  hourlyCostRate: number;
+  /** @minimum 0 */
+  billingHourlyRate: number;
+}
+
+export interface ClientContract {
+  id: number;
+  firmId: number;
+  clientId: number;
+  clientName: string;
+  monthlyFlatFee: number;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+  createdAt: string;
+}
+
+export interface ClientContractInput {
+  clientId: number;
+  /** @minimum 0 */
+  monthlyFlatFee: number;
+  startDate: string;
+  /** @nullable */
+  endDate?: string | null;
+}
+
+export interface ClientContractUpdate {
+  /** @minimum 0 */
+  monthlyFlatFee?: number;
+  /** @nullable */
+  endDate?: string | null;
+}
+
+export interface TimesheetEntry {
+  id: number;
+  firmId: number;
+  userId: number;
+  userFullName: string;
+  clientId: number;
+  clientName: string;
+  date: string;
+  durationHours: number;
+  taskType: TaskType;
+  /** @nullable */
+  description?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimesheetEntryInput {
+  clientId: number;
+  date: string;
+  /**
+     * @minimum 0.25
+     * @maximum 24
+     */
+  durationHours: number;
+  taskType: TaskType;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface TimesheetEntryUpdate {
+  clientId?: number;
+  date?: string;
+  /**
+     * @minimum 0.25
+     * @maximum 24
+     */
+  durationHours?: number;
+  taskType?: TaskType;
+  /** @nullable */
+  description?: string | null;
+}
+
+export interface ClientProfitabilityRow {
+  clientId: number;
+  clientName: string;
+  totalHours: number;
+  monthlyFlatFee: number;
+  internalCost: number;
+  theoreticalBilled: number;
+  netMargin: number;
+  /**
+     * Null when monthlyFlatFee is 0
+     * @nullable
+     */
+  marginPct: number | null;
+  isUnprofitable: boolean;
+  /** true when marginPct < 30 and >= 0 */
+  isLowMargin: boolean;
+}
+
+export interface ProfitabilityGlobalKpis {
+  totalHours: number;
+  totalInternalCost: number;
+  totalFees: number;
+  grossMargin: number;
+  /** @nullable */
+  grossMarginPct: number | null;
+}
+
+export type ProfitabilityReportTaskBreakdownItem = {
+  taskType: TaskType;
+  hours: number;
+  pct: number;
+};
+
+export interface ProfitabilityReport {
+  year: number;
+  month: number;
+  globalKpis: ProfitabilityGlobalKpis;
+  rows: ClientProfitabilityRow[];
+  /** Distribution of hours by task type across all clients for the month. */
+  taskBreakdown: ProfitabilityReportTaskBreakdownItem[];
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1363,5 +1505,19 @@ clientId: number;
  * Pay period, format YYYY-MM
  */
 period?: string;
+};
+
+export type ListClientContractsParams = {
+clientId?: number;
+};
+
+export type ListTimesheetEntriesParams = {
+/**
+ * Only honored for expert_comptable callers; others always see their own entries.
+ */
+userId?: number;
+clientId?: number;
+dateFrom?: string;
+dateTo?: string;
 };
 

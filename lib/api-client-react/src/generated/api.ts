@@ -28,12 +28,16 @@ import type {
   BatchCreateTransactionsInput,
   BatchCreateTransactionsResult,
   BilanSimplifieResult,
+  CabinetUserRate,
   CalculatePayrollResult,
   CashRegister,
   CashRegisterInput,
   ChecklistItem,
   ChecklistItemUpdate,
   Client,
+  ClientContract,
+  ClientContractInput,
+  ClientContractUpdate,
   ClientInput,
   ClientUpdate,
   CloseDailyClosureInput,
@@ -71,12 +75,14 @@ import type {
   ListAssetsParams,
   ListAuditLogsParams,
   ListCashRegistersParams,
+  ListClientContractsParams,
   ListClientsParams,
   ListDocumentsParams,
   ListEmployeesParams,
   ListFinancialItemsParams,
   ListMissionsParams,
   ListPayslipsParams,
+  ListTimesheetEntriesParams,
   ListTransactionCategoriesParams,
   ListTransactionsParams,
   LoginInput,
@@ -88,7 +94,11 @@ import type {
   PilotageDashboardResult,
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
+  ProfitabilityReport,
   RegisterInput,
+  TimesheetEntry,
+  TimesheetEntryInput,
+  TimesheetEntryUpdate,
   TransactionCategoryOption,
   TransactionDetail,
   TransactionInput,
@@ -97,6 +107,7 @@ import type {
   UpdateJournalLinesInput,
   User,
   UserInput,
+  UserRateInput,
   UserUpdate,
   VatAnnexRow,
   VatDeclaration,
@@ -5619,4 +5630,831 @@ export const usePostVatLiquidation = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getPostVatLiquidationMutationOptions(options));
     }
+
+export const getListUserRatesUrl = () => {
+
+
+
+
+  return `/api/cabinet-analytics/rates`
+}
+
+/**
+ * @summary List cost/billing hourly rates for every cabinet collaborator (M22)
+ */
+export const listUserRates = async ( options?: RequestInit): Promise<CabinetUserRate[]> => {
+
+  return customFetch<CabinetUserRate[]>(getListUserRatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUserRatesQueryKey = () => {
+    return [
+    `/api/cabinet-analytics/rates`
+    ] as const;
+    }
+
+
+export const getListUserRatesQueryOptions = <TData = Awaited<ReturnType<typeof listUserRates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserRates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUserRatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUserRates>>> = ({ signal }) => listUserRates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUserRates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListUserRatesQueryResult = NonNullable<Awaited<ReturnType<typeof listUserRates>>>
+export type ListUserRatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List cost/billing hourly rates for every cabinet collaborator (M22)
+ */
+
+export function useListUserRates<TData = Awaited<ReturnType<typeof listUserRates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listUserRates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListUserRatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertUserRateUrl = (userId: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/rates/${userId}`
+}
+
+/**
+ * @summary Set (create or update) a collaborator's cost/billing hourly rates (M22)
+ */
+export const upsertUserRate = async (userId: number,
+    userRateInput: UserRateInput, options?: RequestInit): Promise<CabinetUserRate> => {
+
+  return customFetch<CabinetUserRate>(getUpsertUserRateUrl(userId),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(userRateInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertUserRateMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertUserRate>>, TError,{userId: number;data: BodyType<UserRateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertUserRate>>, TError,{userId: number;data: BodyType<UserRateInput>}, TContext> => {
+
+const mutationKey = ['upsertUserRate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertUserRate>>, {userId: number;data: BodyType<UserRateInput>}> = (props) => {
+          const {userId,data} = props ?? {};
+
+          return  upsertUserRate(userId,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertUserRateMutationResult = NonNullable<Awaited<ReturnType<typeof upsertUserRate>>>
+    export type UpsertUserRateMutationBody = BodyType<UserRateInput>
+    export type UpsertUserRateMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set (create or update) a collaborator's cost/billing hourly rates (M22)
+ */
+export const useUpsertUserRate = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertUserRate>>, TError,{userId: number;data: BodyType<UserRateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertUserRate>>,
+        TError,
+        {userId: number;data: BodyType<UserRateInput>},
+        TContext
+      > => {
+      return useMutation(getUpsertUserRateMutationOptions(options));
+    }
+
+export const getListClientContractsUrl = (params?: ListClientContractsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cabinet-analytics/contracts?${stringifiedParams}` : `/api/cabinet-analytics/contracts`
+}
+
+/**
+ * @summary List client forfait (monthly flat-fee) contracts (M22)
+ */
+export const listClientContracts = async (params?: ListClientContractsParams, options?: RequestInit): Promise<ClientContract[]> => {
+
+  return customFetch<ClientContract[]>(getListClientContractsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClientContractsQueryKey = (params?: ListClientContractsParams,) => {
+    return [
+    `/api/cabinet-analytics/contracts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListClientContractsQueryOptions = <TData = Awaited<ReturnType<typeof listClientContracts>>, TError = ErrorType<unknown>>(params?: ListClientContractsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClientContracts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClientContractsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClientContracts>>> = ({ signal }) => listClientContracts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClientContracts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClientContractsQueryResult = NonNullable<Awaited<ReturnType<typeof listClientContracts>>>
+export type ListClientContractsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List client forfait (monthly flat-fee) contracts (M22)
+ */
+
+export function useListClientContracts<TData = Awaited<ReturnType<typeof listClientContracts>>, TError = ErrorType<unknown>>(
+ params?: ListClientContractsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClientContracts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClientContractsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateClientContractUrl = () => {
+
+
+
+
+  return `/api/cabinet-analytics/contracts`
+}
+
+/**
+ * @summary Create a new forfait contract for a client (M22)
+ */
+export const createClientContract = async (clientContractInput: ClientContractInput, options?: RequestInit): Promise<ClientContract> => {
+
+  return customFetch<ClientContract>(getCreateClientContractUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(clientContractInput)
+  }
+);}
+
+
+
+
+
+export const getCreateClientContractMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createClientContract>>, TError,{data: BodyType<ClientContractInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createClientContract>>, TError,{data: BodyType<ClientContractInput>}, TContext> => {
+
+const mutationKey = ['createClientContract'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createClientContract>>, {data: BodyType<ClientContractInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createClientContract(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateClientContractMutationResult = NonNullable<Awaited<ReturnType<typeof createClientContract>>>
+    export type CreateClientContractMutationBody = BodyType<ClientContractInput>
+    export type CreateClientContractMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Create a new forfait contract for a client (M22)
+ */
+export const useCreateClientContract = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createClientContract>>, TError,{data: BodyType<ClientContractInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createClientContract>>,
+        TError,
+        {data: BodyType<ClientContractInput>},
+        TContext
+      > => {
+      return useMutation(getCreateClientContractMutationOptions(options));
+    }
+
+export const getUpdateClientContractUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/contracts/${id}`
+}
+
+/**
+ * @summary Update a client's forfait contract (M22)
+ */
+export const updateClientContract = async (id: number,
+    clientContractUpdate: ClientContractUpdate, options?: RequestInit): Promise<ClientContract> => {
+
+  return customFetch<ClientContract>(getUpdateClientContractUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(clientContractUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateClientContractMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClientContract>>, TError,{id: number;data: BodyType<ClientContractUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateClientContract>>, TError,{id: number;data: BodyType<ClientContractUpdate>}, TContext> => {
+
+const mutationKey = ['updateClientContract'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateClientContract>>, {id: number;data: BodyType<ClientContractUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateClientContract(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateClientContractMutationResult = NonNullable<Awaited<ReturnType<typeof updateClientContract>>>
+    export type UpdateClientContractMutationBody = BodyType<ClientContractUpdate>
+    export type UpdateClientContractMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a client's forfait contract (M22)
+ */
+export const useUpdateClientContract = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateClientContract>>, TError,{id: number;data: BodyType<ClientContractUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateClientContract>>,
+        TError,
+        {id: number;data: BodyType<ClientContractUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateClientContractMutationOptions(options));
+    }
+
+export const getDeleteClientContractUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/contracts/${id}`
+}
+
+/**
+ * @summary Delete a client's forfait contract (M22)
+ */
+export const deleteClientContract = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteClientContractUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteClientContractMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteClientContract>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteClientContract>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteClientContract'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteClientContract>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteClientContract(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteClientContractMutationResult = NonNullable<Awaited<ReturnType<typeof deleteClientContract>>>
+
+    export type DeleteClientContractMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a client's forfait contract (M22)
+ */
+export const useDeleteClientContract = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteClientContract>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteClientContract>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteClientContractMutationOptions(options));
+    }
+
+export const getListTimesheetEntriesUrl = (params?: ListTimesheetEntriesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cabinet-analytics/timesheet-entries?${stringifiedParams}` : `/api/cabinet-analytics/timesheet-entries`
+}
+
+/**
+ * @summary List timesheet entries (own entries only, unless expert_comptable) (M22)
+ */
+export const listTimesheetEntries = async (params?: ListTimesheetEntriesParams, options?: RequestInit): Promise<TimesheetEntry[]> => {
+
+  return customFetch<TimesheetEntry[]>(getListTimesheetEntriesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTimesheetEntriesQueryKey = (params?: ListTimesheetEntriesParams,) => {
+    return [
+    `/api/cabinet-analytics/timesheet-entries`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTimesheetEntriesQueryOptions = <TData = Awaited<ReturnType<typeof listTimesheetEntries>>, TError = ErrorType<unknown>>(params?: ListTimesheetEntriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTimesheetEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTimesheetEntriesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTimesheetEntries>>> = ({ signal }) => listTimesheetEntries(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTimesheetEntries>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListTimesheetEntriesQueryResult = NonNullable<Awaited<ReturnType<typeof listTimesheetEntries>>>
+export type ListTimesheetEntriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List timesheet entries (own entries only, unless expert_comptable) (M22)
+ */
+
+export function useListTimesheetEntries<TData = Awaited<ReturnType<typeof listTimesheetEntries>>, TError = ErrorType<unknown>>(
+ params?: ListTimesheetEntriesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listTimesheetEntries>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListTimesheetEntriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTimesheetEntryUrl = () => {
+
+
+
+
+  return `/api/cabinet-analytics/timesheet-entries`
+}
+
+/**
+ * @summary Log a new timesheet entry for the current user (M22)
+ */
+export const createTimesheetEntry = async (timesheetEntryInput: TimesheetEntryInput, options?: RequestInit): Promise<TimesheetEntry> => {
+
+  return customFetch<TimesheetEntry>(getCreateTimesheetEntryUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(timesheetEntryInput)
+  }
+);}
+
+
+
+
+
+export const getCreateTimesheetEntryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTimesheetEntry>>, TError,{data: BodyType<TimesheetEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTimesheetEntry>>, TError,{data: BodyType<TimesheetEntryInput>}, TContext> => {
+
+const mutationKey = ['createTimesheetEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTimesheetEntry>>, {data: BodyType<TimesheetEntryInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createTimesheetEntry(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTimesheetEntryMutationResult = NonNullable<Awaited<ReturnType<typeof createTimesheetEntry>>>
+    export type CreateTimesheetEntryMutationBody = BodyType<TimesheetEntryInput>
+    export type CreateTimesheetEntryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Log a new timesheet entry for the current user (M22)
+ */
+export const useCreateTimesheetEntry = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTimesheetEntry>>, TError,{data: BodyType<TimesheetEntryInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createTimesheetEntry>>,
+        TError,
+        {data: BodyType<TimesheetEntryInput>},
+        TContext
+      > => {
+      return useMutation(getCreateTimesheetEntryMutationOptions(options));
+    }
+
+export const getUpdateTimesheetEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/timesheet-entries/${id}`
+}
+
+/**
+ * @summary Update a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const updateTimesheetEntry = async (id: number,
+    timesheetEntryUpdate: TimesheetEntryUpdate, options?: RequestInit): Promise<TimesheetEntry> => {
+
+  return customFetch<TimesheetEntry>(getUpdateTimesheetEntryUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(timesheetEntryUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdateTimesheetEntryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTimesheetEntry>>, TError,{id: number;data: BodyType<TimesheetEntryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTimesheetEntry>>, TError,{id: number;data: BodyType<TimesheetEntryUpdate>}, TContext> => {
+
+const mutationKey = ['updateTimesheetEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTimesheetEntry>>, {id: number;data: BodyType<TimesheetEntryUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateTimesheetEntry(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTimesheetEntryMutationResult = NonNullable<Awaited<ReturnType<typeof updateTimesheetEntry>>>
+    export type UpdateTimesheetEntryMutationBody = BodyType<TimesheetEntryUpdate>
+    export type UpdateTimesheetEntryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const useUpdateTimesheetEntry = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTimesheetEntry>>, TError,{id: number;data: BodyType<TimesheetEntryUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTimesheetEntry>>,
+        TError,
+        {id: number;data: BodyType<TimesheetEntryUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdateTimesheetEntryMutationOptions(options));
+    }
+
+export const getDeleteTimesheetEntryUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/timesheet-entries/${id}`
+}
+
+/**
+ * @summary Delete a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const deleteTimesheetEntry = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteTimesheetEntryUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTimesheetEntryMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTimesheetEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTimesheetEntry>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteTimesheetEntry'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTimesheetEntry>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTimesheetEntry(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTimesheetEntryMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTimesheetEntry>>>
+
+    export type DeleteTimesheetEntryMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const useDeleteTimesheetEntry = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTimesheetEntry>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTimesheetEntry>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteTimesheetEntryMutationOptions(options));
+    }
+
+export const getGetProfitabilityReportUrl = (year: number,
+    month: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/profitability/${year}/${month}`
+}
+
+/**
+ * @summary Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
+ */
+export const getProfitabilityReport = async (year: number,
+    month: number, options?: RequestInit): Promise<ProfitabilityReport> => {
+
+  return customFetch<ProfitabilityReport>(getGetProfitabilityReportUrl(year,month),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetProfitabilityReportQueryKey = (year: number,
+    month: number,) => {
+    return [
+    `/api/cabinet-analytics/profitability/${year}/${month}`
+    ] as const;
+    }
+
+
+export const getGetProfitabilityReportQueryOptions = <TData = Awaited<ReturnType<typeof getProfitabilityReport>>, TError = ErrorType<unknown>>(year: number,
+    month: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfitabilityReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetProfitabilityReportQueryKey(year,month);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getProfitabilityReport>>> = ({ signal }) => getProfitabilityReport(year,month, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: year !== null && year !== undefined && month !== null && month !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getProfitabilityReport>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetProfitabilityReportQueryResult = NonNullable<Awaited<ReturnType<typeof getProfitabilityReport>>>
+export type GetProfitabilityReportQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
+ */
+
+export function useGetProfitabilityReport<TData = Awaited<ReturnType<typeof getProfitabilityReport>>, TError = ErrorType<unknown>>(
+ year: number,
+    month: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getProfitabilityReport>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetProfitabilityReportQueryOptions(year,month,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

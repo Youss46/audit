@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   Layers,
   Landmark,
+  BarChart3,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -274,6 +275,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-compliance">
               <ShieldCheck className="h-5 w-5" />
               Journal de Conformité
+            </Link>
+          )}
+
+          {(user?.role === "expert_comptable" || user?.role === "collaborateur") && (
+            <Link href="/cabinet/interne/rentabilite" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/cabinet/interne/rentabilite")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-rentabilite">
+              <BarChart3 className="h-5 w-5" />
+              Pilotage Interne
             </Link>
           )}
         </>

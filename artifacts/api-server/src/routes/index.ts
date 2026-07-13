@@ -15,6 +15,7 @@ import financialItemsRouter from "./financial-items";
 import closingRouter from "./closing";
 import payrollRouter from "./payroll";
 import taxRouter from "./tax";
+import cabinetAnalyticsRouter from "./cabinet-analytics";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(financialItemsRouter);
 router.use(closingRouter);
 router.use(payrollRouter);
 router.use(taxRouter);
+router.use(cabinetAnalyticsRouter);
 
 export default router;

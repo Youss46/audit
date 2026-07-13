@@ -3913,3 +3913,147 @@ components:
         period: { type: string }
         sectionC:
           $ref: "#/components/schemas/VatSectionC"
+
+    # -------------------------------------------------------------------------
+    # Module M22 — Cabinet Internal Operations, Timesheet & Profitability
+    # -------------------------------------------------------------------------
+
+    TaskType:
+      type: string
+      enum: [SAISIE, REVISION, CONSEIL, SOCIAL, FISCALITE, ADMINISTRATIF]
+
+    CabinetUserRate:
+      type: object
+      required: [id, firmId, userId, userFullName, hourlyCostRate, billingHourlyRate, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        userId: { type: integer }
+        userFullName: { type: string }
+        hourlyCostRate: { type: number }
+        billingHourlyRate: { type: number }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    UserRateInput:
+      type: object
+      required: [hourlyCostRate, billingHourlyRate]
+      properties:
+        hourlyCostRate: { type: number, minimum: 0 }
+        billingHourlyRate: { type: number, minimum: 0 }
+
+    ClientContract:
+      type: object
+      required: [id, firmId, clientId, clientName, monthlyFlatFee, startDate, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: string }
+        monthlyFlatFee: { type: number }
+        startDate: { type: string, format: date-time }
+        endDate: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    ClientContractInput:
+      type: object
+      required: [clientId, monthlyFlatFee, startDate]
+      properties:
+        clientId: { type: integer }
+        monthlyFlatFee: { type: number, minimum: 0 }
+        startDate: { type: string, format: date-time }
+        endDate: { type: ["string", "null"], format: date-time }
+
+    ClientContractUpdate:
+      type: object
+      properties:
+        monthlyFlatFee: { type: number, minimum: 0 }
+        endDate: { type: ["string", "null"], format: date-time }
+
+    TimesheetEntry:
+      type: object
+      required: [id, firmId, userId, userFullName, clientId, clientName, date, durationHours, taskType, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        userId: { type: integer }
+        userFullName: { type: string }
+        clientId: { type: integer }
+        clientName: { type: string }
+        date: { type: string, format: date-time }
+        durationHours: { type: number }
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        description: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    TimesheetEntryInput:
+      type: object
+      required: [clientId, date, durationHours, taskType]
+      properties:
+        clientId: { type: integer }
+        date: { type: string, format: date-time }
+        durationHours: { type: number, minimum: 0.25, maximum: 24 }
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        description: { type: ["string", "null"] }
+
+    TimesheetEntryUpdate:
+      type: object
+      properties:
+        clientId: { type: integer }
+        date: { type: string, format: date-time }
+        durationHours: { type: number, minimum: 0.25, maximum: 24 }
+        taskType:
+          $ref: "#/components/schemas/TaskType"
+        description: { type: ["string", "null"] }
+
+    ClientProfitabilityRow:
+      type: object
+      required: [clientId, clientName, totalHours, monthlyFlatFee, internalCost, theoreticalBilled, netMargin, marginPct, isUnprofitable, isLowMargin]
+      properties:
+        clientId: { type: integer }
+        clientName: { type: string }
+        totalHours: { type: number }
+        monthlyFlatFee: { type: number }
+        internalCost: { type: number }
+        theoreticalBilled: { type: number }
+        netMargin: { type: number }
+        marginPct: { type: ["number", "null"], description: "Null when monthlyFlatFee is 0" }
+        isUnprofitable: { type: boolean }
+        isLowMargin: { type: boolean, description: "true when marginPct < 30 and >= 0" }
+
+    ProfitabilityGlobalKpis:
+      type: object
+      required: [totalHours, totalInternalCost, totalFees, grossMargin, grossMarginPct]
+      properties:
+        totalHours: { type: number }
+        totalInternalCost: { type: number }
+        totalFees: { type: number }
+        grossMargin: { type: number }
+        grossMarginPct: { type: ["number", "null"] }
+
+    ProfitabilityReport:
+      type: object
+      required: [year, month, globalKpis, rows, taskBreakdown]
+      properties:
+        year: { type: integer }
+        month: { type: integer }
+        globalKpis:
+          $ref: "#/components/schemas/ProfitabilityGlobalKpis"
+        rows:
+          type: array
+          items:
+            $ref: "#/components/schemas/ClientProfitabilityRow"
+        taskBreakdown:
+          type: array
+          description: Distribution of hours by task type across all clients for the month.
+          items:
+            type: object
+            required: [taskType, hours, pct]
+            properties:
+              taskType:
+                $ref: "#/components/schemas/TaskType"
+              hours: { type: number }
+              pct: { type: number }

@@ -2385,3 +2385,276 @@ export const PostVatLiquidationResponse = zod.object({
 })
 
 
+/**
+ * @summary List cost/billing hourly rates for every cabinet collaborator (M22)
+ */
+export const ListUserRatesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "userId": zod.number(),
+  "userFullName": zod.string(),
+  "hourlyCostRate": zod.number(),
+  "billingHourlyRate": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListUserRatesResponse = zod.array(ListUserRatesResponseItem)
+
+
+/**
+ * @summary Set (create or update) a collaborator's cost/billing hourly rates (M22)
+ */
+export const UpsertUserRateParams = zod.object({
+  "userId": zod.coerce.number()
+})
+
+export const upsertUserRateBodyHourlyCostRateMin = 0;
+
+export const upsertUserRateBodyBillingHourlyRateMin = 0;
+
+
+
+export const UpsertUserRateBody = zod.object({
+  "hourlyCostRate": zod.number().min(upsertUserRateBodyHourlyCostRateMin),
+  "billingHourlyRate": zod.number().min(upsertUserRateBodyBillingHourlyRateMin)
+})
+
+export const UpsertUserRateResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "userId": zod.number(),
+  "userFullName": zod.string(),
+  "hourlyCostRate": zod.number(),
+  "billingHourlyRate": zod.number(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List client forfait (monthly flat-fee) contracts (M22)
+ */
+export const ListClientContractsQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional()
+})
+
+export const ListClientContractsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "monthlyFlatFee": zod.number(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListClientContractsResponse = zod.array(ListClientContractsResponseItem)
+
+
+/**
+ * @summary Create a new forfait contract for a client (M22)
+ */
+export const createClientContractBodyMonthlyFlatFeeMin = 0;
+
+
+
+export const CreateClientContractBody = zod.object({
+  "clientId": zod.number(),
+  "monthlyFlatFee": zod.number().min(createClientContractBodyMonthlyFlatFeeMin),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish()
+})
+
+export const CreateClientContractResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "monthlyFlatFee": zod.number(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a client's forfait contract (M22)
+ */
+export const UpdateClientContractParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateClientContractBodyMonthlyFlatFeeMin = 0;
+
+
+
+export const UpdateClientContractBody = zod.object({
+  "monthlyFlatFee": zod.number().min(updateClientContractBodyMonthlyFlatFeeMin).optional(),
+  "endDate": zod.coerce.date().nullish()
+})
+
+export const UpdateClientContractResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "monthlyFlatFee": zod.number(),
+  "startDate": zod.coerce.date(),
+  "endDate": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a client's forfait contract (M22)
+ */
+export const DeleteClientContractParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteClientContractResponse = zod.void()
+
+
+/**
+ * @summary List timesheet entries (own entries only, unless expert_comptable) (M22)
+ */
+export const ListTimesheetEntriesQueryParams = zod.object({
+  "userId": zod.coerce.number().optional().describe('Only honored for expert_comptable callers; others always see their own entries.'),
+  "clientId": zod.coerce.number().optional(),
+  "dateFrom": zod.date().optional(),
+  "dateTo": zod.date().optional()
+})
+
+export const ListTimesheetEntriesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "userId": zod.number(),
+  "userFullName": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "date": zod.coerce.date(),
+  "durationHours": zod.number(),
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']),
+  "description": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListTimesheetEntriesResponse = zod.array(ListTimesheetEntriesResponseItem)
+
+
+/**
+ * @summary Log a new timesheet entry for the current user (M22)
+ */
+export const createTimesheetEntryBodyDurationHoursMin = 0.25;
+export const createTimesheetEntryBodyDurationHoursMax = 24;
+
+
+
+export const CreateTimesheetEntryBody = zod.object({
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "durationHours": zod.number().min(createTimesheetEntryBodyDurationHoursMin).max(createTimesheetEntryBodyDurationHoursMax),
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']),
+  "description": zod.string().nullish()
+})
+
+export const CreateTimesheetEntryResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "userId": zod.number(),
+  "userFullName": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "date": zod.coerce.date(),
+  "durationHours": zod.number(),
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']),
+  "description": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const UpdateTimesheetEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateTimesheetEntryBodyDurationHoursMin = 0.25;
+export const updateTimesheetEntryBodyDurationHoursMax = 24;
+
+
+
+export const UpdateTimesheetEntryBody = zod.object({
+  "clientId": zod.number().optional(),
+  "date": zod.coerce.date().optional(),
+  "durationHours": zod.number().min(updateTimesheetEntryBodyDurationHoursMin).max(updateTimesheetEntryBodyDurationHoursMax).optional(),
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']).optional(),
+  "description": zod.string().nullish()
+})
+
+export const UpdateTimesheetEntryResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "userId": zod.number(),
+  "userFullName": zod.string(),
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "date": zod.coerce.date(),
+  "durationHours": zod.number(),
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']),
+  "description": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a timesheet entry (own entries only, unless expert_comptable) (M22)
+ */
+export const DeleteTimesheetEntryParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTimesheetEntryResponse = zod.void()
+
+
+/**
+ * @summary Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
+ */
+export const GetProfitabilityReportParams = zod.object({
+  "year": zod.coerce.number(),
+  "month": zod.coerce.number().describe('1-12')
+})
+
+export const GetProfitabilityReportResponse = zod.object({
+  "year": zod.number(),
+  "month": zod.number(),
+  "globalKpis": zod.object({
+  "totalHours": zod.number(),
+  "totalInternalCost": zod.number(),
+  "totalFees": zod.number(),
+  "grossMargin": zod.number(),
+  "grossMarginPct": zod.number().nullable()
+}),
+  "rows": zod.array(zod.object({
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "totalHours": zod.number(),
+  "monthlyFlatFee": zod.number(),
+  "internalCost": zod.number(),
+  "theoreticalBilled": zod.number(),
+  "netMargin": zod.number(),
+  "marginPct": zod.number().nullable().describe('Null when monthlyFlatFee is 0'),
+  "isUnprofitable": zod.boolean(),
+  "isLowMargin": zod.boolean().describe('true when marginPct < 30 and >= 0')
+})),
+  "taskBreakdown": zod.array(zod.object({
+  "taskType": zod.enum(['SAISIE', 'REVISION', 'CONSEIL', 'SOCIAL', 'FISCALITE', 'ADMINISTRATIF']),
+  "hours": zod.number(),
+  "pct": zod.number()
+})).describe('Distribution of hours by task type across all clients for the month.')
+})
+
+
