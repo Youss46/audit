@@ -10,7 +10,16 @@ import {
 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatFcfa } from "@/lib/status"
-import { FileDown, Scale, LineChart as LineChartIcon, BookOpenCheck } from "lucide-react"
+import { getToken } from "@/lib/auth"
+import {
+  FileText,
+  Sheet,
+  FileDown,
+  Scale,
+  LineChart as LineChartIcon,
+  BookOpenCheck,
+  Loader2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -28,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Progress } from "@/components/ui/progress"
 
 type ReportType = "balance" | "bilan" | "compte_resultat"
 
@@ -55,13 +65,171 @@ function AccountClassBadge({ accountClass }: { accountClass: number }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// File download helper – calls the binary export endpoint with the user's
+// Bearer token, converts the response to a Blob, and triggers a browser
+// download without leaving the page.
+// ---------------------------------------------------------------------------
+type DownloadEndpoint = "balance" | "financial-statements"
+type ExportFormat = "pdf" | "excel"
+
+async function downloadExport(
+  endpoint: DownloadEndpoint,
+  clientId: number,
+  year: number,
+  format: ExportFormat,
+): Promise<void> {
+  const token = getToken()
+  const params = new URLSearchParams({
+    clientId: String(clientId),
+    year: String(year),
+    format,
+  })
+
+  const response = await fetch(`/api/reports/exports/${endpoint}?${params}`, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}))
+    throw new Error((errorData as { error?: string }).error ?? "Erreur lors de la génération du document.")
+  }
+
+  const blob = await response.blob()
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement("a")
+  a.href = url
+  // Derive filename from Content-Disposition if present, else fall back
+  const disposition = response.headers.get("content-disposition")
+  const match = disposition?.match(/filename="([^"]+)"/)
+  a.download = match?.[1] ?? `export_${endpoint}_${year}.${format === "pdf" ? "pdf" : "xlsx"}`
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  URL.revokeObjectURL(url)
+}
+
+// ---------------------------------------------------------------------------
+// Export controls panel – rendered below the view toolbar.
+// Shows a loading bar while the server compiles the document.
+// ---------------------------------------------------------------------------
+function ExportPanel({
+  clientId,
+  year,
+  reportType,
+}: {
+  clientId: number
+  year: number
+  reportType: ReportType
+}) {
+  const { toast } = useToast()
+  const [pending, setPending] = useState<"pdf" | "excel" | null>(null)
+
+  // Which export endpoint maps to which report type
+  const endpoint: DownloadEndpoint =
+    reportType === "balance" ? "balance" : "financial-statements"
+
+  // Keep the legacy audit-log mutation so every export attempt is still
+  // traced in the M9 journal regardless of format.
+  const auditMutation = useExportLiasseFiscale()
+
+  async function handleExport(format: ExportFormat) {
+    if (pending) return
+    setPending(format)
+    try {
+      await downloadExport(endpoint, clientId, year, format)
+      // Fire-and-forget audit log (non-blocking)
+      auditMutation.mutate({
+        data: {
+          clientId,
+          year,
+          reportType: reportType === "compte_resultat" ? "compte_resultat" : reportType,
+        },
+      })
+    } catch (err) {
+      toast({
+        title: "Échec de l'export",
+        description: err instanceof Error ? err.message : "Une erreur inattendue s'est produite.",
+        variant: "destructive",
+      })
+    } finally {
+      setPending(null)
+    }
+  }
+
+  return (
+    <Card className="shadow-sm border-dashed">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <FileDown className="h-4 w-4" />
+          Exporter les États Financiers
+        </CardTitle>
+        <CardDescription className="text-xs">
+          Génère un document réglementaire SYSCOHADA à partir des écritures validées de l'exercice.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {/* Loading bar */}
+        {pending && (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Génération du document réglementaire en cours…
+            </div>
+            <Progress value={undefined} className="h-1.5 animate-pulse" />
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3">
+          {/* PDF download */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-red-200 hover:border-red-400 hover:bg-red-50 text-foreground"
+            disabled={!!pending}
+            data-testid="button-export-pdf"
+            onClick={() => handleExport("pdf")}
+          >
+            {pending === "pdf" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <FileText className="h-4 w-4 text-red-500" />
+            )}
+            Télécharger le PDF (.pdf)
+          </Button>
+
+          {/* Excel download */}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 border-green-200 hover:border-green-400 hover:bg-green-50 text-foreground"
+            disabled={!!pending}
+            data-testid="button-export-excel"
+            onClick={() => handleExport("excel")}
+          >
+            {pending === "excel" ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sheet className="h-4 w-4 text-green-600" />
+            )}
+            Télécharger le Fichier Excel (.xlsx)
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main component
+// ---------------------------------------------------------------------------
+
 // Module M3 (Comptabilité & Travaux - Reporting): "États Financiers
 // Automatiques" -- the accountant picks a fiscal year and a statement type,
 // and the three standard SYSCOHADA statements are computed live from the
 // client's validated general ledger (module M3's approval queue is what
 // feeds this: only "Validé" entries ever show up here).
 export function EtatsFinanciers({ clientId }: { clientId: number }) {
-  const { toast } = useToast()
   const yearOptions = useMemo(() => buildYearOptions(), [])
   const [year, setYear] = useState(yearOptions[1] ?? new Date().getFullYear())
   const [reportType, setReportType] = useState<ReportType>("balance")
@@ -94,24 +262,6 @@ export function EtatsFinanciers({ clientId }: { clientId: number }) {
     },
   )
 
-  const exportMutation = useExportLiasseFiscale({
-    mutation: {
-      onSuccess: () => {
-        toast({
-          title: "Export enregistré",
-          description: "La demande d'export a été consignée dans le journal d'audit (module M9).",
-        })
-      },
-      onError: () => {
-        toast({
-          title: "Erreur",
-          description: "Impossible d'enregistrer cette demande d'export.",
-          variant: "destructive",
-        })
-      },
-    },
-  })
-
   const isLoading =
     (reportType === "balance" && balanceQuery.isLoading) ||
     (reportType === "bilan" && bilanQuery.isLoading) ||
@@ -119,6 +269,7 @@ export function EtatsFinanciers({ clientId }: { clientId: number }) {
 
   return (
     <div className="space-y-6">
+      {/* Toolbar card */}
       <Card className="shadow-sm">
         <CardHeader className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -155,23 +306,14 @@ export function EtatsFinanciers({ clientId }: { clientId: number }) {
                 ))}
               </SelectContent>
             </Select>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              disabled={exportMutation.isPending}
-              data-testid="button-export-liasse"
-              onClick={() =>
-                exportMutation.mutate({ data: { clientId, year, reportType } })
-              }
-            >
-              <FileDown className="h-4 w-4" />
-              Exporter au format liasse fiscale (PDF)
-            </Button>
           </div>
         </CardHeader>
       </Card>
 
+      {/* Export controls */}
+      <ExportPanel clientId={clientId} year={year} reportType={reportType} />
+
+      {/* Report view */}
       {isLoading ? (
         <div className="flex items-center justify-center py-16 text-sm text-muted-foreground">
           <div className="h-4 w-4 mr-2 rounded-full border-2 border-primary border-t-transparent animate-spin" />

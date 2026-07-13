@@ -29,6 +29,15 @@ async function buildAll() {
     // - use path traversal to read files (e.g. @google-cloud/secret-manager loads sibling .proto files)
     external: [
       "*.node",
+      // pdfmake → pdfkit → fontkit uses @swc/helpers via dynamic CJS requires
+      // that cannot be bundled; externalize the whole PDF stack so Node.js
+      // resolves them from node_modules at runtime.
+      "pdfmake",
+      "pdfkit",
+      "fontkit",
+      "@swc/helpers",
+      "brotli",
+      "png-js",
       "sharp",
       "better-sqlite3",
       "sqlite3",

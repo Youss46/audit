@@ -32,6 +32,12 @@ import {
   computePilotageAggregates,
   type LedgerLine,
 } from "../lib/reporting-engine";
+import {
+  generateBalancePdf,
+  generateBalanceExcel,
+  generateFinancialStatementsPdf,
+  generateFinancialStatementsExcel,
+} from "../lib/export-engine";
 
 const router: IRouter = Router();
 
@@ -224,6 +230,135 @@ router.get("/reports/pilotage", async (req, res) => {
       })),
     }),
   );
+});
+
+// Module M3 Export Engine: real file generation routes.
+// Both routes share the same query-param shape: clientId, year, format.
+// They stream the binary result directly instead of returning JSON, so they
+// are NOT wired through the OpenAPI codegen – the frontend calls them with
+// fetch() + Authorization header and converts the response to a blob.
+
+const EXPORT_FORMAT = ["pdf", "excel"] as const;
+type ExportFormat = (typeof EXPORT_FORMAT)[number];
+
+function parseExportParams(query: Record<string, unknown>): {
+  clientId: number;
+  year: number;
+  format: ExportFormat;
+} | null {
+  const clientId = parseInt(String(query.clientId));
+  const year = parseInt(String(query.year));
+  const format = String(query.format ?? "pdf");
+  if (isNaN(clientId) || isNaN(year) || !EXPORT_FORMAT.includes(format as ExportFormat)) return null;
+  return { clientId, year, format: format as ExportFormat };
+}
+
+function sendFile(
+  res: Parameters<typeof requireOwnClient>[1],
+  buffer: Buffer,
+  format: ExportFormat,
+  filename: string,
+): void {
+  if (format === "pdf") {
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}.pdf"`);
+  } else {
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}.xlsx"`);
+  }
+  res.setHeader("Cache-Control", "no-store");
+  res.end(buffer);
+}
+
+// GET /reports/exports/balance?clientId=N&year=YYYY&format=pdf|excel
+// Streams a formatted Balance des Comptes document.
+router.get("/reports/exports/balance", async (req, res) => {
+  const params = parseExportParams(req.query as Record<string, unknown>);
+  if (!params) {
+    res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
+    return;
+  }
+  const { clientId, year, format } = params;
+  if (!requireOwnClient(req, res, clientId)) return;
+
+  const client = await findAuthorizedClient(req, clientId);
+  if (!client) {
+    res.status(404).json({ error: "Client introuvable." });
+    return;
+  }
+
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
+  const rows = computeBalanceDesComptes(lines, yearStart, yearEndExclusive);
+
+  const buffer =
+    format === "pdf"
+      ? await generateBalancePdf(client.name, year, rows)
+      : await generateBalanceExcel(client.name, year, rows);
+
+  const slug = `${client.name.replace(/[^a-zA-Z0-9]/g, "_")}_Balance_${year}`;
+  sendFile(res, buffer, format, slug);
+
+  // Audit log – same action as before for traceability
+  logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    userRole: req.user!.role,
+    action: AuditAction.LIASSE_FISCALE_EXPORT,
+    entityType: "client",
+    entityId: clientId,
+    details: `Export Balance des comptes (exercice ${year}, format ${format.toUpperCase()}) pour "${client.name}"`,
+    ipAddress: req.ip,
+  });
+});
+
+// GET /reports/exports/financial-statements?clientId=N&year=YYYY&format=pdf|excel
+// Streams a full financial bundle: Bilan Actif/Passif + Compte de Résultat.
+router.get("/reports/exports/financial-statements", async (req, res) => {
+  const params = parseExportParams(req.query as Record<string, unknown>);
+  if (!params) {
+    res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
+    return;
+  }
+  const { clientId, year, format } = params;
+  if (!requireOwnClient(req, res, clientId)) return;
+
+  const client = await findAuthorizedClient(req, clientId);
+  if (!client) {
+    res.status(404).json({ error: "Client introuvable." });
+    return;
+  }
+
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const yearStart = new Date(Date.UTC(year, 0, 1));
+  const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
+  const bilan = computeBilanSimplifie(lines, yearStart, yearEndExclusive);
+  const compteResultat = computeCompteDeResultat(lines, yearStart, yearEndExclusive);
+
+  const buffer =
+    format === "pdf"
+      ? await generateFinancialStatementsPdf(client.name, year, bilan, compteResultat)
+      : await generateFinancialStatementsExcel(client.name, year, bilan, compteResultat);
+
+  const slug = `${client.name.replace(/[^a-zA-Z0-9]/g, "_")}_EtatsFinanciers_${year}`;
+  sendFile(res, buffer, format, slug);
+
+  logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    userName: req.user!.fullName,
+    userRole: req.user!.role,
+    action: AuditAction.LIASSE_FISCALE_EXPORT,
+    entityType: "client",
+    entityId: clientId,
+    details: `Export États financiers (exercice ${year}, format ${format.toUpperCase()}) pour "${client.name}"`,
+    ipAddress: req.ip,
+  });
 });
 
 // Mocked "Exporter au format liasse fiscale (PDF)" action: no PDF is

@@ -1,0 +1,794 @@
+// Module M3 – Financial Statements Export Engine
+// Generates professional SYSCOHADA-compliant PDF and Excel documents from
+// aggregated ledger data.  All function names and internal identifiers are
+// English; all user-facing text (headers, labels, sheet names) is French.
+//
+// PDF:  pdfmake / PdfPrinter (server-side renderer, no headless browser).
+// Excel: exceljs with native number formatting and accounting borders.
+
+import { createRequire } from "node:module";
+import ExcelJS from "exceljs";
+import type { BalanceRow, BilanResult, CompteResultatResult } from "./reporting-engine";
+
+// ---------------------------------------------------------------------------
+// Shared helpers
+// ---------------------------------------------------------------------------
+
+// pdfmake is externalized from the esbuild bundle (CJS that uses @swc/helpers
+// internally).  We must load it via createRequire so Node.js resolves the CJS
+// exports correctly instead of going through ESM's default-export wrapper.
+const _nodeRequire = createRequire(import.meta.url);
+
+const BUILT_IN_FONTS = {
+  Helvetica: {
+    normal: "Helvetica",
+    bold: "Helvetica-Bold",
+    italics: "Helvetica-Oblique",
+    bolditalics: "Helvetica-BoldOblique",
+  },
+};
+
+// Lazy-initialise so the require happens at call-time (after the module graph
+// is fully loaded), not at import-time, preventing "not a constructor" errors.
+let _printer: {
+  createPdfKitDocument: (docDef: Record<string, unknown>) => NodeJS.EventEmitter & { end: () => void };
+} | null = null;
+
+function getPrinter() {
+  if (!_printer) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    const PdfPrinterCtor = _nodeRequire("pdfmake");
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+    _printer = new PdfPrinterCtor(BUILT_IN_FONTS);
+  }
+  return _printer!;
+}
+
+/** Format a number as French accounting notation (space-separated thousands). */
+function fmtNum(n: number): string {
+  return new Intl.NumberFormat("fr-FR", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+/** Render a pdfmake document definition to a Node.js Buffer. */
+function renderPdf(docDef: Record<string, unknown>): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const doc = getPrinter().createPdfKitDocument(docDef);
+    const chunks: Buffer[] = [];
+    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
+    doc.on("end", () => resolve(Buffer.concat(chunks)));
+    doc.on("error", reject);
+    doc.end();
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Shared PDF layout primitives
+// ---------------------------------------------------------------------------
+
+const THEME = {
+  primary: "#1e3a5f",    // dark navy – cabinet brand
+  accent: "#2e6da4",     // mid-blue
+  lightBg: "#f0f4f8",   // column header background
+  totalBg: "#dce8f5",   // totals row background
+  border: "#b0c4de",    // table border colour
+  text: "#1a1a2e",
+};
+
+type PdfCell = Record<string, unknown>;
+
+function headerCell(text: string, align = "center"): PdfCell {
+  return {
+    text,
+    style: "tableHeader",
+    alignment: align,
+    fillColor: THEME.lightBg,
+  };
+}
+
+function totalCell(text: string, align = "right"): PdfCell {
+  return {
+    text,
+    style: "tableTotal",
+    alignment: align,
+    fillColor: THEME.totalBg,
+  };
+}
+
+function buildDocHeader(
+  clientName: string,
+  year: number,
+  title: string,
+  subtitle: string,
+): unknown[] {
+  return [
+    {
+      columns: [
+        {
+          stack: [
+            { text: clientName, style: "firmName" },
+            { text: `Exercice ${year}`, style: "exercice" },
+            { text: "Devise : Francs CFA (XOF)", style: "devise" },
+          ],
+          width: "*",
+        },
+        {
+          stack: [
+            { text: title, style: "docTitle" },
+            { text: subtitle, style: "docSubtitle" },
+          ],
+          width: "auto",
+          alignment: "right",
+        },
+      ],
+    },
+    {
+      canvas: [
+        {
+          type: "line",
+          x1: 0,
+          y1: 4,
+          x2: 515,
+          y2: 4,
+          lineWidth: 2,
+          lineColor: THEME.primary,
+        },
+        {
+          type: "line",
+          x1: 0,
+          y1: 8,
+          x2: 515,
+          y2: 8,
+          lineWidth: 0.5,
+          lineColor: THEME.accent,
+        },
+      ],
+      margin: [0, 0, 0, 12],
+    },
+  ];
+}
+
+const BASE_STYLES: Record<string, unknown> = {
+  firmName:    { fontSize: 13, bold: true, color: THEME.primary, marginBottom: 2 },
+  exercice:    { fontSize: 10, color: THEME.accent },
+  devise:      { fontSize: 8, color: "#555", marginBottom: 2 },
+  docTitle:    { fontSize: 11, bold: true, color: THEME.primary, alignment: "right" },
+  docSubtitle: { fontSize: 8, color: "#555", alignment: "right" },
+  tableHeader: { fontSize: 8, bold: true, color: THEME.primary },
+  tableTotal:  { fontSize: 8, bold: true, color: THEME.primary },
+  cell:        { fontSize: 8, color: THEME.text },
+  mono:        { fontSize: 8, font: "Helvetica", color: THEME.text },
+  sectionTitle:{ fontSize: 10, bold: true, color: THEME.primary, margin: [0, 10, 0, 4] },
+  footer:      { fontSize: 7, color: "#888", alignment: "center" },
+};
+
+function tableLayout(): Record<string, unknown> {
+  return {
+    hLineWidth: (i: number, node: { table: { body: unknown[] } }) =>
+      i === 0 || i === node.table.body.length ? 1 : 0.5,
+    vLineWidth: () => 0.5,
+    hLineColor: () => THEME.border,
+    vLineColor: () => THEME.border,
+    paddingLeft: () => 6,
+    paddingRight: () => 6,
+    paddingTop: () => 4,
+    paddingBottom: () => 4,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Balance des Comptes – PDF
+// ---------------------------------------------------------------------------
+
+export async function generateBalancePdf(
+  clientName: string,
+  year: number,
+  rows: BalanceRow[],
+): Promise<Buffer> {
+  const totals = rows.reduce(
+    (acc, r) => ({
+      debit: acc.debit + r.totalDebit,
+      credit: acc.credit + r.totalCredit,
+    }),
+    { debit: 0, credit: 0 },
+  );
+
+  const tableBody: PdfCell[][] = [
+    [
+      headerCell("Compte", "left"),
+      headerCell("Intitulé", "left"),
+      headerCell("Débit Période", "right"),
+      headerCell("Crédit Période", "right"),
+      headerCell("Solde Débiteur", "right"),
+      headerCell("Solde Créditeur", "right"),
+    ],
+    ...rows.map((r) => [
+      { text: r.accountNumber, style: "mono", alignment: "left" },
+      { text: r.accountName, style: "cell", alignment: "left" },
+      { text: fmtNum(r.totalDebit), style: "mono", alignment: "right" },
+      { text: fmtNum(r.totalCredit), style: "mono", alignment: "right" },
+      {
+        text: r.finalBalanceSide === "debiteur" ? fmtNum(r.finalBalance) : "—",
+        style: "mono",
+        alignment: "right",
+      },
+      {
+        text: r.finalBalanceSide === "crediteur" ? fmtNum(r.finalBalance) : "—",
+        style: "mono",
+        alignment: "right",
+      },
+    ] as PdfCell[]),
+    [
+      totalCell("TOTAUX", "left"),
+      { text: "", fillColor: THEME.totalBg },
+      totalCell(fmtNum(totals.debit)),
+      totalCell(fmtNum(totals.credit)),
+      { text: "", fillColor: THEME.totalBg },
+      { text: "", fillColor: THEME.totalBg },
+    ],
+  ];
+
+  const docDef = {
+    pageSize: "A4",
+    pageOrientation: "landscape",
+    pageMargins: [30, 40, 30, 40],
+    defaultStyle: { font: "Helvetica" },
+    styles: BASE_STYLES,
+    footer: (_currentPage: number, pageCount: number) => ({
+      text: `Document généré le ${new Date().toLocaleDateString("fr-FR")} — Page ${_currentPage} / ${pageCount}`,
+      style: "footer",
+      margin: [30, 10],
+    }),
+    content: [
+      ...buildDocHeader(
+        clientName,
+        year,
+        "BALANCE DES COMPTES",
+        "SYSCOHADA RÉVISÉ — Système Normal",
+      ),
+      {
+        table: {
+          headerRows: 1,
+          widths: [50, "*", 75, 75, 75, 75],
+          body: tableBody,
+        },
+        layout: tableLayout(),
+      },
+    ],
+  };
+
+  return renderPdf(docDef);
+}
+
+// ---------------------------------------------------------------------------
+// Balance des Comptes – Excel
+// ---------------------------------------------------------------------------
+
+export async function generateBalanceExcel(
+  clientName: string,
+  year: number,
+  rows: BalanceRow[],
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "M15-AUDIT";
+  wb.created = new Date();
+
+  const ws = wb.addWorksheet("Balance des Comptes", {
+    pageSetup: { paperSize: 9, orientation: "landscape" },
+  });
+
+  // --- Header block ---
+  ws.mergeCells("A1:F1");
+  ws.getCell("A1").value = clientName;
+  ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A5F" } };
+
+  ws.mergeCells("A2:F2");
+  ws.getCell("A2").value = `Exercice ${year} — Balance des Comptes — SYSCOHADA RÉVISÉ`;
+  ws.getCell("A2").font = { size: 11, color: { argb: "FF2E6DA4" } };
+
+  ws.mergeCells("A3:F3");
+  ws.getCell("A3").value = "Devise : Francs CFA (XOF)";
+  ws.getCell("A3").font = { size: 9, italic: true, color: { argb: "FF555555" } };
+
+  ws.addRow([]); // spacer
+
+  // --- Column headers ---
+  const HEADERS = [
+    "Compte",
+    "Intitulé",
+    "Débit Période",
+    "Crédit Période",
+    "Solde Débiteur",
+    "Solde Créditeur",
+  ];
+  const headerRow = ws.addRow(HEADERS);
+  headerRow.eachCell((cell) => {
+    cell.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 10 };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = {
+      bottom: { style: "medium", color: { argb: "FF2E6DA4" } },
+    };
+  });
+  headerRow.height = 22;
+
+  const COL_WIDTHS = [14, 40, 18, 18, 18, 18];
+  COL_WIDTHS.forEach((w, i) => {
+    ws.getColumn(i + 1).width = w;
+  });
+
+  const NUM_FMT = "#,##0";
+  let debitTotal = 0;
+  let creditTotal = 0;
+
+  rows.forEach((r, idx) => {
+    const isEven = idx % 2 === 0;
+    const row = ws.addRow([
+      r.accountNumber,
+      r.accountName,
+      r.totalDebit,
+      r.totalCredit,
+      r.finalBalanceSide === "debiteur" ? r.finalBalance : null,
+      r.finalBalanceSide === "crediteur" ? r.finalBalance : null,
+    ]);
+
+    row.getCell(1).font = { name: "Courier New", size: 9 };
+    row.getCell(2).font = { size: 9 };
+
+    [3, 4, 5, 6].forEach((col) => {
+      const cell = row.getCell(col);
+      cell.numFmt = NUM_FMT;
+      cell.font = { name: "Courier New", size: 9 };
+      cell.alignment = { horizontal: "right" };
+      if (isEven) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+      }
+    });
+
+    debitTotal += r.totalDebit;
+    creditTotal += r.totalCredit;
+  });
+
+  // --- Totals row (double-underline accounting convention) ---
+  ws.addRow([]); // spacer before total
+  const totalRow = ws.addRow(["TOTAUX", "", debitTotal, creditTotal, null, null]);
+  totalRow.getCell(1).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+  [3, 4].forEach((col) => {
+    const cell = totalRow.getCell(col);
+    cell.numFmt = NUM_FMT;
+    cell.font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    cell.alignment = { horizontal: "right" };
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    // Double-underline: top border on the totals row + thick bottom
+    cell.border = {
+      top: { style: "medium", color: { argb: "FF1E3A5F" } },
+      bottom: { style: "double", color: { argb: "FF1E3A5F" } },
+    };
+  });
+
+  ws.addRow([]); // spacer after
+  const genRow = ws.addRow([
+    `Généré le ${new Date().toLocaleDateString("fr-FR")} par M15-AUDIT`,
+  ]);
+  genRow.getCell(1).font = { italic: true, size: 8, color: { argb: "FF888888" } };
+  ws.mergeCells(`A${genRow.number}:F${genRow.number}`);
+
+  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+}
+
+// ---------------------------------------------------------------------------
+// États Financiers (Bilan + Compte de Résultat) – PDF
+// ---------------------------------------------------------------------------
+
+export async function generateFinancialStatementsPdf(
+  clientName: string,
+  year: number,
+  bilan: BilanResult,
+  compteResultat: CompteResultatResult,
+): Promise<Buffer> {
+  // --- Bilan tables ---
+  const bilanActifRows: PdfCell[][] = [
+    [headerCell("Poste", "left"), headerCell("Montant (XOF)", "right")],
+    ...bilan.actif.map((l) => [
+      { text: l.label, style: "cell" },
+      { text: fmtNum(l.amount), style: "mono", alignment: "right" },
+    ] as PdfCell[]),
+    [totalCell("Total Actif", "left"), totalCell(fmtNum(bilan.totalActif))],
+  ];
+
+  const bilanPassifRows: PdfCell[][] = [
+    [headerCell("Poste", "left"), headerCell("Montant (XOF)", "right")],
+    ...bilan.passif.map((l) => [
+      { text: l.label, style: "cell" },
+      { text: fmtNum(l.amount), style: "mono", alignment: "right" },
+    ] as PdfCell[]),
+    [totalCell("Total Passif", "left"), totalCell(fmtNum(bilan.totalPassif))],
+  ];
+
+  // --- Compte de Résultat tables ---
+  const chargesRows: PdfCell[][] = [
+    [headerCell("Compte", "left"), headerCell("Libellé", "left"), headerCell("Montant (XOF)", "right")],
+    ...compteResultat.charges.map((l) => [
+      { text: l.accountNumber, style: "mono" },
+      { text: l.label, style: "cell" },
+      { text: fmtNum(l.amount), style: "mono", alignment: "right" },
+    ] as PdfCell[]),
+    [totalCell("Total Charges", "left"), { text: "", fillColor: THEME.totalBg }, totalCell(fmtNum(compteResultat.totalCharges))],
+  ];
+
+  const produitsRows: PdfCell[][] = [
+    [headerCell("Compte", "left"), headerCell("Libellé", "left"), headerCell("Montant (XOF)", "right")],
+    ...compteResultat.produits.map((l) => [
+      { text: l.accountNumber, style: "mono" },
+      { text: l.label, style: "cell" },
+      { text: fmtNum(l.amount), style: "mono", alignment: "right" },
+    ] as PdfCell[]),
+    [totalCell("Total Produits", "left"), { text: "", fillColor: THEME.totalBg }, totalCell(fmtNum(compteResultat.totalProduits))],
+  ];
+
+  const resultatColor = compteResultat.resultatNet >= 0 ? "#1a7a4a" : "#c0392b";
+  const resultatLabel = compteResultat.resultatNet >= 0 ? "BÉNÉFICE NET" : "PERTE NETTE";
+
+  const docDef = {
+    pageSize: "A4",
+    pageOrientation: "portrait",
+    pageMargins: [35, 40, 35, 40],
+    defaultStyle: { font: "Helvetica" },
+    styles: BASE_STYLES,
+    footer: (_currentPage: number, pageCount: number) => ({
+      text: `Document généré le ${new Date().toLocaleDateString("fr-FR")} — Page ${_currentPage} / ${pageCount}`,
+      style: "footer",
+      margin: [35, 10],
+    }),
+    content: [
+      // ---- Document header ----
+      ...buildDocHeader(
+        clientName,
+        year,
+        "ÉTATS FINANCIERS",
+        "BILAN SYSTÈME NORMAL — SYSCOHADA RÉVISÉ",
+      ),
+
+      // ---- BILAN ----
+      { text: "BILAN", style: "sectionTitle" },
+      {
+        columns: [
+          {
+            width: "50%",
+            stack: [
+              { text: "ACTIF", style: { bold: true, fontSize: 9, color: THEME.accent }, margin: [0, 0, 0, 4] },
+              {
+                table: { headerRows: 1, widths: ["*", 80], body: bilanActifRows },
+                layout: tableLayout(),
+              },
+            ],
+            margin: [0, 0, 8, 0],
+          },
+          {
+            width: "50%",
+            stack: [
+              { text: "PASSIF", style: { bold: true, fontSize: 9, color: THEME.accent }, margin: [0, 0, 0, 4] },
+              {
+                table: { headerRows: 1, widths: ["*", 80], body: bilanPassifRows },
+                layout: tableLayout(),
+              },
+            ],
+          },
+        ],
+      },
+
+      // Equilibre check
+      bilan.totalActif !== bilan.totalPassif
+        ? {
+            text: `⚠ Écart : Actif ${fmtNum(bilan.totalActif)} ≠ Passif ${fmtNum(bilan.totalPassif)}`,
+            color: "#c0392b",
+            fontSize: 8,
+            margin: [0, 4, 0, 0],
+          }
+        : {
+            text: `✓ Bilan équilibré : ${fmtNum(bilan.totalActif)} XOF`,
+            color: "#1a7a4a",
+            fontSize: 8,
+            margin: [0, 4, 0, 0],
+          },
+
+      // ---- COMPTE DE RÉSULTAT ----
+      { text: "COMPTE DE RÉSULTAT SIMPLIFIÉ", style: "sectionTitle", pageBreak: "before" },
+      {
+        columns: [
+          {
+            width: "50%",
+            stack: [
+              { text: "CHARGES (Classe 6)", style: { bold: true, fontSize: 9, color: THEME.accent }, margin: [0, 0, 0, 4] },
+              {
+                table: { headerRows: 1, widths: [40, "*", 80], body: chargesRows },
+                layout: tableLayout(),
+              },
+            ],
+            margin: [0, 0, 8, 0],
+          },
+          {
+            width: "50%",
+            stack: [
+              { text: "PRODUITS (Classe 7)", style: { bold: true, fontSize: 9, color: THEME.accent }, margin: [0, 0, 0, 4] },
+              {
+                table: { headerRows: 1, widths: [40, "*", 80], body: produitsRows },
+                layout: tableLayout(),
+              },
+            ],
+          },
+        ],
+      },
+
+      // Résultat net highlight box
+      {
+        table: {
+          widths: ["*", 120],
+          body: [
+            [
+              {
+                text: `${resultatLabel} DE L'EXERCICE ${year}`,
+                bold: true,
+                fontSize: 11,
+                color: resultatColor,
+              },
+              {
+                text: fmtNum(Math.abs(compteResultat.resultatNet)) + " XOF",
+                bold: true,
+                fontSize: 12,
+                alignment: "right",
+                color: resultatColor,
+              },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 2,
+          vLineWidth: () => 0,
+          hLineColor: () => resultatColor,
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 8,
+          paddingBottom: () => 8,
+        },
+        margin: [0, 12, 0, 0],
+      },
+    ],
+  };
+
+  return renderPdf(docDef);
+}
+
+// ---------------------------------------------------------------------------
+// États Financiers – Excel
+// ---------------------------------------------------------------------------
+
+export async function generateFinancialStatementsExcel(
+  clientName: string,
+  year: number,
+  bilan: BilanResult,
+  compteResultat: CompteResultatResult,
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "M15-AUDIT";
+  wb.created = new Date();
+
+  const NUM_FMT = "#,##0";
+
+  // ---- Helper: write a two-column section (label | amount) ----
+  function writeSection(
+    ws: ExcelJS.Worksheet,
+    title: string,
+    rows: { label: string; amount: number }[],
+    totalLabel: string,
+    totalAmount: number,
+    startRow: number,
+    colA: number,
+    colB: number,
+  ): number {
+    // Section title
+    let r = ws.getRow(startRow);
+    r.getCell(colA).value = title;
+    r.getCell(colA).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+    r.getCell(colA).border = { bottom: { style: "thin", color: { argb: "FF2E6DA4" } } };
+    r.getCell(colB).border = { bottom: { style: "thin", color: { argb: "FF2E6DA4" } } };
+
+    // Column headers
+    r = ws.getRow(startRow + 1);
+    r.getCell(colA).value = "Poste";
+    r.getCell(colB).value = "Montant (XOF)";
+    [colA, colB].forEach((c) => {
+      r.getCell(c).font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+      r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+      r.getCell(c).alignment = { horizontal: c === colA ? "left" : "right", vertical: "middle" };
+    });
+
+    let currentRow = startRow + 2;
+    rows.forEach((row, idx) => {
+      const wsRow = ws.getRow(currentRow);
+      wsRow.getCell(colA).value = row.label;
+      wsRow.getCell(colA).font = { size: 9 };
+      wsRow.getCell(colB).value = row.amount;
+      wsRow.getCell(colB).numFmt = NUM_FMT;
+      wsRow.getCell(colB).font = { name: "Courier New", size: 9 };
+      wsRow.getCell(colB).alignment = { horizontal: "right" };
+      if (idx % 2 === 0) {
+        wsRow.getCell(colA).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+        wsRow.getCell(colB).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+      }
+      currentRow++;
+    });
+
+    // Total row
+    const totRow = ws.getRow(currentRow);
+    totRow.getCell(colA).value = totalLabel;
+    totRow.getCell(colA).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    totRow.getCell(colA).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    totRow.getCell(colB).value = totalAmount;
+    totRow.getCell(colB).numFmt = NUM_FMT;
+    totRow.getCell(colB).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    totRow.getCell(colB).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    totRow.getCell(colB).alignment = { horizontal: "right" };
+    [colA, colB].forEach((c) => {
+      totRow.getCell(c).border = {
+        top: { style: "medium", color: { argb: "FF1E3A5F" } },
+        bottom: { style: "double", color: { argb: "FF1E3A5F" } },
+      };
+    });
+
+    return currentRow + 1;
+  }
+
+  // ---- Sheet 1: Bilan ----
+  const wsBilan = wb.addWorksheet("Bilan");
+  wsBilan.getColumn(1).width = 35;
+  wsBilan.getColumn(2).width = 20;
+  wsBilan.getColumn(3).width = 4; // spacer
+  wsBilan.getColumn(4).width = 35;
+  wsBilan.getColumn(5).width = 20;
+
+  // Document header
+  wsBilan.getCell("A1").value = clientName;
+  wsBilan.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A5F" } };
+  wsBilan.getCell("A2").value = `Bilan — Exercice ${year} — SYSCOHADA RÉVISÉ`;
+  wsBilan.getCell("A2").font = { size: 11, color: { argb: "FF2E6DA4" } };
+  wsBilan.getCell("A3").value = "Devise : Francs CFA (XOF)";
+  wsBilan.getCell("A3").font = { size: 9, italic: true, color: { argb: "FF555555" } };
+
+  let nextActifRow = writeSection(wsBilan, "ACTIF", bilan.actif, "Total Actif", bilan.totalActif, 5, 1, 2);
+  writeSection(wsBilan, "PASSIF", bilan.passif, "Total Passif", bilan.totalPassif, 5, 4, 5);
+
+  const bilanEquil = nextActifRow + 1;
+  wsBilan.getCell(`A${bilanEquil}`).value =
+    bilan.totalActif === bilan.totalPassif
+      ? `✓ Bilan équilibré : ${fmtNum(bilan.totalActif)} XOF`
+      : `⚠ Écart Actif/Passif : ${fmtNum(bilan.totalActif)} vs ${fmtNum(bilan.totalPassif)}`;
+  wsBilan.getCell(`A${bilanEquil}`).font = {
+    italic: true, size: 9,
+    color: { argb: bilan.totalActif === bilan.totalPassif ? "FF1a7a4a" : "FFc0392b" },
+  };
+
+  // ---- Sheet 2: Compte de Résultat ----
+  const wsCDR = wb.addWorksheet("Compte de Résultat");
+  wsCDR.getColumn(1).width = 12;
+  wsCDR.getColumn(2).width = 35;
+  wsCDR.getColumn(3).width = 20;
+  wsCDR.getColumn(4).width = 4;
+  wsCDR.getColumn(5).width = 12;
+  wsCDR.getColumn(6).width = 35;
+  wsCDR.getColumn(7).width = 20;
+
+  wsCDR.getCell("A1").value = clientName;
+  wsCDR.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A5F" } };
+  wsCDR.getCell("A2").value = `Compte de Résultat — Exercice ${year} — SYSCOHADA RÉVISÉ`;
+  wsCDR.getCell("A2").font = { size: 11, color: { argb: "FF2E6DA4" } };
+  wsCDR.getCell("A3").value = "Devise : Francs CFA (XOF)";
+  wsCDR.getCell("A3").font = { size: 9, italic: true, color: { argb: "FF555555" } };
+
+  // Charges section (cols 1-3)
+  let cdrRow = 5;
+  wsCDR.getRow(cdrRow).getCell(1).value = "CHARGES (Classe 6)";
+  wsCDR.getRow(cdrRow).getCell(1).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+  cdrRow++;
+  const cdrHead = wsCDR.getRow(cdrRow);
+  ["Compte", "Libellé", "Montant (XOF)"].forEach((h, i) => {
+    cdrHead.getCell(i + 1).value = h;
+    cdrHead.getCell(i + 1).font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    cdrHead.getCell(i + 1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    cdrHead.getCell(i + 1).alignment = { horizontal: i === 2 ? "right" : "left" };
+  });
+  cdrRow++;
+  compteResultat.charges.forEach((l, idx) => {
+    const row = wsCDR.getRow(cdrRow);
+    row.getCell(1).value = l.accountNumber;
+    row.getCell(1).font = { name: "Courier New", size: 9 };
+    row.getCell(2).value = l.label;
+    row.getCell(2).font = { size: 9 };
+    row.getCell(3).value = l.amount;
+    row.getCell(3).numFmt = NUM_FMT;
+    row.getCell(3).font = { name: "Courier New", size: 9 };
+    row.getCell(3).alignment = { horizontal: "right" };
+    if (idx % 2 === 0) {
+      [1, 2, 3].forEach((c) => {
+        wsCDR.getRow(cdrRow).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+      });
+    }
+    cdrRow++;
+  });
+  [1, 2, 3].forEach((c) => {
+    wsCDR.getRow(cdrRow).getCell(c).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    wsCDR.getRow(cdrRow).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    wsCDR.getRow(cdrRow).getCell(c).border = { top: { style: "medium" }, bottom: { style: "double" } };
+  });
+  wsCDR.getRow(cdrRow).getCell(1).value = "Total Charges";
+  wsCDR.getRow(cdrRow).getCell(3).value = compteResultat.totalCharges;
+  wsCDR.getRow(cdrRow).getCell(3).numFmt = NUM_FMT;
+  wsCDR.getRow(cdrRow).getCell(3).alignment = { horizontal: "right" };
+
+  // Produits section (cols 5-7)
+  let pRow = 5;
+  wsCDR.getRow(pRow).getCell(5).value = "PRODUITS (Classe 7)";
+  wsCDR.getRow(pRow).getCell(5).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+  pRow++;
+  ["Compte", "Libellé", "Montant (XOF)"].forEach((h, i) => {
+    wsCDR.getRow(pRow).getCell(i + 5).value = h;
+    wsCDR.getRow(pRow).getCell(i + 5).font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    wsCDR.getRow(pRow).getCell(i + 5).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    wsCDR.getRow(pRow).getCell(i + 5).alignment = { horizontal: i === 2 ? "right" : "left" };
+  });
+  pRow++;
+  compteResultat.produits.forEach((l, idx) => {
+    const row = wsCDR.getRow(pRow);
+    row.getCell(5).value = l.accountNumber;
+    row.getCell(5).font = { name: "Courier New", size: 9 };
+    row.getCell(6).value = l.label;
+    row.getCell(6).font = { size: 9 };
+    row.getCell(7).value = l.amount;
+    row.getCell(7).numFmt = NUM_FMT;
+    row.getCell(7).font = { name: "Courier New", size: 9 };
+    row.getCell(7).alignment = { horizontal: "right" };
+    if (idx % 2 === 0) {
+      [5, 6, 7].forEach((c) => {
+        wsCDR.getRow(pRow).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF5F8FB" } };
+      });
+    }
+    pRow++;
+  });
+  [5, 6, 7].forEach((c) => {
+    wsCDR.getRow(pRow).getCell(c).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+    wsCDR.getRow(pRow).getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+    wsCDR.getRow(pRow).getCell(c).border = { top: { style: "medium" }, bottom: { style: "double" } };
+  });
+  wsCDR.getRow(pRow).getCell(5).value = "Total Produits";
+  wsCDR.getRow(pRow).getCell(7).value = compteResultat.totalProduits;
+  wsCDR.getRow(pRow).getCell(7).numFmt = NUM_FMT;
+  wsCDR.getRow(pRow).getCell(7).alignment = { horizontal: "right" };
+
+  // Résultat net row
+  const rnRow = Math.max(cdrRow, pRow) + 2;
+  const isProfit = compteResultat.resultatNet >= 0;
+  const rnLabel = isProfit ? "BÉNÉFICE NET DE L'EXERCICE" : "PERTE NETTE DE L'EXERCICE";
+  const rnColor = isProfit ? "FF1a7a4a" : "FFc0392b";
+
+  wsCDR.getCell(`A${rnRow}`).value = rnLabel;
+  wsCDR.getCell(`A${rnRow}`).font = { bold: true, size: 12, color: { argb: rnColor } };
+  wsCDR.getCell(`C${rnRow}`).value = Math.abs(compteResultat.resultatNet);
+  wsCDR.getCell(`C${rnRow}`).numFmt = NUM_FMT;
+  wsCDR.getCell(`C${rnRow}`).font = { bold: true, size: 12, color: { argb: rnColor } };
+  wsCDR.getCell(`C${rnRow}`).alignment = { horizontal: "right" };
+  ["A", "B", "C"].forEach((col) => {
+    wsCDR.getCell(`${col}${rnRow}`).border = {
+      top: { style: "medium", color: { argb: rnColor } },
+      bottom: { style: "double", color: { argb: rnColor } },
+    };
+    wsCDR.getCell(`${col}${rnRow}`).fill = {
+      type: "pattern",
+      pattern: "solid",
+      fgColor: { argb: isProfit ? "FFE8F5E9" : "FFFDECEA" },
+    };
+  });
+
+  return wb.xlsx.writeBuffer() as Promise<Buffer>;
+}
