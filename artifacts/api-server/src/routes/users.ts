@@ -12,7 +12,7 @@ import {
 } from "@workspace/api-zod";
 import { hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
-import { logAudit } from "../lib/audit";
+import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -86,10 +86,12 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "create",
+    userRole: req.user!.role,
+    action: AuditAction.USER_CREATE,
     entityType: "user",
     entityId: user.id,
     details: `Invitation de ${user.fullName} (${user.role})`,
+    ipAddress: req.ip,
   });
 
   res.status(201).json(CreateUserResponse.parse(serializeUser(user)));
@@ -130,9 +132,11 @@ router.patch(
       firmId: req.user!.firmId,
       userId: req.user!.id,
       userName: req.user!.fullName,
-      action: "update",
+      userRole: req.user!.role,
+      action: AuditAction.USER_UPDATE,
       entityType: "user",
       entityId: id,
+      ipAddress: req.ip,
     });
 
     res.json(UpdateUserResponse.parse(serializeUser(updated)));
@@ -159,10 +163,12 @@ router.delete(
       firmId: req.user!.firmId,
       userId: req.user!.id,
       userName: req.user!.fullName,
-      action: "delete",
+      userRole: req.user!.role,
+      action: AuditAction.USER_DELETE,
       entityType: "user",
       entityId: id,
       details: `Suppression de ${existing.fullName}`,
+      ipAddress: req.ip,
     });
 
     res.status(204).end();

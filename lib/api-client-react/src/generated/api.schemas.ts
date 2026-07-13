@@ -97,12 +97,16 @@ export interface AuditLog {
   userId?: number | null;
   /** @nullable */
   userName?: string | null;
+  /** @nullable */
+  userRole?: string | null;
   action: string;
   entityType: string;
   /** @nullable */
   entityId?: string | null;
   /** @nullable */
   details?: string | null;
+  /** @nullable */
+  ipAddress?: string | null;
   createdAt: string;
 }
 

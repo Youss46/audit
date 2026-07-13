@@ -193,7 +193,10 @@ export default function MissionDetail() {
           </div>
         </div>
         
-        {user?.role !== 'client_pme' && (
+        {/* Only cabinet staff with write access drive the workflow. Stagiaire
+            has read-only access to the checklist/mission and never sees this
+            control (module M9 RBAC). */}
+        {(user?.role === 'expert_comptable' || user?.role === 'collaborateur') && (
           <div className="flex items-center gap-2 bg-card p-2 rounded-lg border shadow-sm">
             <span className="text-sm font-medium text-muted-foreground mr-2">Workflow :</span>
             {mission.status === 'anomalie' ? (
@@ -213,11 +216,20 @@ export default function MissionDetail() {
                   <SelectItem value="en_attente" disabled={mission.status !== 'en_attente'}>En attente</SelectItem>
                   <SelectItem value="en_cours" disabled={mission.status !== 'en_attente' && mission.status !== 'en_cours'}>En cours</SelectItem>
                   <SelectItem value="valide" disabled={mission.status !== 'en_cours' || !isCompleted || hasAnomalies}>Validé (Prêt pour visa)</SelectItem>
-                  <SelectItem value="visa_emis" disabled={mission.status !== 'valide'}>Émettre le visa</SelectItem>
+                  {/* Only the Expert-comptable may issue the final digital Visa;
+                      a Collaborateur can validate the dossier but not this step. */}
+                  <SelectItem value="visa_emis" disabled={mission.status !== 'valide' || user?.role !== 'expert_comptable'}>
+                    Émettre le visa {user?.role !== 'expert_comptable' && '(Expert-comptable requis)'}
+                  </SelectItem>
                 </SelectContent>
               </Select>
             )}
           </div>
+        )}
+        {user?.role === 'stagiaire' && (
+          <Badge variant="outline" className="bg-muted/50 text-muted-foreground border-transparent px-3 py-1.5">
+            Accès en lecture seule
+          </Badge>
         )}
       </div>
 
@@ -426,32 +438,37 @@ export default function MissionDetail() {
                         <MessageSquare className="h-4 w-4" />
                       </Button>
                       
-                      <div className="flex bg-muted/50 p-1 rounded-md">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className={`h-8 px-2 ${item.status === 'a_verifier' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
-                          onClick={() => handleItemStatusChange(item.id, 'a_verifier')}
-                        >
-                          À valider
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className={`h-8 px-2 ${item.status === 'conforme' ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300' : 'text-muted-foreground hover:text-teal-600'}`}
-                          onClick={() => handleItemStatusChange(item.id, 'conforme')}
-                        >
-                          Conforme
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          className={`h-8 px-2 ${item.status === 'anomalie' ? 'bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/50 dark:text-red-300' : 'text-muted-foreground hover:text-destructive'}`}
-                          onClick={() => handleItemStatusChange(item.id, 'anomalie')}
-                        >
-                          Anomalie
-                        </Button>
-                      </div>
+                      {/* Stagiaire has read-only access to the checklist: they can
+                          add a draft observation (button above) but cannot
+                          validate a control point's status (module M9 RBAC). */}
+                      {user?.role !== 'stagiaire' && (
+                        <div className="flex bg-muted/50 p-1 rounded-md">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={`h-8 px-2 ${item.status === 'a_verifier' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground'}`}
+                            onClick={() => handleItemStatusChange(item.id, 'a_verifier')}
+                          >
+                            À valider
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={`h-8 px-2 ${item.status === 'conforme' ? 'bg-teal-100 text-teal-800 hover:bg-teal-100 dark:bg-teal-900/50 dark:text-teal-300' : 'text-muted-foreground hover:text-teal-600'}`}
+                            onClick={() => handleItemStatusChange(item.id, 'conforme')}
+                          >
+                            Conforme
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className={`h-8 px-2 ${item.status === 'anomalie' ? 'bg-red-100 text-red-800 hover:bg-red-100 dark:bg-red-900/50 dark:text-red-300' : 'text-muted-foreground hover:text-destructive'}`}
+                            onClick={() => handleItemStatusChange(item.id, 'anomalie')}
+                          >
+                            Anomalie
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

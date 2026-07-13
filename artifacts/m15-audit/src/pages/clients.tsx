@@ -99,7 +99,7 @@ export default function Clients() {
           </p>
         </div>
         
-        {user?.role !== 'client_pme' && (
+        {(user?.role === 'expert_comptable' || user?.role === 'collaborateur') && (
           <Button asChild>
             <Link href="/clients/new">
               <Plus className="mr-2 h-4 w-4" />

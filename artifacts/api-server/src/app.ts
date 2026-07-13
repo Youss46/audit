@@ -6,6 +6,11 @@ import { logger } from "./lib/logger";
 
 const app: Express = express();
 
+// Behind Replit's proxy, the real client IP arrives via X-Forwarded-For.
+// Trusting the proxy lets req.ip resolve it correctly for the audit trail
+// (module M9) instead of always logging the proxy's own address.
+app.set("trust proxy", true);
+
 app.use(
   pinoHttp({
     logger,

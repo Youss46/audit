@@ -1,3 +1,4 @@
 - [Orval/zod/OpenAPI codegen gotchas](orval-zod-openapi-gotchas.md) — avoid format:email, path+query param mixing, and multipart file uploads in this template's pipeline.
 - [React+Vite scaffold missing CSS import](react-vite-scaffold-css-import.md) — unstyled app despite correct theme means main.tsx is missing `import "./index.css"`; always screenshot after a design pass.
 - [Client-portal ownership scoping](client-portal-ownership-scoping.md) — tenant-id filtering alone isn't enough for a client-facing portal role; every endpoint needs an explicit owner-id check too.
+- [RBAC "read but annotate" role pattern](rbac-partial-write-roles.md) — model roles that can comment but not validate via allow-list + inline per-field check, not a second endpoint.

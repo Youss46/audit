@@ -706,10 +706,12 @@ components:
         firmId: { type: integer }
         userId: { type: ["integer", "null"] }
         userName: { type: ["string", "null"] }
+        userRole: { type: ["string", "null"] }
         action: { type: string }
         entityType: { type: string }
         entityId: { type: ["string", "null"] }
         details: { type: ["string", "null"] }
+        ipAddress: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
 
     Sector:

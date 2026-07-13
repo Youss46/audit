@@ -23,6 +23,16 @@ import { Badge } from "@/components/ui/badge"
 import { useState } from "react"
 import { Input } from "@/components/ui/input"
 
+function getRoleLabel(role: string | null | undefined) {
+  switch (role) {
+    case 'expert_comptable': return 'Expert-comptable'
+    case 'collaborateur': return 'Collaborateur'
+    case 'stagiaire': return 'Stagiaire'
+    case 'client_pme': return 'Espace PME'
+    default: return '—'
+  }
+}
+
 function getEntityIcon(entityType: string) {
   switch (entityType.toLowerCase()) {
     case 'user': return <User className="h-4 w-4 text-blue-500" />
@@ -79,21 +89,23 @@ export default function AuditLog() {
               <TableRow>
                 <TableHead className="w-[180px]">Date & Heure</TableHead>
                 <TableHead>Utilisateur</TableHead>
+                <TableHead>Rôle</TableHead>
                 <TableHead>Action</TableHead>
                 <TableHead>Entité</TableHead>
                 <TableHead>Détails</TableHead>
+                <TableHead>Adresse IP</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
                     Chargement de l'historique...
                   </TableCell>
                 </TableRow>
               ) : filteredLogs.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center h-32 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
                     Aucun événement trouvé.
                   </TableCell>
                 </TableRow>
@@ -105,6 +117,11 @@ export default function AuditLog() {
                     </TableCell>
                     <TableCell className="font-medium">
                       {log.userName || 'Système'}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="font-normal">
+                        {getRoleLabel(log.userRole)}
+                      </Badge>
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="font-mono text-[10px] uppercase tracking-wider bg-primary/5">
@@ -122,6 +139,9 @@ export default function AuditLog() {
                     </TableCell>
                     <TableCell className="text-muted-foreground max-w-xs truncate" title={log.details || ''}>
                       {log.details || '-'}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs">
+                      {log.ipAddress || '-'}
                     </TableCell>
                   </TableRow>
                 ))

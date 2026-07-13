@@ -23,7 +23,7 @@ import {
   UpdateMissionChecklistItemResponse,
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
-import { logAudit } from "../lib/audit";
+import { AuditAction, logAudit } from "../lib/audit";
 import {
   assertValidMissionTransition,
   determineAccountingSystem,
@@ -124,7 +124,7 @@ router.get("/missions", async (req, res) => {
 // checklist (module M4/P2).
 router.post(
   "/missions",
-  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  requireRole("expert_comptable", "collaborateur"),
   async (req, res) => {
   const body = CreateMissionBody.parse(req.body);
 
@@ -176,10 +176,12 @@ router.post(
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "create",
+    userRole: req.user!.role,
+    action: AuditAction.MISSION_CREATE,
     entityType: "mission",
     entityId: mission.id,
     details: `Ouverture de la mission ${body.fiscalYear} pour "${client.name}" (système ${accountingSystem})`,
+    ipAddress: req.ip,
   });
 
   res.status(201).json(CreateMissionResponse.parse(await withCounts(mission, client.name)));
@@ -209,7 +211,7 @@ router.get("/missions/:id", async (req, res) => {
 
 router.patch(
   "/missions/:id",
-  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  requireRole("expert_comptable", "collaborateur"),
   async (req, res) => {
   const { id } = UpdateMissionParams.parse(req.params);
   const body = UpdateMissionBody.parse(req.body);
@@ -220,6 +222,16 @@ router.patch(
   });
   if (!mission) {
     res.status(404).json({ error: "Mission introuvable." });
+    return;
+  }
+
+  // Only the Expert-comptable (cabinet owner) may issue the final digital
+  // Visa stamp -- a Collaborateur can bring the dossier to "valide" but
+  // cannot perform the emission itself.
+  if (body.status === "visa_emis" && req.user!.role !== "expert_comptable") {
+    res.status(403).json({
+      error: "Seul l'expert-comptable peut émettre le visa numérique.",
+    });
     return;
   }
 
@@ -269,10 +281,12 @@ router.patch(
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "update",
+    userRole: req.user!.role,
+    action: body.status === "visa_emis" ? AuditAction.VISA_ISSUED : AuditAction.MISSION_UPDATE,
     entityType: "mission",
     entityId: id,
     details: body.status ? `Statut mis à jour : ${body.status}` : undefined,
+    ipAddress: req.ip,
   });
 
   res.json(UpdateMissionResponse.parse(await withCounts(updated, mission.client?.name)));
@@ -327,6 +341,17 @@ router.patch(
     return;
   }
 
+  // Stagiaire has read-only access to the checklist: they may fill in a
+  // draft observation (the `note` field) but cannot validate a control
+  // point (change its `status` to conforme/anomalie).
+  if (req.user!.role === "stagiaire" && body.status !== undefined) {
+    res.status(403).json({
+      error:
+        "Les stagiaires ne peuvent pas valider les points de contrôle, uniquement ajouter des observations.",
+    });
+    return;
+  }
+
   // Flagging a control point as an anomaly always requires a justification
   // comment so the accountant knows what to fix before the visa can be issued.
   if (body.status === "anomalie") {
@@ -354,10 +379,12 @@ router.patch(
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "update",
+    userRole: req.user!.role,
+    action: body.status !== undefined ? AuditAction.CHECKLIST_VALIDATE : AuditAction.CHECKLIST_NOTE,
     entityType: "checklist_item",
     entityId: itemId,
     details: body.status ? `"${item.label}" -> ${body.status}` : undefined,
+    ipAddress: req.ip,
   });
 
   res.json(UpdateMissionChecklistItemResponse.parse(updated));

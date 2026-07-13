@@ -447,7 +447,7 @@ export default function ClientDetail() {
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-lg">Profil Financier & Système SYSCOHADA</CardTitle>
-                {user?.role !== 'client_pme' && !isEditingProfile && (
+                {(user?.role === 'expert_comptable' || user?.role === 'collaborateur') && !isEditingProfile && (
                   <Button variant="outline" size="sm" onClick={handleStartEditProfile}>
                     Modifier
                   </Button>
@@ -567,7 +567,7 @@ export default function ClientDetail() {
                 <CardTitle>Missions de Visa</CardTitle>
                 <CardDescription>Historique des visas comptables pour ce client.</CardDescription>
               </div>
-              {user?.role !== 'client_pme' && (
+              {(user?.role === 'expert_comptable' || user?.role === 'collaborateur') && (
                 <Dialog open={isNewMissionOpen} onOpenChange={setIsNewMissionOpen}>
                   <DialogTrigger asChild>
                     <Button size="sm">
@@ -749,7 +749,7 @@ export default function ClientDetail() {
                     title="Permanents"
                     description="Documents rattachés au dossier client, hors exercice."
                     docs={permanentDocs}
-                    canDelete={user?.role !== 'client_pme'}
+                    canDelete={user?.role === 'expert_comptable' || user?.role === 'collaborateur'}
                     onDelete={setDocToDelete}
                     onDownload={() => toast({ description: "Fonction de téléchargement simulée." })}
                   />
@@ -759,7 +759,7 @@ export default function ClientDetail() {
                       title={`Exercice ${mission.fiscalYear}`}
                       description={`Mission ${getStatusLabel(mission.status).toLowerCase()} — système ${mission.accountingSystem}.`}
                       docs={docs ?? []}
-                      canDelete={user?.role !== 'client_pme'}
+                      canDelete={user?.role === 'expert_comptable' || user?.role === 'collaborateur'}
                       onDelete={setDocToDelete}
                       onDownload={() => toast({ description: "Fonction de téléchargement simulée." })}
                       action={

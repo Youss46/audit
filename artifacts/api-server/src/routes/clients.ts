@@ -14,7 +14,7 @@ import {
   DeleteClientParams,
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
-import { logAudit } from "../lib/audit";
+import { AuditAction, logAudit } from "../lib/audit";
 import { determineAccountingSystem } from "../lib/visa-engine";
 
 const router: IRouter = Router();
@@ -45,7 +45,7 @@ router.get("/clients", async (req, res) => {
   res.json(ListClientsResponse.parse(clients));
 });
 
-router.post("/clients", requireRole("expert_comptable", "collaborateur", "stagiaire"), async (req, res) => {
+router.post("/clients", requireRole("expert_comptable", "collaborateur"), async (req, res) => {
   const body = CreateClientBody.parse(req.body);
 
   // Compute the applicable SYSCOHADA system immediately if the turnover is
@@ -64,10 +64,12 @@ router.post("/clients", requireRole("expert_comptable", "collaborateur", "stagia
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "create",
+    userRole: req.user!.role,
+    action: AuditAction.CLIENT_CREATE,
     entityType: "client",
     entityId: client.id,
     details: `Création du dossier client "${client.name}"`,
+    ipAddress: req.ip,
   });
 
   res.status(201).json(CreateClientResponse.parse(client));
@@ -90,7 +92,7 @@ router.get("/clients/:id", async (req, res) => {
 
 router.patch(
   "/clients/:id",
-  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  requireRole("expert_comptable", "collaborateur"),
   async (req, res) => {
   const { id } = UpdateClientParams.parse(req.params);
   const body = UpdateClientBody.parse(req.body);
@@ -122,17 +124,23 @@ router.patch(
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "update",
+    userRole: req.user!.role,
+    action: AuditAction.CLIENT_UPDATE,
     entityType: "client",
     entityId: id,
+    ipAddress: req.ip,
   });
 
   res.json(UpdateClientResponse.parse(updated));
 });
 
+// Deleting a client dossier is destructive and legally sensitive (it removes
+// the firm's record of its engagement with that company) -- restricted to
+// the Expert-comptable (cabinet owner) only. Collaborateurs may manage
+// clients day-to-day but cannot delete them.
 router.delete(
   "/clients/:id",
-  requireRole("expert_comptable", "collaborateur"),
+  requireRole("expert_comptable"),
   async (req, res) => {
   const { id } = DeleteClientParams.parse(req.params);
 
@@ -150,10 +158,12 @@ router.delete(
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "delete",
+    userRole: req.user!.role,
+    action: AuditAction.CLIENT_DELETE,
     entityType: "client",
     entityId: id,
     details: `Suppression du dossier client "${existing.name}"`,
+    ipAddress: req.ip,
   });
 
   res.status(204).end();

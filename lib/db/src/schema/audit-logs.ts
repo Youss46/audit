@@ -21,10 +21,12 @@ export const auditLogsTable = pgTable(
       .references(() => firmsTable.id, { onDelete: "cascade" }),
     userId: integer("user_id"),
     userName: text("user_name"),
+    userRole: text("user_role"),
     action: text("action").notNull(),
     entityType: text("entity_type").notNull(),
     entityId: text("entity_id"),
     details: text("details"),
+    ipAddress: text("ip_address"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

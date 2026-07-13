@@ -12,7 +12,7 @@ import {
   DeleteDocumentParams,
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
-import { logAudit } from "../lib/audit";
+import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -67,6 +67,15 @@ router.get("/clients/:id/documents", async (req, res) => {
 router.post("/clients/:id/documents", async (req, res) => {
   const { id } = UploadClientDocumentParams.parse(req.params);
   if (!requireOwnClient(req, res, id)) return;
+
+  // Stagiaire has read-only access to the GED (module M6): they may consult
+  // documents but not upload or delete them. Cabinet staff otherwise, and
+  // a client_pme uploading to its own dossier, are both allowed.
+  if (req.user!.role === "stagiaire") {
+    res.status(403).json({ error: "Accès refusé pour ce rôle." });
+    return;
+  }
+
   const body = UploadClientDocumentBody.parse(req.body);
 
   const client = await db.query.clientsTable.findFirst({
@@ -152,10 +161,12 @@ router.post("/clients/:id/documents", async (req, res) => {
     firmId: req.user!.firmId,
     userId: req.user!.id,
     userName: req.user!.fullName,
-    action: "upload",
+    userRole: req.user!.role,
+    action: AuditAction.DOCUMENT_UPLOAD,
     entityType: "document",
     entityId: doc.id,
     details: `Téléversement de "${doc.fileName}" (${doc.category})`,
+    ipAddress: req.ip,
   });
 
   res
@@ -204,10 +215,12 @@ router.delete(
       firmId: req.user!.firmId,
       userId: req.user!.id,
       userName: req.user!.fullName,
-      action: "delete",
+      userRole: req.user!.role,
+      action: AuditAction.DOCUMENT_DELETE,
       entityType: "document",
       entityId: id,
       details: `Suppression de "${doc.fileName}"`,
+      ipAddress: req.ip,
     });
 
     res.status(204).end();

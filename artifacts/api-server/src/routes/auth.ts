@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-zod";
 import { comparePassword, hashPassword, signToken } from "../lib/auth";
 import { requireAuth } from "../middlewares/auth";
-import { logAudit } from "../lib/audit";
+import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
 
@@ -61,10 +61,12 @@ router.post("/auth/register", async (req, res) => {
     firmId: firm.id,
     userId: user.id,
     userName: user.fullName,
-    action: "register",
+    userRole: user.role,
+    action: AuditAction.AUTH_REGISTER,
     entityType: "firm",
     entityId: firm.id,
     details: `Création du cabinet "${firm.name}"`,
+    ipAddress: req.ip,
   });
 
   const token = signToken({
@@ -103,9 +105,11 @@ router.post("/auth/login", async (req, res) => {
     firmId: user.firmId,
     userId: user.id,
     userName: user.fullName,
-    action: "login",
+    userRole: user.role,
+    action: AuditAction.AUTH_LOGIN,
     entityType: "user",
     entityId: user.id,
+    ipAddress: req.ip,
   });
 
   const token = signToken({

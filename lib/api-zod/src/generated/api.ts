@@ -193,10 +193,12 @@ export const ListAuditLogsResponseItem = zod.object({
   "firmId": zod.number(),
   "userId": zod.number().nullish(),
   "userName": zod.string().nullish(),
+  "userRole": zod.string().nullish(),
   "action": zod.string(),
   "entityType": zod.string(),
   "entityId": zod.string().nullish(),
   "details": zod.string().nullish(),
+  "ipAddress": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListAuditLogsResponse = zod.array(ListAuditLogsResponseItem)
