@@ -14,7 +14,13 @@ import { firmsTable } from "./firms";
 
 // SYSCOHADA business sectors used to determine the applicable accounting
 // system from the client's annual turnover (chiffre d'affaires).
-export const SECTORS = ["commerce", "artisanat", "services"] as const;
+// STATION_SERVICE (service station) is a specialized commerce sub-sector:
+// it drives the same SYSCOHADA thresholds as "commerce" (see THRESHOLDS in
+// api-server/src/lib/visa-engine.ts) but also unlocks the sector-restricted
+// "POMPISTE" staff role for that client (see SECTOR_RESTRICTED_ROLES in
+// ./roles.ts) and the Pompiste-tailored quick actions on the Espace PME
+// portal dashboard.
+export const SECTORS = ["commerce", "artisanat", "services", "STATION_SERVICE"] as const;
 export type Sector = (typeof SECTORS)[number];
 
 export const ACCOUNTING_SYSTEMS = ["SMT", "ALLEGE", "NORMAL"] as const;
