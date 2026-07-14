@@ -410,32 +410,111 @@ export default function Facturation() {
   // ── Derived list (tab already filtered server-side, secondary filter UI) ──
   const isLoading = invoicesQuery.isLoading
 
+  const renderActions = (inv: (typeof invoices)[number], opts?: { alwaysVisible?: boolean }) => (
+    <div
+      className={cn(
+        "flex items-center justify-end gap-1 transition-opacity",
+        opts?.alwaysVisible ? "" : "opacity-0 group-hover:opacity-100",
+      )}
+    >
+      {/* View */}
+      <ActionBtn tip="Détail" onClick={() => setViewingId(inv.id)}>
+        <Eye className="h-3.5 w-3.5" />
+      </ActionBtn>
+
+      {/* Edit (BROUILLON only) */}
+      {inv.status === "BROUILLON" && (
+        <ActionBtn tip="Modifier" onClick={() => openEditSheet(inv)}>
+          <Edit3 className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Validate (BROUILLON) */}
+      {inv.status === "BROUILLON" && (
+        <ActionBtn
+          tip="Valider et générer le PDF"
+          onClick={() => validateMutation.mutate({ id: inv.id })}
+          loading={validateMutation.isPending}
+          className="text-blue-600 hover:bg-blue-50"
+        >
+          <CheckCircle2 className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Download PDF (VALIDE / PAYE) */}
+      {(inv.status === "VALIDE" || inv.status === "PAYE") && inv.pdfDocumentId && (
+        <ActionBtn
+          tip="Télécharger le PDF"
+          onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber ?? "")}
+          loading={downloadingId === inv.id}
+          className="text-blue-600 hover:bg-blue-50"
+        >
+          <Download className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Mark paid (VALIDE) */}
+      {inv.status === "VALIDE" && (
+        <ActionBtn
+          tip="Marquer comme payée"
+          onClick={() => markPaidMutation.mutate({ id: inv.id })}
+          loading={markPaidMutation.isPending}
+          className="text-emerald-600 hover:bg-emerald-50"
+        >
+          <CreditCard className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Credit note (VALIDE / PAYE) */}
+      {(inv.status === "VALIDE" || inv.status === "PAYE") && (
+        <ActionBtn
+          tip="Émettre un avoir"
+          onClick={() => { setCreditNoteTarget(inv.id); setCreditNoteReason("") }}
+          className="text-amber-600 hover:bg-amber-50"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Cancel (BROUILLON only) */}
+      {inv.status === "BROUILLON" && (
+        <ActionBtn
+          tip="Annuler"
+          onClick={() => setCancelTarget(inv.id)}
+          className="text-destructive hover:bg-destructive/10"
+        >
+          <XCircle className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+    </div>
+  )
+
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-muted/20">
       {/* ── Page header ─────────────────────────────────────────────────── */}
-      <div className="border-b bg-background px-6 py-5">
-        <div className="mx-auto max-w-7xl flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <Receipt className="h-6 w-6 text-primary" />
+      <div className="border-b bg-background px-4 py-5 sm:px-6">
+        <div className="mx-auto max-w-7xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <h1 className="text-xl font-bold tracking-tight flex items-center gap-2 sm:text-2xl">
+              <Receipt className="h-5 w-5 text-primary shrink-0 sm:h-6 sm:w-6" />
               Mon Facturier
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Créez et gérez vos factures clients. Les PDF sont générés automatiquement et comptabilisés dans votre dossier.
             </p>
           </div>
-          <Button onClick={openCreateSheet} className="gap-2 shrink-0">
+          <Button onClick={openCreateSheet} className="gap-2 w-full sm:w-auto sm:shrink-0">
             <Plus className="h-4 w-4" />
             Nouvelle facture
           </Button>
         </div>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-6 space-y-6">
+      <div className="mx-auto max-w-7xl px-4 py-6 space-y-6 sm:px-6">
 
         {/* ── Stats cards ───────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
           <StatCard
             icon={<Clock className="h-5 w-5 text-slate-500" />}
             label="En attente de validation"
@@ -473,8 +552,8 @@ export default function Facturation() {
           </CardHeader>
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <div className="border-b px-4">
-                <TabsList className="h-10 bg-transparent gap-1 p-0">
+              <div className="border-b px-4 overflow-x-auto">
+                <TabsList className="h-10 bg-transparent gap-1 p-0 w-max min-w-full sm:w-auto">
                   {[
                     { value: "tous",      label: "Toutes" },
                     { value: "brouillon", label: "Brouillons" },
@@ -485,7 +564,7 @@ export default function Facturation() {
                     <TabsTrigger
                       key={t.value}
                       value={t.value}
-                      className="h-10 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
+                      className="h-10 shrink-0 rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none text-sm"
                     >
                       {t.label}
                     </TabsTrigger>
@@ -506,122 +585,85 @@ export default function Facturation() {
                     <p className="text-xs">Cliquez sur "Nouvelle facture" pour commencer.</p>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/30 hover:bg-muted/30">
-                          <TableHead className="pl-5">N° Facture</TableHead>
-                          <TableHead>Client / Acheteur</TableHead>
-                          <TableHead>Date</TableHead>
-                          <TableHead>Échéance</TableHead>
-                          <TableHead className="text-right">Montant TTC</TableHead>
-                          <TableHead className="text-center">Statut</TableHead>
-                          <TableHead className="text-right pr-5">Actions</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {invoices.map((inv) => (
-                          <TableRow key={inv.id} className="group">
-                            <TableCell className="pl-5 font-mono text-sm font-semibold text-primary">
-                              {inv.invoiceNumber ?? (
-                                <span className="font-normal text-muted-foreground italic">brouillon</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <p className="font-medium leading-tight">{inv.customerName}</p>
+                  <>
+                    {/* ── Mobile card list (< md) ─────────────────────────── */}
+                    <div className="divide-y md:hidden">
+                      {invoices.map((inv) => (
+                        <div key={inv.id} className="p-4 space-y-2.5">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="font-mono text-xs font-semibold text-primary truncate">
+                                {inv.invoiceNumber ?? (
+                                  <span className="font-normal text-muted-foreground italic">brouillon</span>
+                                )}
+                              </p>
+                              <p className="font-medium leading-tight mt-0.5 truncate">{inv.customerName}</p>
                               {inv.customerEmail && (
-                                <p className="text-xs text-muted-foreground">{inv.customerEmail}</p>
+                                <p className="text-xs text-muted-foreground truncate">{inv.customerEmail}</p>
                               )}
-                            </TableCell>
-                            <TableCell className="text-sm">{fmtDate(inv.invoiceDate)}</TableCell>
-                            <TableCell className="text-sm">{fmtDate(inv.dueDate)}</TableCell>
-                            <TableCell className="text-right font-semibold tabular-nums">
-                              {fmtFcfa(inv.totalTtc)}
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <StatusBadge status={inv.status as InvoiceStatus} />
-                            </TableCell>
-                            <TableCell className="pr-5">
-                              <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {/* View */}
-                                <ActionBtn
-                                  tip="Détail"
-                                  onClick={() => setViewingId(inv.id)}
-                                >
-                                  <Eye className="h-3.5 w-3.5" />
-                                </ActionBtn>
+                            </div>
+                            <StatusBadge status={inv.status as InvoiceStatus} />
+                          </div>
 
-                                {/* Edit (BROUILLON only) */}
-                                {inv.status === "BROUILLON" && (
-                                  <ActionBtn tip="Modifier" onClick={() => openEditSheet(inv)}>
-                                    <Edit3 className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
+                          <div className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{fmtDate(inv.invoiceDate)}</span>
+                            {inv.dueDate && <span>Échéance : {fmtDate(inv.dueDate)}</span>}
+                          </div>
 
-                                {/* Validate (BROUILLON) */}
-                                {inv.status === "BROUILLON" && (
-                                  <ActionBtn
-                                    tip="Valider et générer le PDF"
-                                    onClick={() => validateMutation.mutate({ id: inv.id })}
-                                    loading={validateMutation.isPending}
-                                    className="text-blue-600 hover:bg-blue-50"
-                                  >
-                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
+                          <p className="text-right font-semibold tabular-nums text-base break-all">
+                            {fmtFcfa(inv.totalTtc)}
+                          </p>
 
-                                {/* Download PDF (VALIDE / PAYE) */}
-                                {(inv.status === "VALIDE" || inv.status === "PAYE") && inv.pdfDocumentId && (
-                                  <ActionBtn
-                                    tip="Télécharger le PDF"
-                                    onClick={() => handleDownloadPdf(inv.id, inv.invoiceNumber ?? "")}
-                                    loading={downloadingId === inv.id}
-                                    className="text-blue-600 hover:bg-blue-50"
-                                  >
-                                    <Download className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
+                          {renderActions(inv, { alwaysVisible: true })}
+                        </div>
+                      ))}
+                    </div>
 
-                                {/* Mark paid (VALIDE) */}
-                                {inv.status === "VALIDE" && (
-                                  <ActionBtn
-                                    tip="Marquer comme payée"
-                                    onClick={() => markPaidMutation.mutate({ id: inv.id })}
-                                    loading={markPaidMutation.isPending}
-                                    className="text-emerald-600 hover:bg-emerald-50"
-                                  >
-                                    <CreditCard className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
-
-                                {/* Credit note (VALIDE / PAYE) */}
-                                {(inv.status === "VALIDE" || inv.status === "PAYE") && (
-                                  <ActionBtn
-                                    tip="Émettre un avoir"
-                                    onClick={() => { setCreditNoteTarget(inv.id); setCreditNoteReason("") }}
-                                    className="text-amber-600 hover:bg-amber-50"
-                                  >
-                                    <RotateCcw className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
-
-                                {/* Cancel (BROUILLON only) */}
-                                {inv.status === "BROUILLON" && (
-                                  <ActionBtn
-                                    tip="Annuler"
-                                    onClick={() => setCancelTarget(inv.id)}
-                                    className="text-destructive hover:bg-destructive/10"
-                                  >
-                                    <XCircle className="h-3.5 w-3.5" />
-                                  </ActionBtn>
-                                )}
-                              </div>
-                            </TableCell>
+                    {/* ── Desktop table (>= md) ───────────────────────────── */}
+                    <div className="hidden overflow-x-auto md:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/30 hover:bg-muted/30">
+                            <TableHead className="pl-5">N° Facture</TableHead>
+                            <TableHead>Client / Acheteur</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Échéance</TableHead>
+                            <TableHead className="text-right">Montant TTC</TableHead>
+                            <TableHead className="text-center">Statut</TableHead>
+                            <TableHead className="text-right pr-5">Actions</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {invoices.map((inv) => (
+                            <TableRow key={inv.id} className="group">
+                              <TableCell className="pl-5 font-mono text-sm font-semibold text-primary">
+                                {inv.invoiceNumber ?? (
+                                  <span className="font-normal text-muted-foreground italic">brouillon</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <p className="font-medium leading-tight">{inv.customerName}</p>
+                                {inv.customerEmail && (
+                                  <p className="text-xs text-muted-foreground">{inv.customerEmail}</p>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-sm">{fmtDate(inv.invoiceDate)}</TableCell>
+                              <TableCell className="text-sm">{fmtDate(inv.dueDate)}</TableCell>
+                              <TableCell className="text-right font-semibold tabular-nums">
+                                {fmtFcfa(inv.totalTtc)}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <StatusBadge status={inv.status as InvoiceStatus} />
+                              </TableCell>
+                              <TableCell className="pr-5">
+                                {renderActions(inv)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </>
                 )}
               </TabsContent>
             </Tabs>
@@ -956,11 +998,13 @@ function StatCard({
 }) {
   return (
     <Card className={cn("border", color)}>
-      <CardContent className="pt-4 pb-4 px-4">
+      <CardContent className="pt-3 pb-3 px-3 sm:pt-4 sm:pb-4 sm:px-4">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="text-xs text-muted-foreground truncate">{label}</p>
-            <p className="text-lg font-bold mt-1 leading-tight truncate">{value}</p>
+            <p className="font-bold mt-1 leading-tight break-all text-base tabular-nums sm:text-lg">
+              {value}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5 truncate">{sub}</p>
           </div>
           <div className="shrink-0 opacity-70 mt-0.5">{icon}</div>
