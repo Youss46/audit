@@ -187,15 +187,15 @@ export default function Dashboard() {
               Accédez rapidement aux fonctions principales de la plateforme.
             </p>
             <div className="grid grid-cols-1 gap-2 mt-4">
-              <a href="/clients" className="flex items-center gap-3 p-3 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">
+              <Link href="/clients" className="flex items-center gap-3 p-3 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">
                 <Building2 className="h-5 w-5" />
                 <span className="font-medium">Consulter les dossiers clients</span>
-              </a>
+              </Link>
               {user?.role !== 'client_pme' && (
-                <a href="/users" className="flex items-center gap-3 p-3 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">
+                <Link href="/users" className="flex items-center gap-3 p-3 rounded-md bg-primary-foreground/10 hover:bg-primary-foreground/20 transition-colors">
                   <Users className="h-5 w-5" />
                   <span className="font-medium">Inviter un collaborateur</span>
-                </a>
+                </Link>
               )}
             </div>
           </CardContent>
