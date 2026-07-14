@@ -15,6 +15,10 @@ declare global {
         // Module M29: only present for "client_staff" accounts.
         roleId?: number | null;
         permissions?: string[];
+        // Module M33 (Enforced Temporary Password Reset Flow): only present
+        // on a restricted token; requireAuth() rejects such tokens on every
+        // route besides POST /auth/reset-first-password.
+        scope?: "password_reset_only";
       };
     }
   }

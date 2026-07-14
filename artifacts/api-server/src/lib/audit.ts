@@ -76,6 +76,8 @@ export const AuditAction = {
   CREDIT_NOTE_CREATE: "CREDIT_NOTE_CREATE",
   // Module M31 (Messagerie Interne du Cabinet).
   CHAT_CHANNEL_CREATE: "CHAT_CHANNEL_CREATE",
+  // Module M33 (Réinitialisation Forcée du Mot de Passe Temporaire).
+  AUTH_FORCED_PASSWORD_RESET: "AUTH_FORCED_PASSWORD_RESET",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

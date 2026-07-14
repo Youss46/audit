@@ -46,7 +46,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 
-const PUBLIC_ROUTES = ["/login", "/register"]
+// Module M33: /force-password-change is reachable with a restricted token
+// that /auth/me (and every other authenticated route) rejects -- treat it
+// like a public route so the Shell doesn't bounce back to /login while the
+// interceptor page does its own thing with that token.
+const PUBLIC_ROUTES = ["/login", "/register", "/force-password-change"]
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()

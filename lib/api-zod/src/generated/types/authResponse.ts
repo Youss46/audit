@@ -5,9 +5,12 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { AuthResponseStatus } from './authResponseStatus';
 import type { User } from './user';
 
 export interface AuthResponse {
+  /** Module M33 - "FORCE_PASSWORD_CHANGE" means `token` is a restricted, short-lived token that only works against POST /auth/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. "OK" means a normal full session. */
+  status: AuthResponseStatus;
   token: string;
-  user: User;
+  user?: User;
 }

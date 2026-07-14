@@ -10,7 +10,7 @@ import {
   UpdateUserResponse,
   DeleteUserParams,
 } from "@workspace/api-zod";
-import { hashPassword } from "../lib/auth";
+import { generateTemporaryPassword, hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { auditInterceptor } from "../middlewares/audit-interceptor";
@@ -22,7 +22,10 @@ router.use(requireAuth);
 // middlewares/audit-interceptor.ts.
 router.use(auditInterceptor("user"));
 
-function serializeUser(user: typeof usersTable.$inferSelect) {
+function serializeUser(
+  user: typeof usersTable.$inferSelect,
+  temporaryPassword?: string,
+) {
   return {
     id: user.id,
     firmId: user.firmId,
@@ -32,6 +35,9 @@ function serializeUser(user: typeof usersTable.$inferSelect) {
     status: user.status,
     clientId: user.clientId ?? null,
     createdAt: user.createdAt,
+    // Module M33: only populated right after creation, below -- never on
+    // list/update/delete.
+    temporaryPassword: temporaryPassword ?? null,
   };
 }
 
@@ -40,7 +46,7 @@ router.get("/users", async (req, res) => {
     where: eq(usersTable.firmId, req.user!.firmId),
     orderBy: (t, { asc }) => [asc(t.createdAt)],
   });
-  res.json(ListUsersResponse.parse(users.map(serializeUser)));
+  res.json(ListUsersResponse.parse(users.map((u) => serializeUser(u))));
 });
 
 router.post("/users", requireRole("expert_comptable"), async (req, res) => {
@@ -72,7 +78,13 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     }
   }
 
-  const passwordHash = await hashPassword(body.password);
+  // Module M33: the admin no longer chooses the password -- a temporary
+  // one is generated here, hashed for storage, and returned once (plus
+  // kept in temporaryPasswordPlain) so it can be handed to the new user.
+  // The account must replace it on first login (see /auth/login and
+  // /auth/reset-first-password).
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
   const [user] = await db
     .insert(usersTable)
     .values({
@@ -83,6 +95,8 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
       role: body.role,
       clientId: body.role === "client_pme" ? body.clientId : null,
       status: "invited",
+      requiresPasswordChange: true,
+      temporaryPasswordPlain: temporaryPassword,
     })
     .returning();
 
@@ -98,7 +112,9 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     ipAddress: req.ip,
   });
 
-  res.status(201).json(CreateUserResponse.parse(serializeUser(user)));
+  res
+    .status(201)
+    .json(CreateUserResponse.parse(serializeUser(user, temporaryPassword)));
 });
 
 router.patch(

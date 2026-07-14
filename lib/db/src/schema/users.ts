@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -67,6 +68,21 @@ export const usersTable = pgTable(
     fullName: text("full_name").notNull(),
     role: text("role").notNull().$type<UserRole>(),
     status: text("status").notNull().$type<UserStatus>().default("active"),
+    // Module M33 (Réinitialisation Forcée du Mot de Passe Temporaire): true
+    // for every account created by an admin (cabinet "/users" or PME
+    // "/staff") with a system-generated temporary password. Login then
+    // returns a restricted token instead of a normal session until the
+    // account calls POST /auth/reset-first-password. False for
+    // self-registered "expert_comptable" owners, who chose their own
+    // password at /auth/register.
+    requiresPasswordChange: boolean("requires_password_change")
+      .notNull()
+      .default(true),
+    // Module M33: the plaintext of the auto-generated temporary password,
+    // kept only so the creating admin can re-display it if needed before
+    // the account's first login. Cleared (set to null) the moment
+    // requiresPasswordChange flips to false -- never retained after that.
+    temporaryPasswordPlain: text("temporary_password_plain"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

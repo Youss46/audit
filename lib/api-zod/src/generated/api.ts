@@ -38,6 +38,7 @@ export const RegisterBody = zod.object({
 })
 
 export const RegisterResponse = zod.object({
+  "status": zod.enum(['OK', 'FORCE_PASSWORD_CHANGE']).describe('Module M33 - \"FORCE_PASSWORD_CHANGE\" means `token` is a restricted, short-lived token that only works against POST \/auth\/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. \"OK\" means a normal full session.'),
   "token": zod.string(),
   "user": zod.object({
   "id": zod.number(),
@@ -51,12 +52,14 @@ export const RegisterResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
-})
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+}).optional()
 })
 
 
 /**
+ * Module M33 - when the account still has an unresolved temporary password, this returns status "FORCE_PASSWORD_CHANGE" and a restricted token instead of a normal session; the frontend must redirect to the password-reset screen and call POST /auth/reset-first-password before anything else works.
  * @summary Authenticate and obtain a JWT
  */
 export const loginBodyEmailMin = 3;
@@ -69,6 +72,7 @@ export const LoginBody = zod.object({
 })
 
 export const LoginResponse = zod.object({
+  "status": zod.enum(['OK', 'FORCE_PASSWORD_CHANGE']).describe('Module M33 - \"FORCE_PASSWORD_CHANGE\" means `token` is a restricted, short-lived token that only works against POST \/auth\/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. \"OK\" means a normal full session.'),
   "token": zod.string(),
   "user": zod.object({
   "id": zod.number(),
@@ -82,8 +86,45 @@ export const LoginResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+}).optional()
 })
+
+
+/**
+ * Only usable with the restricted token returned by POST /auth/login when status was "FORCE_PASSWORD_CHANGE". Clears requiresPasswordChange and the stored temporary password, then returns a normal full-session token.
+ * @summary Module M33 - exchange a restricted first-login token for a full session by setting a new password
+ */
+export const resetFirstPasswordBodyNewPasswordMin = 8;
+
+export const resetFirstPasswordBodyConfirmPasswordMin = 8;
+
+
+
+export const ResetFirstPasswordBody = zod.object({
+  "newPassword": zod.string().min(resetFirstPasswordBodyNewPasswordMin).describe('Must contain at least 8 characters, one digit and one special character.'),
+  "confirmPassword": zod.string().min(resetFirstPasswordBodyConfirmPasswordMin)
+}).describe('Module M33 - body for POST \/auth\/reset-first-password.')
+
+export const ResetFirstPasswordResponse = zod.object({
+  "status": zod.enum(['OK', 'FORCE_PASSWORD_CHANGE']).describe('Module M33 - \"FORCE_PASSWORD_CHANGE\" means `token` is a restricted, short-lived token that only works against POST \/auth\/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. \"OK\" means a normal full session.'),
+  "token": zod.string(),
+  "user": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "email": zod.string(),
+  "fullName": zod.string(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "status": zod.enum(['active', 'invited', 'disabled']),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
+  "firmName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+}).optional()
 })
 
 
@@ -102,7 +143,8 @@ export const GetCurrentUserResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
 
@@ -121,7 +163,8 @@ export const ListUsersResponseItem = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -133,17 +176,14 @@ export const createUserBodyEmailMin = 3;
 
 export const createUserBodyFullNameMin = 2;
 
-export const createUserBodyPasswordMin = 8;
-
 
 
 export const CreateUserBody = zod.object({
   "email": zod.string().min(createUserBodyEmailMin),
   "fullName": zod.string().min(createUserBodyFullNameMin),
   "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
-  "password": zod.string().min(createUserBodyPasswordMin),
   "clientId": zod.number().optional().describe('Required when role is client_pme; links the portal account to its client dossier.')
-})
+}).describe('Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created User) rather than accepting one from the admin.')
 
 export const CreateUserResponse = zod.object({
   "id": zod.number(),
@@ -157,7 +197,8 @@ export const CreateUserResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
 
@@ -191,7 +232,8 @@ export const UpdateUserResponse = zod.object({
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
-  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
 
@@ -229,7 +271,8 @@ export const ListStaffResponseItem = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
 
@@ -241,16 +284,13 @@ export const createStaffBodyEmailMin = 3;
 
 export const createStaffBodyFullNameMin = 2;
 
-export const createStaffBodyPasswordMin = 8;
-
 
 
 export const CreateStaffBody = zod.object({
   "email": zod.string().min(createStaffBodyEmailMin),
   "fullName": zod.string().min(createStaffBodyFullNameMin),
-  "password": zod.string().min(createStaffBodyPasswordMin),
   "roleId": zod.number()
-})
+}).describe('Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created StaffUser) rather than accepting one from the owner.')
 
 export const CreateStaffResponse = zod.object({
   "id": zod.number(),
@@ -260,7 +300,8 @@ export const CreateStaffResponse = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 
 
@@ -289,7 +330,8 @@ export const UpdateStaffResponse = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 
 

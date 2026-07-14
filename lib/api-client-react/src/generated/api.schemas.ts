@@ -60,6 +60,11 @@ export interface User {
   roleLabel?: string | null;
   /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
   permissions?: string[];
+  /**
+     * Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
+     * @nullable
+     */
+  temporaryPassword?: string | null;
 }
 
 export interface RegisterInput {
@@ -79,19 +84,46 @@ export interface LoginInput {
   password: string;
 }
 
+/**
+ * Module M33 - "FORCE_PASSWORD_CHANGE" means `token` is a restricted, short-lived token that only works against POST /auth/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. "OK" means a normal full session.
+ */
+export type AuthResponseStatus = typeof AuthResponseStatus[keyof typeof AuthResponseStatus];
+
+
+export const AuthResponseStatus = {
+  OK: 'OK',
+  FORCE_PASSWORD_CHANGE: 'FORCE_PASSWORD_CHANGE',
+} as const;
+
 export interface AuthResponse {
+  /** Module M33 - "FORCE_PASSWORD_CHANGE" means `token` is a restricted, short-lived token that only works against POST /auth/reset-first-password; `user` is omitted in that case and the frontend must redirect there before rendering anything else. "OK" means a normal full session. */
+  status: AuthResponseStatus;
   token: string;
-  user: User;
+  user?: User;
 }
 
+/**
+ * Module M33 - body for POST /auth/reset-first-password.
+ */
+export interface ResetFirstPasswordInput {
+  /**
+     * Must contain at least 8 characters, one digit and one special character.
+     * @minLength 8
+     */
+  newPassword: string;
+  /** @minLength 8 */
+  confirmPassword: string;
+}
+
+/**
+ * Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created User) rather than accepting one from the admin.
+ */
 export interface UserInput {
   /** @minLength 3 */
   email: string;
   /** @minLength 2 */
   fullName: string;
   role: UserRole;
-  /** @minLength 8 */
-  password: string;
   /** Required when role is client_pme; links the portal account to its client dossier. */
   clientId?: number;
 }
@@ -128,15 +160,21 @@ export interface StaffUser {
   /** @nullable */
   roleLabel?: string | null;
   createdAt: string;
+  /**
+     * Module M33 - only ever populated in the response of POST /staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.
+     * @nullable
+     */
+  temporaryPassword?: string | null;
 }
 
+/**
+ * Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created StaffUser) rather than accepting one from the owner.
+ */
 export interface StaffInput {
   /** @minLength 3 */
   email: string;
   /** @minLength 2 */
   fullName: string;
-  /** @minLength 8 */
-  password: string;
   roleId: number;
 }
 

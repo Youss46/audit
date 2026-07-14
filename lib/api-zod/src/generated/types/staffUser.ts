@@ -19,4 +19,9 @@ export interface StaffUser {
   /** @nullable */
   roleLabel?: string | null;
   createdAt: Date;
+  /**
+     * Module M33 - only ever populated in the response of POST /staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.
+     * @nullable
+     */
+  temporaryPassword?: string | null;
 }

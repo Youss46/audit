@@ -140,6 +140,7 @@ import type {
   PostVatLiquidationResult,
   ProfitabilityReport,
   RegisterInput,
+  ResetFirstPasswordInput,
   Role,
   ScoringDashboardResult,
   SetAllocationsInput,
@@ -350,6 +351,7 @@ export const getLoginUrl = () => {
 }
 
 /**
+ * Module M33 - when the account still has an unresolved temporary password, this returns status "FORCE_PASSWORD_CHANGE" and a restricted token instead of a normal session; the frontend must redirect to the password-reset screen and call POST /auth/reset-first-password before anything else works.
  * @summary Authenticate and obtain a JWT
  */
 export const login = async (loginInput: LoginInput, options?: RequestInit): Promise<AuthResponse> => {
@@ -410,6 +412,78 @@ export const useLogin = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getLoginMutationOptions(options));
+    }
+
+export const getResetFirstPasswordUrl = () => {
+
+
+
+
+  return `/api/auth/reset-first-password`
+}
+
+/**
+ * Only usable with the restricted token returned by POST /auth/login when status was "FORCE_PASSWORD_CHANGE". Clears requiresPasswordChange and the stored temporary password, then returns a normal full-session token.
+ * @summary Module M33 - exchange a restricted first-login token for a full session by setting a new password
+ */
+export const resetFirstPassword = async (resetFirstPasswordInput: ResetFirstPasswordInput, options?: RequestInit): Promise<AuthResponse> => {
+
+  return customFetch<AuthResponse>(getResetFirstPasswordUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(resetFirstPasswordInput)
+  }
+);}
+
+
+
+
+
+export const getResetFirstPasswordMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFirstPassword>>, TError,{data: BodyType<ResetFirstPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resetFirstPassword>>, TError,{data: BodyType<ResetFirstPasswordInput>}, TContext> => {
+
+const mutationKey = ['resetFirstPassword'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resetFirstPassword>>, {data: BodyType<ResetFirstPasswordInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  resetFirstPassword(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResetFirstPasswordMutationResult = NonNullable<Awaited<ReturnType<typeof resetFirstPassword>>>
+    export type ResetFirstPasswordMutationBody = BodyType<ResetFirstPasswordInput>
+    export type ResetFirstPasswordMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Module M33 - exchange a restricted first-login token for a full session by setting a new password
+ */
+export const useResetFirstPassword = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resetFirstPassword>>, TError,{data: BodyType<ResetFirstPasswordInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resetFirstPassword>>,
+        TError,
+        {data: BodyType<ResetFirstPasswordInput>},
+        TContext
+      > => {
+      return useMutation(getResetFirstPasswordMutationOptions(options));
     }
 
 export const getGetCurrentUserUrl = () => {

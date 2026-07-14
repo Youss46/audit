@@ -9,6 +9,8 @@ import {
   ShieldAlert,
   Trash2,
   AlertCircle,
+  Copy,
+  KeyRound,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -72,23 +74,26 @@ export default function ClientStaff() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [staffToDelete, setStaffToDelete] = useState<number | null>(null)
+  // Module M33: the auto-generated temporary password is only ever
+  // returned once, in the create response -- shown here so the owner can
+  // copy it before closing the dialog.
+  const [createdCredentials, setCreatedCredentials] = useState<{ email: string; password: string } | null>(null)
 
   const [fullName, setFullName] = useState("")
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [roleId, setRoleId] = useState<string>("")
 
   const resetForm = () => {
     setFullName("")
     setEmail("")
-    setPassword("")
     setRoleId("")
   }
 
   const createMutation = useCreateStaff({
     mutation: {
-      onSuccess: () => {
+      onSuccess: (data) => {
         setIsCreateOpen(false)
+        setCreatedCredentials({ email: data.email, password: data.temporaryPassword ?? "" })
         resetForm()
         toast({ title: "Collaborateur ajouté avec succès" })
         refetch()
@@ -129,8 +134,13 @@ export default function ClientStaff() {
       return
     }
     createMutation.mutate({
-      data: { fullName, email, password, roleId: Number(roleId) },
+      data: { fullName, email, roleId: Number(roleId) },
     })
+  }
+
+  const copyPassword = (password: string) => {
+    navigator.clipboard.writeText(password)
+    toast({ title: "Mot de passe copié" })
   }
 
   const toggleStatus = (id: number, currentStatus: string) => {
@@ -256,7 +266,8 @@ export default function ClientStaff() {
               Ajouter un collaborateur
             </DialogTitle>
             <DialogDescription>
-              Ce compte n'aura accès qu'aux fonctions autorisées par le rôle choisi.
+              Ce compte n'aura accès qu'aux fonctions autorisées par le rôle choisi. Un mot de
+              passe temporaire sera généré automatiquement — vous n'aurez qu'à le transmettre.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreate} className="space-y-4 pt-4">
@@ -267,18 +278,6 @@ export default function ClientStaff() {
             <div className="space-y-2">
               <Label htmlFor="staff-email">Adresse email</Label>
               <Input id="staff-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="staff-password">Mot de passe temporaire</Label>
-              <Input
-                id="staff-password"
-                type="text"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                minLength={8}
-              />
-              <p className="text-xs text-muted-foreground">À transmettre au collaborateur de manière sécurisée.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="staff-role">Rôle</Label>
@@ -309,6 +308,52 @@ export default function ClientStaff() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!createdCredentials} onOpenChange={(open) => !open && setCreatedCredentials(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-5 w-5 text-primary" />
+              Compte créé avec succès
+            </DialogTitle>
+            <DialogDescription>
+              Transmettez ces identifiants au collaborateur de manière sécurisée. Ce mot de passe
+              temporaire ne sera plus affiché après la fermeture de cette fenêtre — il devra le
+              remplacer dès sa première connexion.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1">
+              <Label>Adresse email</Label>
+              <div className="rounded-md border bg-muted/30 px-3 py-2 text-sm font-mono" data-testid="text-created-email">
+                {createdCredentials?.email}
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Mot de passe temporaire</Label>
+              <div className="flex items-center gap-2">
+                <div className="flex-1 rounded-md border bg-muted/30 px-3 py-2 text-sm font-mono" data-testid="text-created-password">
+                  {createdCredentials?.password}
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => createdCredentials && copyPassword(createdCredentials.password)}
+                  data-testid="button-copy-password"
+                >
+                  <Copy className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="pt-4">
+            <Button type="button" onClick={() => setCreatedCredentials(null)} data-testid="button-close-credentials">
+              J'ai transmis les identifiants
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 

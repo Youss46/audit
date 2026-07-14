@@ -7,14 +7,15 @@
  */
 import type { UserRole } from './userRole';
 
+/**
+ * Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created User) rather than accepting one from the admin.
+ */
 export interface UserInput {
   /** @minLength 3 */
   email: string;
   /** @minLength 2 */
   fullName: string;
   role: UserRole;
-  /** @minLength 8 */
-  password: string;
   /** Required when role is client_pme; links the portal account to its client dossier. */
   clientId?: number;
 }

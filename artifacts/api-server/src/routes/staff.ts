@@ -11,7 +11,7 @@ import {
   UpdateStaffResponse,
   DeleteStaffParams,
 } from "@workspace/api-zod";
-import { hashPassword } from "../lib/auth";
+import { generateTemporaryPassword, hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 
@@ -29,6 +29,7 @@ router.use(requireAuth);
 function serializeStaff(
   user: typeof usersTable.$inferSelect,
   role: typeof rolesTable.$inferSelect | null,
+  temporaryPassword?: string,
 ) {
   return {
     id: user.id,
@@ -39,6 +40,9 @@ function serializeStaff(
     roleCode: role?.code ?? null,
     roleLabel: role?.label ?? null,
     createdAt: user.createdAt,
+    // Module M33: only populated right after creation, below -- never on
+    // list/update/delete.
+    temporaryPassword: temporaryPassword ?? null,
   };
 }
 
@@ -90,7 +94,13 @@ router.post("/staff", requireRole("client_pme"), async (req, res) => {
     return;
   }
 
-  const passwordHash = await hashPassword(body.password);
+  // Module M33: the owner no longer chooses the password -- a temporary
+  // one is generated here, hashed for storage, and returned once (plus
+  // kept in temporaryPasswordPlain) so it can be handed to the new staff
+  // member. The account must replace it on first login (see /auth/login
+  // and /auth/reset-first-password).
+  const temporaryPassword = generateTemporaryPassword();
+  const passwordHash = await hashPassword(temporaryPassword);
   const [user] = await db
     .insert(usersTable)
     .values({
@@ -102,6 +112,8 @@ router.post("/staff", requireRole("client_pme"), async (req, res) => {
       fullName: body.fullName,
       role: "client_staff",
       status: "active",
+      requiresPasswordChange: true,
+      temporaryPasswordPlain: temporaryPassword,
     })
     .returning();
 
@@ -117,7 +129,11 @@ router.post("/staff", requireRole("client_pme"), async (req, res) => {
     ipAddress: req.ip,
   });
 
-  res.status(201).json(CreateStaffResponse.parse(serializeStaff(user, role)));
+  res
+    .status(201)
+    .json(
+      CreateStaffResponse.parse(serializeStaff(user, role, temporaryPassword)),
+    );
 });
 
 router.patch("/staff/:id", requireRole("client_pme"), async (req, res) => {

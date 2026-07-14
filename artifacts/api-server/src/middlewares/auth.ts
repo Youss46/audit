@@ -17,6 +17,44 @@ export function requireAuth(
   const token = header.slice("Bearer ".length);
   try {
     const payload = verifyToken(token);
+    // Module M33: a restricted password-reset token must never grant
+    // access to anything besides POST /auth/reset-first-password, which
+    // uses requirePasswordResetAuth (below) instead of this middleware.
+    if (payload.scope === "password_reset_only") {
+      res.status(403).json({
+        error: "Vous devez d'abord réinitialiser votre mot de passe avant de continuer.",
+        status: "FORCE_PASSWORD_CHANGE",
+      });
+      return;
+    }
+    req.user = payload;
+    next();
+  } catch {
+    res.status(401).json({ message: "Jeton invalide ou expiré." });
+  }
+}
+
+// Module M33: the mirror image of requireAuth's restriction above. Gates
+// POST /auth/reset-first-password -- only a token carrying scope ===
+// "password_reset_only" is accepted; a normal full-session token is
+// rejected (that account has nothing to reset through this endpoint).
+export function requirePasswordResetAuth(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const header = req.headers.authorization;
+  if (!header?.startsWith("Bearer ")) {
+    res.status(401).json({ message: "Authentification requise." });
+    return;
+  }
+  const token = header.slice("Bearer ".length);
+  try {
+    const payload = verifyToken(token);
+    if (payload.scope !== "password_reset_only") {
+      res.status(403).json({ error: "Ce jeton ne permet pas cette action." });
+      return;
+    }
     req.user = payload;
     next();
   } catch {

@@ -92,6 +92,12 @@ paths:
       operationId: login
       tags: [auth]
       summary: Authenticate and obtain a JWT
+      description: >-
+        Module M33 - when the account still has an unresolved temporary
+        password, this returns status "FORCE_PASSWORD_CHANGE" and a
+        restricted token instead of a normal session; the frontend must
+        redirect to the password-reset screen and call
+        POST /auth/reset-first-password before anything else works.
       requestBody:
         required: true
         content:
@@ -107,6 +113,42 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/reset-first-password:
+    post:
+      operationId: resetFirstPassword
+      tags: [auth]
+      summary: Module M33 - exchange a restricted first-login token for a full session by setting a new password
+      description: >-
+        Only usable with the restricted token returned by POST /auth/login
+        when status was "FORCE_PASSWORD_CHANGE". Clears
+        requiresPasswordChange and the stored temporary password, then
+        returns a normal full-session token.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ResetFirstPasswordInput"
+      responses:
+        "200":
+          description: Password changed, full session issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Passwords don't match or don't meet the strength policy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Token is not a valid password-reset token
           content:
             application/json:
               schema:
@@ -3651,6 +3693,9 @@ components:
           type: array
           items: { type: string }
           description: Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.
+        temporaryPassword:
+          type: ["string", "null"]
+          description: Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
 
     RegisterInput:
       type: object
@@ -3670,21 +3715,46 @@ components:
 
     AuthResponse:
       type: object
-      required: [token, user]
+      required: [status, token]
       properties:
+        status:
+          type: string
+          enum: [OK, FORCE_PASSWORD_CHANGE]
+          description: >-
+            Module M33 - "FORCE_PASSWORD_CHANGE" means `token` is a
+            restricted, short-lived token that only works against
+            POST /auth/reset-first-password; `user` is omitted in that
+            case and the frontend must redirect there before rendering
+            anything else. "OK" means a normal full session.
         token: { type: string }
         user:
           $ref: "#/components/schemas/User"
 
+    ResetFirstPasswordInput:
+      type: object
+      required: [newPassword, confirmPassword]
+      description: Module M33 - body for POST /auth/reset-first-password.
+      properties:
+        newPassword:
+          type: string
+          minLength: 8
+          description: Must contain at least 8 characters, one digit and one special character.
+        confirmPassword:
+          type: string
+          minLength: 8
+
     UserInput:
       type: object
-      required: [email, fullName, role, password]
+      required: [email, fullName, role]
+      description: >-
+        Module M33 - no password field: the server always auto-generates a
+        temporary password (returned once as `temporaryPassword` on the
+        created User) rather than accepting one from the admin.
       properties:
         email: { type: string, minLength: 3 }
         fullName: { type: string, minLength: 2 }
         role:
           $ref: "#/components/schemas/UserRole"
-        password: { type: string, minLength: 8 }
         clientId:
           type: integer
           description: Required when role is client_pme; links the portal account to its client dossier.
@@ -3726,14 +3796,20 @@ components:
         roleCode: { type: ["string", "null"] }
         roleLabel: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+        temporaryPassword:
+          type: ["string", "null"]
+          description: Module M33 - only ever populated in the response of POST /staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.
 
     StaffInput:
       type: object
-      required: [email, fullName, password, roleId]
+      required: [email, fullName, roleId]
+      description: >-
+        Module M33 - no password field: the server always auto-generates a
+        temporary password (returned once as `temporaryPassword` on the
+        created StaffUser) rather than accepting one from the owner.
       properties:
         email: { type: string, minLength: 3 }
         fullName: { type: string, minLength: 2 }
-        password: { type: string, minLength: 8 }
         roleId: { type: integer }
 
     StaffUpdate:

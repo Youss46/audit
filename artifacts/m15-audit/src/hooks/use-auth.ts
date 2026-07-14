@@ -8,12 +8,19 @@ import { isPortalRole } from "@/lib/status";
 
 export function useAuth() {
   const queryClient = useQueryClient();
-  const [, setLocation] = useLocation();
+  const [location, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Module M33: a restricted password-reset token is never valid against
+  // /auth/me (requireAuth rejects it everywhere except
+  // /auth/reset-first-password) -- calling it here would immediately
+  // 403 and, via the effect below, delete the very token the
+  // force-password-change page needs to submit its form.
+  const isForcePasswordChangeRoute = location === "/force-password-change";
 
   const userQuery = useGetCurrentUser({
     query: {
-      enabled: !!getToken(),
+      enabled: !!getToken() && !isForcePasswordChangeRoute,
       retry: false,
       queryKey: getGetCurrentUserQueryKey(),
     }
@@ -23,17 +30,26 @@ export function useAuth() {
   // around — otherwise every future page load re-sends it, gets another
   // 401, and the app never reaches the login screen on its own.
   useEffect(() => {
-    if (userQuery.isError) {
+    if (userQuery.isError && !isForcePasswordChangeRoute) {
       removeToken();
     }
-  }, [userQuery.isError]);
+  }, [userQuery.isError, isForcePasswordChangeRoute]);
 
   const loginMutation = useLogin({
     mutation: {
       onSuccess: (data) => {
+        // Module M33: the account still has an unresolved temporary
+        // password -- the token is restricted and only works against
+        // /auth/reset-first-password. Redirect there instead of loading
+        // the normal Shell/dashboard.
+        if (data.status === "FORCE_PASSWORD_CHANGE") {
+          setToken(data.token);
+          setLocation("/force-password-change");
+          return;
+        }
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(isPortalRole(data.user.role) ? "/portal" : "/dashboard");
+        setLocation(isPortalRole(data.user!.role) ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({
@@ -50,7 +66,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(isPortalRole(data.user.role) ? "/portal" : "/dashboard");
+        setLocation(isPortalRole(data.user!.role) ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({

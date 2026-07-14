@@ -7,6 +7,7 @@ import { Shell } from '@/components/layout/Shell';
 import Dashboard from '@/pages/dashboard';
 import Login from '@/pages/login';
 import Register from '@/pages/register';
+import ForcePasswordChange from '@/pages/force-password-change';
 import Clients from '@/pages/clients';
 import ClientDetail from '@/pages/client-detail';
 import ClientNew from '@/pages/client-new';
@@ -47,6 +48,7 @@ function Router() {
       <Switch>
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
+        <Route path="/force-password-change" component={ForcePasswordChange} />
         <Route path="/" component={Dashboard} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/clients" component={Clients} />

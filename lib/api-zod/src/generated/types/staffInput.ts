@@ -6,12 +6,13 @@
  * OpenAPI spec version: 0.1.0
  */
 
+/**
+ * Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created StaffUser) rather than accepting one from the owner.
+ */
 export interface StaffInput {
   /** @minLength 3 */
   email: string;
   /** @minLength 2 */
   fullName: string;
-  /** @minLength 8 */
-  password: string;
   roleId: number;
 }

@@ -6,10 +6,18 @@ import {
   RegisterResponse,
   LoginBody,
   LoginResponse,
+  ResetFirstPasswordBody,
+  ResetFirstPasswordResponse,
   GetCurrentUserResponse,
 } from "@workspace/api-zod";
-import { comparePassword, hashPassword, signToken } from "../lib/auth";
-import { requireAuth } from "../middlewares/auth";
+import {
+  comparePassword,
+  hashPassword,
+  isStrongPassword,
+  signRestrictedPasswordResetToken,
+  signToken,
+} from "../lib/auth";
+import { requireAuth, requirePasswordResetAuth } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
@@ -74,6 +82,9 @@ router.post("/auth/register", async (req, res) => {
       fullName: body.fullName,
       role: "expert_comptable",
       status: "active",
+      // Module M33: the owner chose this password themselves at
+      // registration, so there is nothing to force-reset.
+      requiresPasswordChange: false,
     })
     .returning();
 
@@ -99,11 +110,13 @@ router.post("/auth/register", async (req, res) => {
   });
 
   res.status(201).json(
-    RegisterResponse.parse({ token, user: serializeUser(user, firm.name) }),
+    RegisterResponse.parse({ status: "OK", token, user: serializeUser(user, firm.name) }),
   );
 });
 
-// Authenticates a user and returns a fresh JWT.
+// Authenticates a user and returns a fresh JWT -- or, module M33, a
+// restricted password-reset token if the account still has an unresolved
+// temporary password.
 router.post("/auth/login", async (req, res) => {
   const body = LoginBody.parse(req.body);
 
@@ -132,6 +145,22 @@ router.post("/auth/login", async (req, res) => {
     ipAddress: req.ip,
   });
 
+  // Module M33: the account was created by an admin with an auto-generated
+  // temporary password and hasn't replaced it yet -- issue a restricted
+  // token that only works against POST /auth/reset-first-password instead
+  // of a normal session.
+  if (user.requiresPasswordChange) {
+    const token = signRestrictedPasswordResetToken({
+      id: user.id,
+      firmId: user.firmId,
+      role: user.role,
+      email: user.email,
+      fullName: user.fullName,
+    });
+    res.json(LoginResponse.parse({ status: "FORCE_PASSWORD_CHANGE", token }));
+    return;
+  }
+
   const staffRole = await resolveStaffRole(user);
   const token = signToken({
     id: user.id,
@@ -147,8 +176,105 @@ router.post("/auth/login", async (req, res) => {
   const firm = await db.query.firmsTable.findFirst({
     where: eq(firmsTable.id, user.firmId),
   });
-  res.json(LoginResponse.parse({ token, user: serializeUser(user, firm?.name, staffRole) }));
+  res.json(
+    LoginResponse.parse({
+      status: "OK",
+      token,
+      user: serializeUser(user, firm?.name, staffRole),
+    }),
+  );
 });
+
+// Module M33: exchanges a restricted first-login token for a full session
+// by setting a new password. Only reachable with the restricted token
+// returned above -- requirePasswordResetAuth rejects everything else.
+router.post(
+  "/auth/reset-first-password",
+  requirePasswordResetAuth,
+  async (req, res) => {
+    const body = ResetFirstPasswordBody.parse(req.body);
+
+    if (body.newPassword !== body.confirmPassword) {
+      res.status(400).json({ error: "Les deux mots de passe ne correspondent pas." });
+      return;
+    }
+    if (!isStrongPassword(body.newPassword)) {
+      res.status(400).json({
+        error:
+          "Le mot de passe doit contenir au moins 8 caractères, un chiffre et un caractère spécial.",
+      });
+      return;
+    }
+
+    const user = await db.query.usersTable.findFirst({
+      where: eq(usersTable.id, req.user!.id),
+    });
+    if (!user) {
+      res.status(404).json({ error: "Utilisateur introuvable." });
+      return;
+    }
+    // The JWT scope check alone only proves this token was minted for a
+    // first-login reset -- it stays cryptographically valid for its full
+    // 15-minute lifetime even after being used once. Re-checking the DB
+    // flag here closes that window: once requiresPasswordChange is false,
+    // the same token can never reset the password again.
+    if (!user.requiresPasswordChange) {
+      res.status(400).json({
+        error: "Ce lien de réinitialisation a déjà été utilisé. Veuillez vous reconnecter.",
+      });
+      return;
+    }
+
+    const passwordHash = await hashPassword(body.newPassword);
+    const [updated] = await db
+      .update(usersTable)
+      .set({
+        passwordHash,
+        requiresPasswordChange: false,
+        temporaryPasswordPlain: null,
+        // The account has now actually logged in and set its own
+        // password -- no longer merely "invited".
+        status: user.status === "invited" ? "active" : user.status,
+      })
+      .where(eq(usersTable.id, user.id))
+      .returning();
+
+    await logAudit({
+      firmId: updated.firmId,
+      userId: updated.id,
+      userName: updated.fullName,
+      userRole: updated.role,
+      action: AuditAction.AUTH_FORCED_PASSWORD_RESET,
+      entityType: "user",
+      entityId: updated.id,
+      details: "Première connexion : remplacement du mot de passe temporaire.",
+      ipAddress: req.ip,
+    });
+
+    const staffRole = await resolveStaffRole(updated);
+    const token = signToken({
+      id: updated.id,
+      firmId: updated.firmId,
+      role: updated.role,
+      email: updated.email,
+      fullName: updated.fullName,
+      clientId: updated.clientId,
+      roleId: updated.roleId,
+      permissions: staffRole?.permissions ?? [],
+    });
+
+    const firm = await db.query.firmsTable.findFirst({
+      where: eq(firmsTable.id, updated.firmId),
+    });
+    res.json(
+      ResetFirstPasswordResponse.parse({
+        status: "OK",
+        token,
+        user: serializeUser(updated, firm?.name, staffRole),
+      }),
+    );
+  },
+);
 
 router.get("/auth/me", requireAuth, async (req, res) => {
   const user = await db.query.usersTable.findFirst({

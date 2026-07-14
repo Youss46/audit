@@ -35,4 +35,9 @@ export interface User {
   roleLabel?: string | null;
   /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
   permissions?: string[];
+  /**
+     * Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
+     * @nullable
+     */
+  temporaryPassword?: string | null;
 }
