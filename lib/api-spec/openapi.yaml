@@ -785,6 +785,31 @@ paths:
                 items:
                   $ref: "#/components/schemas/TransactionCategoryOption"
 
+  /cabinet/pending-counts/{clientId}:
+    get:
+      operationId: getCabinetPendingCounts
+      tags: [accounting]
+      summary: Instant counters for the cabinet review queue (module M32) -- how many of this client's submitted entries are still "à valider", split by type, so nav badges can update live without polling the full transaction list.
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pending review counts for this client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingCounts"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /transactions:
     get:
       operationId: listTransactions
@@ -4038,6 +4063,17 @@ components:
         - manual_cabinet
         - settlement
         - caisse_closure
+
+    PendingCounts:
+      type: object
+      required: [pendingExpenses, pendingRevenues, totalPending]
+      properties:
+        pendingExpenses:
+          type: integer
+        pendingRevenues:
+          type: integer
+        totalPending:
+          type: integer
 
     PaymentMethod:
       type: string

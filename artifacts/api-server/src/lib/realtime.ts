@@ -25,7 +25,15 @@ type RealtimeEvent =
   // hub rather than a second gateway -- see lib/db/src/schema/chat.ts.
   | { type: "chat:channel-message"; payload: { channelId: number; message: unknown } }
   | { type: "chat:direct-message"; payload: { message: unknown } }
-  | { type: "chat:presence"; payload: { userId: number; online: boolean } };
+  | { type: "chat:presence"; payload: { userId: number; online: boolean } }
+  // Module M32 (Notification Instantanée & Compteurs Dynamiques): pushed to
+  // firm accountants/collaborateurs/stagiaires whenever a client's "à
+  // valider" queue changes (new PME submission, or an approve/reject
+  // decrements it), so nav badges stay live without polling.
+  | {
+      type: "pendingTransactionsUpdated";
+      payload: { clientId: number; pendingExpenses: number; pendingRevenues: number; totalPending: number };
+    };
 
 const socketsByUserId = new Map<number, Set<WebSocket>>();
 // Module M31: tracks which firm each open socket's user belongs to, purely
