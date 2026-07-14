@@ -82,6 +82,7 @@ const TABS = [
   { slug: "analytique",       label: "Analytique"             },
   { slug: "dsf",              label: "Liasse Fiscale (DSF)"  },
   { slug: "revision",         label: "Révision Collaborative" },
+  { slug: "scoring",          label: "Scoring & Évaluation"  },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
@@ -95,6 +96,7 @@ const CABINET_TABS = new Set<string>([
   "analytique",
   "dsf",
   "revision",
+  "scoring",
 ])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
@@ -113,7 +115,8 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, analytiqueParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/analytique")
   const [, dsfParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/dsf")
   const [, revisionParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/revision")
-  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams ?? dsfParams ?? revisionParams
+  const [, scoringParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/scoring")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams ?? dsfParams ?? revisionParams ?? scoringParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.

@@ -2436,6 +2436,85 @@ export const PostVatLiquidationResponse = zod.object({
 
 
 /**
+ * @summary Compute the Scoring Financier & Évaluation d'Entreprise diagnostic dashboard live from the validated ledger (M27) — persists the scoring snapshot for the historical trend
+ */
+export const GetScoringDashboardParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetScoringDashboardResponse = zod.object({
+  "clientId": zod.number(),
+  "year": zod.number(),
+  "metrics": zod.object({
+  "totalAssets": zod.number(),
+  "totalLiabilitiesAndEquity": zod.number(),
+  "currentAssets": zod.number(),
+  "currentLiabilities": zod.number(),
+  "totalEquity": zod.number(),
+  "totalDebts": zod.number(),
+  "netIncome": zod.number(),
+  "ebitda": zod.number(),
+  "ebit": zod.number(),
+  "sales": zod.number(),
+  "retainedEarnings": zod.number()
+}),
+  "ratios": zod.object({
+  "returnOnEquity": zod.number().nullable(),
+  "currentRatio": zod.number().nullable(),
+  "debtToEquity": zod.number().nullable(),
+  "solvencyRatio": zod.number().nullable(),
+  "netWorkingCapital": zod.number()
+}),
+  "zScore": zod.number(),
+  "riskCategory": zod.enum(['FAIBLE_RISQUE', 'RISQUE_MODERE', 'RISQUE_ELEVE']),
+  "riskExplanationFr": zod.string(),
+  "computedAt": zod.coerce.date(),
+  "valuation": zod.object({
+  "ebitdaMultiplierUsed": zod.number(),
+  "ebitdaMultiplierValue": zod.number(),
+  "capitalizationRateUsed": zod.number(),
+  "capitalizedEarningsValue": zod.number(),
+  "equityValue": zod.number(),
+  "customComments": zod.string().nullable(),
+  "updatedAt": zod.coerce.date().optional()
+})
+})
+
+
+/**
+ * @summary Save a business-valuation scenario (EBITDA multiplier / capitalization rate sliders) for a client/year (M27)
+ */
+export const SetValuationParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const setValuationBodyEbitdaMultiplierMin = 0;
+
+export const setValuationBodyCapitalizationRateMin = 0.001;
+export const setValuationBodyCapitalizationRateMax = 1;
+
+
+
+export const SetValuationBody = zod.object({
+  "ebitdaMultiplier": zod.number().min(setValuationBodyEbitdaMultiplierMin),
+  "capitalizationRate": zod.number().min(setValuationBodyCapitalizationRateMin).max(setValuationBodyCapitalizationRateMax),
+  "customComments": zod.string().nullish()
+})
+
+export const SetValuationResponse = zod.object({
+  "ebitdaMultiplierUsed": zod.number(),
+  "ebitdaMultiplierValue": zod.number(),
+  "capitalizationRateUsed": zod.number(),
+  "capitalizedEarningsValue": zod.number(),
+  "equityValue": zod.number(),
+  "customComments": zod.string().nullable(),
+  "updatedAt": zod.coerce.date().optional()
+})
+
+
+/**
  * @summary List cost/billing hourly rates for every cabinet collaborator (M22)
  */
 export const ListUserRatesResponseItem = zod.object({

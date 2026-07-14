@@ -31,6 +31,9 @@ export const AuditAction = {
   CASH_ENTRIES_SYNC: "CASH_ENTRIES_SYNC",
   LIASSE_FISCALE_EXPORT: "LIASSE_FISCALE_EXPORT",
   TRANSACTION_FORCE_VALIDATE: "TRANSACTION_FORCE_VALIDATE",
+  // Module M27 (Scoring Financier & Évaluation d'Entreprise).
+  BUSINESS_VALUATION_UPDATE: "BUSINESS_VALUATION_UPDATE",
+  SCORING_EXPORT: "SCORING_EXPORT",
   // Module M14: an accountant manually overwrote a value that had been
   // pre-filled by the AI extraction pipeline (module M13/OCR "Scan & Go").
   // Not yet emitted anywhere -- that AI pipeline was descoped pending the

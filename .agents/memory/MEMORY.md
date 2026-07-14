@@ -19,3 +19,4 @@
 - [M22 cabinet ops & profitability design](m22-cabinet-ops-design.md) — timesheet hook passes params as first arg; date fields are plain ISO strings; rates upsert via PUT /cabinet-analytics/rates/:userId.
 - [M23 analytical accounting design](m23-analytical-design.md) — fetch transactions separately (not via journalLine with:), use `inArray` for the report alloc query; avoid `with:{transaction}` on journalLines.
 - [M26 collaborative review & chat design](m26-collaboration-chat-design.md) — thread/comment split table; WS push is a best-effort enhancement over polling, not the sole delivery path; notification linkToRoute must match the recipient's own role's route, not the author's.
+- [M27 Scoring & Business Valuation design](m27-scoring-valuation-design.md) — Z-Score/valuation formulas, plus a pdfmake 0.3 API break (`new PdfPrinter()` → singleton `createPdf().getBuffer()`) that affects every PDF export app-wide.

@@ -36,6 +36,7 @@ import type {
   BatchCreateTransactionsInput,
   BatchCreateTransactionsResult,
   BilanSimplifieResult,
+  BusinessValuationResult,
   CabinetUserRate,
   CalculatePayrollResult,
   CashRegister,
@@ -123,7 +124,9 @@ import type {
   PostVatLiquidationResult,
   ProfitabilityReport,
   RegisterInput,
+  ScoringDashboardResult,
   SetAllocationsInput,
+  SetValuationInput,
   TimesheetEntry,
   TimesheetEntryInput,
   TimesheetEntryUpdate,
@@ -5739,6 +5742,162 @@ export const usePostVatLiquidation = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getPostVatLiquidationMutationOptions(options));
+    }
+
+export const getGetScoringDashboardUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/analytics/scoring/${clientId}/${year}`
+}
+
+/**
+ * @summary Compute the Scoring Financier & Évaluation d'Entreprise diagnostic dashboard live from the validated ledger (M27) — persists the scoring snapshot for the historical trend
+ */
+export const getScoringDashboard = async (clientId: number,
+    year: number, options?: RequestInit): Promise<ScoringDashboardResult> => {
+
+  return customFetch<ScoringDashboardResult>(getGetScoringDashboardUrl(clientId,year),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetScoringDashboardQueryKey = (clientId: number,
+    year: number,) => {
+    return [
+    `/api/analytics/scoring/${clientId}/${year}`
+    ] as const;
+    }
+
+
+export const getGetScoringDashboardQueryOptions = <TData = Awaited<ReturnType<typeof getScoringDashboard>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScoringDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetScoringDashboardQueryKey(clientId,year);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getScoringDashboard>>> = ({ signal }) => getScoringDashboard(clientId,year, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && year !== null && year !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getScoringDashboard>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetScoringDashboardQueryResult = NonNullable<Awaited<ReturnType<typeof getScoringDashboard>>>
+export type GetScoringDashboardQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Compute the Scoring Financier & Évaluation d'Entreprise diagnostic dashboard live from the validated ledger (M27) — persists the scoring snapshot for the historical trend
+ */
+
+export function useGetScoringDashboard<TData = Awaited<ReturnType<typeof getScoringDashboard>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getScoringDashboard>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetScoringDashboardQueryOptions(clientId,year,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSetValuationUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/analytics/scoring/${clientId}/${year}/valuation`
+}
+
+/**
+ * @summary Save a business-valuation scenario (EBITDA multiplier / capitalization rate sliders) for a client/year (M27)
+ */
+export const setValuation = async (clientId: number,
+    year: number,
+    setValuationInput: SetValuationInput, options?: RequestInit): Promise<BusinessValuationResult> => {
+
+  return customFetch<BusinessValuationResult>(getSetValuationUrl(clientId,year),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(setValuationInput)
+  }
+);}
+
+
+
+
+
+export const getSetValuationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setValuation>>, TError,{clientId: number;year: number;data: BodyType<SetValuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof setValuation>>, TError,{clientId: number;year: number;data: BodyType<SetValuationInput>}, TContext> => {
+
+const mutationKey = ['setValuation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof setValuation>>, {clientId: number;year: number;data: BodyType<SetValuationInput>}> = (props) => {
+          const {clientId,year,data} = props ?? {};
+
+          return  setValuation(clientId,year,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SetValuationMutationResult = NonNullable<Awaited<ReturnType<typeof setValuation>>>
+    export type SetValuationMutationBody = BodyType<SetValuationInput>
+    export type SetValuationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Save a business-valuation scenario (EBITDA multiplier / capitalization rate sliders) for a client/year (M27)
+ */
+export const useSetValuation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof setValuation>>, TError,{clientId: number;year: number;data: BodyType<SetValuationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof setValuation>>,
+        TError,
+        {clientId: number;year: number;data: BodyType<SetValuationInput>},
+        TContext
+      > => {
+      return useMutation(getSetValuationMutationOptions(options));
     }
 
 export const getListUserRatesUrl = () => {

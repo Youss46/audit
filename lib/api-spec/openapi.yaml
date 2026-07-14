@@ -2046,6 +2046,68 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /analytics/scoring/{clientId}/{year}:
+    get:
+      operationId: getScoringDashboard
+      tags: [analytics]
+      summary: Compute the Scoring Financier & Évaluation d'Entreprise diagnostic dashboard live from the validated ledger (M27) — persists the scoring snapshot for the historical trend
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Diagnostic dashboard (ratios, Z-Score, risk category, valuation)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScoringDashboardResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /analytics/scoring/{clientId}/{year}/valuation:
+    put:
+      operationId: setValuation
+      tags: [analytics]
+      summary: Save a business-valuation scenario (EBITDA multiplier / capitalization rate sliders) for a client/year (M27)
+      parameters:
+        - name: clientId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SetValuationInput"
+      responses:
+        "200":
+          description: Updated valuation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BusinessValuationResult"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /cabinet-analytics/rates:
     get:
       operationId: listUserRates
@@ -4914,6 +4976,77 @@ components:
         bilanEquilibre: { type: boolean }
         totalDebits: { type: integer }
         totalCredits: { type: integer }
+
+    # -------------------------------------------------------------------
+    # Module M27 (Scoring Financier & Évaluation d'Entreprise)
+    # -------------------------------------------------------------------
+    ScoringCoreMetrics:
+      type: object
+      required: [totalAssets, totalLiabilitiesAndEquity, currentAssets, currentLiabilities, totalEquity, totalDebts, netIncome, ebitda, ebit, sales, retainedEarnings]
+      properties:
+        totalAssets: { type: integer }
+        totalLiabilitiesAndEquity: { type: integer }
+        currentAssets: { type: integer }
+        currentLiabilities: { type: integer }
+        totalEquity: { type: integer }
+        totalDebts: { type: integer }
+        netIncome: { type: integer }
+        ebitda: { type: integer }
+        ebit: { type: integer }
+        sales: { type: integer }
+        retainedEarnings: { type: integer }
+
+    ScoringRatios:
+      type: object
+      required: [returnOnEquity, currentRatio, debtToEquity, solvencyRatio, netWorkingCapital]
+      properties:
+        returnOnEquity: { type: number, nullable: true }
+        currentRatio: { type: number, nullable: true }
+        debtToEquity: { type: number, nullable: true }
+        solvencyRatio: { type: number, nullable: true }
+        netWorkingCapital: { type: integer }
+
+    RiskCategory:
+      type: string
+      enum: [FAIBLE_RISQUE, RISQUE_MODERE, RISQUE_ELEVE]
+
+    BusinessValuationResult:
+      type: object
+      required: [ebitdaMultiplierUsed, ebitdaMultiplierValue, capitalizationRateUsed, capitalizedEarningsValue, equityValue, customComments]
+      properties:
+        ebitdaMultiplierUsed: { type: number }
+        ebitdaMultiplierValue: { type: integer }
+        capitalizationRateUsed: { type: number }
+        capitalizedEarningsValue: { type: integer }
+        equityValue: { type: integer }
+        customComments: { type: string, nullable: true }
+        updatedAt: { type: string, format: date-time }
+
+    ScoringDashboardResult:
+      type: object
+      required: [clientId, year, metrics, ratios, zScore, riskCategory, riskExplanationFr, computedAt, valuation]
+      properties:
+        clientId: { type: integer }
+        year: { type: integer }
+        metrics:
+          $ref: "#/components/schemas/ScoringCoreMetrics"
+        ratios:
+          $ref: "#/components/schemas/ScoringRatios"
+        zScore: { type: number }
+        riskCategory:
+          $ref: "#/components/schemas/RiskCategory"
+        riskExplanationFr: { type: string }
+        computedAt: { type: string, format: date-time }
+        valuation:
+          $ref: "#/components/schemas/BusinessValuationResult"
+
+    SetValuationInput:
+      type: object
+      required: [ebitdaMultiplier, capitalizationRate]
+      properties:
+        ebitdaMultiplier: { type: number, minimum: 0 }
+        capitalizationRate: { type: number, minimum: 0.001, maximum: 1 }
+        customComments: { type: string, nullable: true }
 
     # -------------------------------------------------------------------
     # Module M25 (Générateur de Synthèses & Documents Juridiques)

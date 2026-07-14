@@ -1571,6 +1571,70 @@ export interface DsfResult {
   totalCredits: number;
 }
 
+export interface ScoringCoreMetrics {
+  totalAssets: number;
+  totalLiabilitiesAndEquity: number;
+  currentAssets: number;
+  currentLiabilities: number;
+  totalEquity: number;
+  totalDebts: number;
+  netIncome: number;
+  ebitda: number;
+  ebit: number;
+  sales: number;
+  retainedEarnings: number;
+}
+
+export interface ScoringRatios {
+  returnOnEquity: number | null;
+  currentRatio: number | null;
+  debtToEquity: number | null;
+  solvencyRatio: number | null;
+  netWorkingCapital: number;
+}
+
+export type RiskCategory = typeof RiskCategory[keyof typeof RiskCategory];
+
+
+export const RiskCategory = {
+  FAIBLE_RISQUE: 'FAIBLE_RISQUE',
+  RISQUE_MODERE: 'RISQUE_MODERE',
+  RISQUE_ELEVE: 'RISQUE_ELEVE',
+} as const;
+
+export interface BusinessValuationResult {
+  ebitdaMultiplierUsed: number;
+  ebitdaMultiplierValue: number;
+  capitalizationRateUsed: number;
+  capitalizedEarningsValue: number;
+  equityValue: number;
+  customComments: string | null;
+  updatedAt?: string;
+}
+
+export interface ScoringDashboardResult {
+  clientId: number;
+  year: number;
+  metrics: ScoringCoreMetrics;
+  ratios: ScoringRatios;
+  zScore: number;
+  riskCategory: RiskCategory;
+  riskExplanationFr: string;
+  computedAt: string;
+  valuation: BusinessValuationResult;
+}
+
+export interface SetValuationInput {
+  /** @minimum 0 */
+  ebitdaMultiplier: number;
+  /**
+     * @minimum 0.001
+     * @maximum 1
+     */
+  capitalizationRate: number;
+  customComments?: string | null;
+}
+
 export type DocumentTemplateSummaryTemplateType = typeof DocumentTemplateSummaryTemplateType[keyof typeof DocumentTemplateSummaryTemplateType];
 
 

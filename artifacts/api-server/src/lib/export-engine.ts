@@ -10,6 +10,7 @@ import { createRequire } from "node:module";
 import ExcelJS from "exceljs";
 import type { BalanceRow, BilanResult, CompteResultatResult } from "./reporting-engine";
 import type { DsfResult } from "./dsf-engine";
+import type { ScoringRatios, ZScoreResult } from "./scoring-engine";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -29,18 +30,33 @@ const BUILT_IN_FONTS = {
   },
 };
 
-// Lazy-initialise so the require happens at call-time (after the module graph
-// is fully loaded), not at import-time, preventing "not a constructor" errors.
+// pdfmake@0.3+ changed its Node.js API: the package's main export is now a
+// pre-instantiated singleton (`module.exports = new pdfmake()`) configured
+// via setFonts/setUrlAccessPolicy/setLocalAccessPolicy, exposing
+// createPdf(docDef).getBuffer() rather than the old `new PdfPrinter(fonts)`
+// class + `.createPdfKitDocument()` stream API. Lazy-initialise so the
+// require happens at call-time (after the module graph is fully loaded).
 let _printer: {
-  createPdfKitDocument: (docDef: Record<string, unknown>) => NodeJS.EventEmitter & { end: () => void };
+  createPdf: (docDef: Record<string, unknown>) => { getBuffer: () => Promise<Buffer> };
+  setFonts: (fonts: unknown) => void;
+  setUrlAccessPolicy: (cb: (url: string) => boolean) => void;
+  setLocalAccessPolicy: (cb: (path: string) => boolean) => void;
 } | null = null;
 
 function getPrinter() {
   if (!_printer) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-    const PdfPrinterCtor = _nodeRequire("pdfmake");
+    const printer = _nodeRequire("pdfmake");
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-    _printer = new PdfPrinterCtor(BUILT_IN_FONTS);
+    printer.setFonts(BUILT_IN_FONTS);
+    // Our document definitions are always built internally (never from
+    // user-supplied paths/URLs), but pdfmake's local-file resolution is also
+    // how it loads the standard 14 PDF fonts (Helvetica, etc.) -- must stay
+    // allowed or every render fails. Deny remote URL fetches only, since no
+    // document ever references a network image.
+    printer.setUrlAccessPolicy(() => false);
+    printer.setLocalAccessPolicy(() => true);
+    _printer = printer;
   }
   return _printer!;
 }
@@ -55,14 +71,7 @@ function fmtNum(n: number): string {
 
 /** Render a pdfmake document definition to a Node.js Buffer. */
 function renderPdf(docDef: Record<string, unknown>): Promise<Buffer> {
-  return new Promise((resolve, reject) => {
-    const doc = getPrinter().createPdfKitDocument(docDef);
-    const chunks: Buffer[] = [];
-    doc.on("data", (chunk: Buffer) => chunks.push(chunk));
-    doc.on("end", () => resolve(Buffer.concat(chunks)));
-    doc.on("error", reject);
-    doc.end();
-  });
+  return getPrinter().createPdf(docDef).getBuffer();
 }
 
 // ---------------------------------------------------------------------------
@@ -1267,5 +1276,164 @@ export function generateReportDocumentPdf(
     defaultStyle: { font: "Helvetica", fontSize: 10, color: THEME.text },
     info: { title },
   };
+  return renderPdf(docDef);
+}
+
+// ---------------------------------------------------------------------------
+// Module M27 (Scoring Financier & Évaluation d'Entreprise) — Synthèse
+// Exécutive PDF, meant to be handed to a bank or partner.
+// ---------------------------------------------------------------------------
+
+function fmtPct(n: number | null | undefined): string {
+  return n == null ? "n/a" : `${(n * 100).toFixed(1)} %`;
+}
+function fmtRatio(n: number | null | undefined): string {
+  return n == null ? "n/a" : n.toFixed(2);
+}
+
+const RISK_BADGE_COLOR: Record<string, string> = {
+  FAIBLE_RISQUE: "#1a7a4a",
+  RISQUE_MODERE: "#d97706",
+  RISQUE_ELEVE: "#c0392b",
+};
+const RISK_LABEL_FR: Record<string, string> = {
+  FAIBLE_RISQUE: "RISQUE FAIBLE",
+  RISQUE_MODERE: "RISQUE MODÉRÉ",
+  RISQUE_ELEVE: "RISQUE ÉLEVÉ",
+};
+
+export interface ScoringExecutiveSummaryInput {
+  ratios: ScoringRatios;
+  zScoreResult: ZScoreResult;
+  valuation: {
+    ebitdaMultiplierUsed: number;
+    ebitdaMultiplierValue: number;
+    capitalizationRateUsed: number;
+    capitalizedEarningsValue: number;
+    equityValue: number;
+    customComments: string | null;
+  };
+}
+
+export async function generateScoringExecutiveSummaryPdf(
+  clientName: string,
+  year: number,
+  input: ScoringExecutiveSummaryInput,
+): Promise<Buffer> {
+  const { ratios, zScoreResult, valuation } = input;
+  const badgeColor = RISK_BADGE_COLOR[zScoreResult.riskCategory] ?? THEME.primary;
+  const badgeLabel = RISK_LABEL_FR[zScoreResult.riskCategory] ?? zScoreResult.riskCategory;
+
+  const ratioRows: PdfCell[][] = [
+    [headerCell("Indicateur", "left"), headerCell("Valeur", "right")],
+    [{ text: "Rentabilité — Return on Equity (ROE)", style: "cell" }, { text: fmtPct(ratios.returnOnEquity), style: "mono", alignment: "right" }],
+    [{ text: "Liquidité — Ratio de liquidité générale", style: "cell" }, { text: fmtRatio(ratios.currentRatio), style: "mono", alignment: "right" }],
+    [{ text: "Solvabilité — Ratio d'endettement (Dettes/Fonds propres)", style: "cell" }, { text: fmtRatio(ratios.debtToEquity), style: "mono", alignment: "right" }],
+    [{ text: "Solvabilité — Ratio d'autonomie financière", style: "cell" }, { text: fmtPct(ratios.solvencyRatio), style: "mono", alignment: "right" }],
+    [{ text: "Besoin en Fonds de Roulement (BFR / FRNG)", style: "cell" }, { text: fmtNum(ratios.netWorkingCapital) + " XOF", style: "mono", alignment: "right" }],
+  ];
+
+  const valuationRows: PdfCell[][] = [
+    [headerCell("Approche", "left"), headerCell("Détail", "left"), headerCell("Valeur estimée", "right")],
+    [
+      { text: "Approche Patrimoniale", style: "cell" },
+      { text: "Actif Net Réévalué (Capitaux propres)", style: "cell" },
+      { text: fmtNum(valuation.equityValue) + " XOF", style: "mono", alignment: "right" },
+    ],
+    [
+      { text: "Approche Comparative", style: "cell" },
+      { text: `Multiple de l'EBE — ${valuation.ebitdaMultiplierUsed}x`, style: "cell" },
+      { text: fmtNum(valuation.ebitdaMultiplierValue) + " XOF", style: "mono", alignment: "right" },
+    ],
+    [
+      { text: "Capitalisation du résultat", style: "cell" },
+      { text: `Taux de capitalisation — ${fmtPct(valuation.capitalizationRateUsed)}`, style: "cell" },
+      { text: fmtNum(valuation.capitalizedEarningsValue) + " XOF", style: "mono", alignment: "right" },
+    ],
+  ];
+
+  const docDef = {
+    pageSize: "A4",
+    pageOrientation: "portrait",
+    pageMargins: [35, 40, 35, 40],
+    defaultStyle: { font: "Helvetica" },
+    styles: BASE_STYLES,
+    footer: (currentPage: number, pageCount: number) => ({
+      text: `Document confidentiel — généré le ${new Date().toLocaleDateString("fr-FR")} — Page ${currentPage} / ${pageCount}`,
+      style: "footer",
+      margin: [35, 10],
+    }),
+    content: [
+      ...buildDocHeader(
+        clientName,
+        year,
+        "SYNTHÈSE EXÉCUTIVE",
+        "SCORING FINANCIER & ÉVALUATION D'ENTREPRISE",
+      ),
+
+      { text: "DIAGNOSTIC DE RISQUE FINANCIER", style: "sectionTitle" },
+      {
+        table: {
+          widths: ["*", 140],
+          body: [
+            [
+              { text: "Score de solidité financière (Z-Score)", bold: true, fontSize: 10, color: THEME.text },
+              { text: zScoreResult.zScore.toFixed(2), bold: true, fontSize: 14, alignment: "right", color: badgeColor },
+            ],
+            [
+              { text: "Catégorie de risque", fontSize: 9, color: "#555" },
+              { text: badgeLabel, bold: true, fontSize: 10, alignment: "right", color: badgeColor },
+            ],
+          ],
+        },
+        layout: {
+          hLineWidth: () => 1.5,
+          vLineWidth: () => 0,
+          hLineColor: () => badgeColor,
+          paddingLeft: () => 8,
+          paddingRight: () => 8,
+          paddingTop: () => 6,
+          paddingBottom: () => 6,
+        },
+        margin: [0, 0, 0, 8],
+      },
+      {
+        text: zScoreResult.riskExplanationFr,
+        fontSize: 9,
+        color: THEME.text,
+        italics: true,
+        margin: [0, 0, 0, 12],
+      },
+
+      { text: "RATIOS FINANCIERS CLÉS", style: "sectionTitle" },
+      {
+        table: { headerRows: 1, widths: ["*", 120], body: ratioRows },
+        layout: tableLayout(),
+      },
+
+      { text: "ÉVALUATION D'ENTREPRISE", style: "sectionTitle" },
+      {
+        table: { headerRows: 1, widths: ["*", "*", 120], body: valuationRows },
+        layout: tableLayout(),
+      },
+
+      valuation.customComments
+        ? {
+            text: [
+              { text: "Commentaire de l'expert-comptable : ", bold: true, fontSize: 9 },
+              { text: valuation.customComments, fontSize: 9 },
+            ],
+            margin: [0, 10, 0, 0],
+          }
+        : {
+            text: "Ce document est établi à des fins d'information et de présentation (partenaires, établissements bancaires). Il ne se substitue pas à un rapport d'évaluation contractuel ou à un audit indépendant.",
+            fontSize: 8,
+            italics: true,
+            color: "#777",
+            margin: [0, 10, 0, 0],
+          },
+    ],
+  };
+
   return renderPdf(docDef);
 }
