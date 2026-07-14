@@ -390,8 +390,8 @@ export default function VatSettings() {
               </div>
             ) : (
               <div className="divide-y">
-                {/* Column headers */}
-                <div className="grid grid-cols-[200px_1fr_1fr_1fr_80px_100px] gap-4 px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {/* Desktop column headers — hidden on mobile */}
+                <div className="hidden md:grid md:grid-cols-[minmax(0,2fr)_80px_140px_140px_80px_110px] gap-3 px-6 py-2.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   <span>Code TVA</span>
                   <span>Taux</span>
                   <span>Compte collectée</span>
@@ -485,101 +485,158 @@ function VatSettingRow({ setting, canEdit, onEdit }: VatSettingRowProps) {
       }).format(new Date(setting.updatedAt))
     : null
 
-  return (
-    <div
-      className={cn(
-        "grid grid-cols-[200px_1fr_1fr_1fr_80px_100px] items-center gap-4 px-6 py-4",
-        !setting.isActive && "opacity-50",
-      )}
-    >
-      {/* Code + label */}
-      <div className="flex items-center gap-2 min-w-0">
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                className={cn(
-                  "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-wide cursor-default",
-                  badgeCls,
-                )}
-              >
-                {!setting.isEditable && <Lock className="h-2.5 w-2.5" />}
-                {setting.code}
-              </span>
-            </TooltipTrigger>
-            {tooltip && (
-              <TooltipContent side="right" className="max-w-xs text-xs">
-                {tooltip}
-              </TooltipContent>
-            )}
-          </Tooltip>
-        </TooltipProvider>
-        <div className="min-w-0">
-          <p className="truncate text-sm font-medium">{setting.label}</p>
-          {setting.updatedByName && formattedDate && (
-            <p className="text-[10px] text-muted-foreground">
-              Modifié par {setting.updatedByName} le {formattedDate}
-            </p>
+  const badge = (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span
+          className={cn(
+            "inline-flex shrink-0 items-center gap-1 rounded-md border px-2 py-0.5 text-[11px] font-semibold tracking-wide cursor-default",
+            badgeCls,
           )}
+        >
+          {!setting.isEditable && <Lock className="h-2.5 w-2.5" />}
+          {setting.code}
+        </span>
+      </TooltipTrigger>
+      {tooltip && (
+        <TooltipContent side="right" className="max-w-xs text-xs">
+          {tooltip}
+        </TooltipContent>
+      )}
+    </Tooltip>
+  )
+
+  const statusEl = setting.isActive ? (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
+      <CheckCircle2 className="h-3.5 w-3.5" /> Actif
+    </span>
+  ) : (
+    <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
+      <XCircle className="h-3.5 w-3.5" /> Inactif
+    </span>
+  )
+
+  const actionEl = setting.isEditable && canEdit ? (
+    <Button
+      size="sm"
+      variant="outline"
+      className="h-8 gap-1.5 text-xs"
+      onClick={() => onEdit(setting)}
+    >
+      <Pencil className="h-3 w-3" />
+      Modifier
+    </Button>
+  ) : setting.isEditable && !canEdit ? (
+    <span className="text-xs text-muted-foreground italic">Lecture seule</span>
+  ) : (
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <Lock className="h-3 w-3" />
+      <span>Fixé par la loi</span>
+    </div>
+  )
+
+  return (
+    <>
+      {/* ── Mobile card (< md) ─────────────────────────────────────── */}
+      <div
+        className={cn(
+          "md:hidden px-4 py-4 space-y-3",
+          !setting.isActive && "opacity-50",
+        )}
+      >
+        {/* Header row: badge + label + action */}
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            {badge}
+            <div className="min-w-0">
+              <p className="text-sm font-semibold leading-snug">{setting.label}</p>
+              {setting.updatedByName && formattedDate && (
+                <p className="text-[10px] text-muted-foreground">
+                  Modifié par {setting.updatedByName} le {formattedDate}
+                </p>
+              )}
+            </div>
+          </div>
+          <div className="shrink-0">{actionEl}</div>
+        </div>
+
+        {/* Detail grid: 2×2 key-value */}
+        <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Taux</p>
+            <span className="font-semibold tabular-nums">
+              {setting.ratePercentage.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %
+            </span>
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Statut</p>
+            {statusEl}
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Collectée</p>
+            <AccountCell
+              account={setting.salesAccount}
+              tooltip="Compte SYSCOHADA crédité (TVA collectée) lors de la validation d'une facture de vente."
+              emptyLabel="Non imputé"
+            />
+          </div>
+          <div>
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground mb-0.5">Déductible</p>
+            <AccountCell
+              account={setting.purchaseAccount}
+              tooltip="Compte SYSCOHADA débité (TVA déductible) lors de la saisie d'un achat assujetti."
+              emptyLabel="Non imputé"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Rate */}
-      <div>
+      {/* ── Desktop table row (≥ md) ───────────────────────────────── */}
+      <div
+        className={cn(
+          "hidden md:grid md:grid-cols-[minmax(0,2fr)_80px_140px_140px_80px_110px] items-center gap-3 px-6 py-4",
+          !setting.isActive && "opacity-50",
+        )}
+      >
+        {/* Code + label */}
+        <div className="flex items-center gap-2 min-w-0">
+          {badge}
+          <div className="min-w-0">
+            <p className="truncate text-sm font-medium">{setting.label}</p>
+            {setting.updatedByName && formattedDate && (
+              <p className="text-[10px] text-muted-foreground">
+                Modifié par {setting.updatedByName} le {formattedDate}
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Rate */}
         <span className="text-sm font-semibold tabular-nums">
           {setting.ratePercentage.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} %
         </span>
+
+        {/* Sales account */}
+        <AccountCell
+          account={setting.salesAccount}
+          tooltip="Compte SYSCOHADA crédité (TVA collectée) lors de la validation d'une facture de vente."
+          emptyLabel="Non imputé"
+        />
+
+        {/* Purchase account */}
+        <AccountCell
+          account={setting.purchaseAccount}
+          tooltip="Compte SYSCOHADA débité (TVA déductible) lors de la saisie d'un achat assujetti."
+          emptyLabel="Non imputé"
+        />
+
+        {/* Active status */}
+        <div>{statusEl}</div>
+
+        {/* Action */}
+        <div className="flex justify-end">{actionEl}</div>
       </div>
-
-      {/* Sales account */}
-      <AccountCell
-        account={setting.salesAccount}
-        tooltip="Compte SYSCOHADA crédité (TVA collectée) lors de la validation d'une facture de vente."
-        emptyLabel="Non imputé"
-      />
-
-      {/* Purchase account */}
-      <AccountCell
-        account={setting.purchaseAccount}
-        tooltip="Compte SYSCOHADA débité (TVA déductible) lors de la saisie d'un achat assujetti."
-        emptyLabel="Non imputé"
-      />
-
-      {/* Active status */}
-      <div>
-        {setting.isActive ? (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-700">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Actif
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground">
-            <XCircle className="h-3.5 w-3.5" /> Inactif
-          </span>
-        )}
-      </div>
-
-      {/* Action */}
-      <div className="flex justify-end">
-        {setting.isEditable && canEdit ? (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 gap-1.5 text-xs"
-            onClick={() => onEdit(setting)}
-          >
-            <Pencil className="h-3 w-3" />
-            Modifier
-          </Button>
-        ) : setting.isEditable && !canEdit ? (
-          <span className="text-xs text-muted-foreground italic">Lecture seule</span>
-        ) : (
-          <div className="flex items-center gap-1 text-xs text-muted-foreground">
-            <Lock className="h-3 w-3" />
-            <span>Fixé par la loi</span>
-          </div>
-        )}
-      </div>
-    </div>
+    </>
   )
 }
 
