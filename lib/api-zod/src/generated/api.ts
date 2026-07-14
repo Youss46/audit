@@ -2832,8 +2832,8 @@ export const DeleteClientContractResponse = zod.void()
 export const ListTimesheetEntriesQueryParams = zod.object({
   "userId": zod.coerce.number().optional().describe('Only honored for expert_comptable callers; others always see their own entries.'),
   "clientId": zod.coerce.number().optional(),
-  "dateFrom": zod.date().optional(),
-  "dateTo": zod.date().optional()
+  "dateFrom": zod.coerce.date().optional(),
+  "dateTo": zod.coerce.date().optional()
 })
 
 export const ListTimesheetEntriesResponseItem = zod.object({
