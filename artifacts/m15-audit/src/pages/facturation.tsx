@@ -799,7 +799,7 @@ export default function Facturation() {
                           <td className="px-2 py-1.5">
                             <AmountInput
                               value={item.unitPrice}
-                              onChange={(v) => updateItem(item._key, "unitPrice", v)}
+                              onChange={(e) => updateItem(item._key, "unitPrice", e.target.value)}
                               placeholder="0"
                               className="h-8 border-0 shadow-none focus-visible:ring-0 px-1 text-right"
                             />
