@@ -20,6 +20,7 @@ import {
   Landmark,
   BarChart3,
   Receipt,
+  MessagesSquare,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
@@ -75,7 +76,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // own dedicated portal and must never reach the cabinet-facing screens
   // (dashboard, client list, team, audit log) even if they navigate there
   // directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/cabinet/client", "/cabinet/compliance"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication"]
   const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/client/settings"]
   React.useEffect(() => {
     if (
@@ -277,6 +278,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )} data-testid="link-documents">
         <FolderOpen className="h-5 w-5" />
         Gestion Documentaire (GED)
+      </Link>
+
+      {/* Module M31 (Messagerie Interne du Cabinet): every cabinet staff
+          role (expert_comptable / collaborateur / stagiaire) can chat --
+          it's a colleague utility, not a permission-gated business module. */}
+      <Link href="/cabinet/communication" className={cn(
+        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/cabinet/communication")
+          ? "bg-primary text-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-communication">
+        <MessagesSquare className="h-5 w-5" />
+        Messagerie
       </Link>
 
       <Link href="/comptabilite" className={cn(

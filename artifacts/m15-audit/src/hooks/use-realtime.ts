@@ -1,6 +1,13 @@
 import { useEffect, useRef } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { getListNotificationsQueryKey, getListThreadsQueryKey } from "@workspace/api-client-react"
+import {
+  getListNotificationsQueryKey,
+  getListThreadsQueryKey,
+  getListChatChannelsQueryKey,
+  getListChatChannelMessagesQueryKey,
+  getListChatDirectMessagesQueryKey,
+  getListChatColleaguesQueryKey,
+} from "@workspace/api-client-react"
 import { getToken } from "@/lib/auth"
 
 // Module M26 (Révision Collaborative & Chat Contextuel): best-effort
@@ -16,6 +23,10 @@ type RealtimeMessage =
   | { type: "notification:new"; payload: unknown }
   | { type: "comment:new"; payload: { targetType: string; targetId: number; clientId: number } }
   | { type: "thread:resolved"; payload: { targetType: string; targetId: number; clientId: number } }
+  // Module M31 (Messagerie Interne du Cabinet).
+  | { type: "chat:channel-message"; payload: { channelId: number; message: unknown } }
+  | { type: "chat:direct-message"; payload: { message: { senderId: number; recipientId: number } } }
+  | { type: "chat:presence"; payload: { userId: number; online: boolean } }
 
 export function useRealtime(enabled: boolean) {
   const queryClient = useQueryClient()
@@ -49,6 +60,19 @@ export function useRealtime(enabled: boolean) {
         queryClient.invalidateQueries({
           predicate: (q) => Array.isArray(q.queryKey) && String(q.queryKey[0]).includes("/collaboration/comments/"),
         })
+      } else if (message.type === "chat:channel-message") {
+        queryClient.invalidateQueries({ queryKey: getListChatChannelMessagesQueryKey(message.payload.channelId) })
+        queryClient.invalidateQueries({ queryKey: getListChatChannelsQueryKey() })
+      } else if (message.type === "chat:direct-message") {
+        queryClient.invalidateQueries({
+          queryKey: getListChatDirectMessagesQueryKey(message.payload.message.senderId),
+        })
+        queryClient.invalidateQueries({
+          queryKey: getListChatDirectMessagesQueryKey(message.payload.message.recipientId),
+        })
+      } else if (message.type === "chat:presence") {
+        queryClient.invalidateQueries({ queryKey: getListChatColleaguesQueryKey() })
+        queryClient.invalidateQueries({ queryKey: getListChatChannelsQueryKey() })
       }
     }
 

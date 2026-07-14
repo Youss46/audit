@@ -164,6 +164,8 @@ export function getAuditActionLabel(action: string, entityId?: string | null) {
     case 'VAT_SUPPLIER_INFO_UPDATE': return `Correction des informations fournisseur (NCC)${ref}`
     case 'VAT_LIQUIDATION_POST': return `Comptabilisation de la liquidation de TVA${ref}`
     case 'VAT_ANNEX_EXPORT': return `Export de l'annexe D-201/VA (état des taxes déductibles)${ref}`
+    // Module M31 (Messagerie Interne du Cabinet).
+    case 'CHAT_CHANNEL_CREATE': return `Création d'un salon de discussion${ref}`
     default: return action
   }
 }

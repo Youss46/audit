@@ -1980,6 +1980,97 @@ export interface CreditNoteInput {
   reason: string;
 }
 
+export interface ChatColleague {
+  id: number;
+  fullName: string;
+  role: UserRole;
+  isOnline: boolean;
+}
+
+export interface ChatChannel {
+  id: number;
+  firmId: number;
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  isPrivate: boolean;
+  memberCount: number;
+  isMember: boolean;
+  /** @nullable */
+  createdByName?: string | null;
+  /** @nullable */
+  lastMessage?: string | null;
+  /** @nullable */
+  lastMessageAt?: string | null;
+  createdAt: string;
+}
+
+export type ChatChannelDetail = ChatChannel & {
+  members: ChatColleague[];
+};
+
+export interface ChatChannelInput {
+  /** @minLength 1 */
+  name: string;
+  /** @nullable */
+  description?: string | null;
+  isPrivate?: boolean;
+  /** Extra colleagues to add as members at creation time (in addition to the creator). Required when isPrivate is true. */
+  memberIds?: number[];
+}
+
+export interface ChatMessage {
+  id: number;
+  /** @nullable */
+  channelId?: number | null;
+  /** @nullable */
+  recipientId?: number | null;
+  senderId: number;
+  senderName: string;
+  senderRole: UserRole;
+  messageText: string;
+  /** @nullable */
+  attachmentFileName?: string | null;
+  /** @nullable */
+  attachmentMimeType?: string | null;
+  /**
+     * Data URL (data:<mime>;base64,<data>) usable directly as a link/preview href
+     * @nullable
+     */
+  attachmentUrl?: string | null;
+  createdAt: string;
+}
+
+export interface ChatMessageInput {
+  /** @minLength 1 */
+  messageText: string;
+  attachmentFileName?: string;
+  attachmentMimeType?: string;
+  /** Base64-encoded file content, required together with attachmentFileName/attachmentMimeType */
+  attachmentData?: string;
+}
+
+export type ChatDirectMessageInput = ChatMessageInput & {
+  recipientId: number;
+};
+
+export interface ChatUploadInput {
+  /** @minLength 1 */
+  fileName: string;
+  /** @minLength 1 */
+  mimeType: string;
+  /** Base64-encoded file content */
+  fileData: string;
+}
+
+export interface ChatUploadResponse {
+  fileName: string;
+  mimeType: string;
+  fileData: string;
+  /** Data URL usable to preview the file client-side before it is attached and sent with a message */
+  previewUrl: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;

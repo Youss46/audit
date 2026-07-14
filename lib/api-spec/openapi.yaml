@@ -45,6 +45,8 @@ tags:
     description: Cabinet internal operations (M22) - collaborator timesheets, cost/billing rates, client forfait contracts, and per-client profitability reporting
   - name: invoicing
     description: Module M28 — Facturier Client & Auto-Génération de Pièces — structured invoice registry, chronological numbering (FAC-YYYY-XXXX), PDF receipt generation, and automatic SYSCOHADA 411/706/443 ledger posting
+  - name: chat
+    description: Module M31 — Messagerie Interne du Cabinet ("le Slack du Cabinet") — internal channels and direct messages for cabinet staff only (expert_comptable / collaborateur / stagiaire); client portal accounts have no access
 paths:
   /healthz:
     get:
@@ -3099,6 +3101,275 @@ paths:
         "204":
           description: All notifications marked read
 
+  # Module M31 — Messagerie Interne du Cabinet
+  # -------------------------------------------------------------------------
+  /chat/colleagues:
+    get:
+      operationId: listChatColleagues
+      tags: [chat]
+      summary: List the current user's cabinet colleagues in the same firm, with live online status, for the direct-message sidebar (M31)
+      responses:
+        "200":
+          description: List of colleagues
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatColleague"
+
+  /chat/channels:
+    get:
+      operationId: listChatChannels
+      tags: [chat]
+      summary: List every public channel of the firm plus the private channels the current user belongs to (M31)
+      responses:
+        "200":
+          description: List of channels
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatChannel"
+    post:
+      operationId: createChatChannel
+      tags: [chat]
+      summary: Create a channel; the creator is added as a member automatically (M31)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatChannelInput"
+      responses:
+        "201":
+          description: Channel created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatChannelDetail"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/channels/{id}:
+    get:
+      operationId: getChatChannel
+      tags: [chat]
+      summary: Get a channel's detail (description, members) for the right-hand info panel (M31)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Channel detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatChannelDetail"
+        "403":
+          description: Private channel, not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Channel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/channels/{id}/join:
+    post:
+      operationId: joinChatChannel
+      tags: [chat]
+      summary: Join a public channel (M31)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatChannelDetail"
+        "403":
+          description: Channel is private
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Channel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/channels/{id}/messages:
+    get:
+      operationId: listChatChannelMessages
+      tags: [chat]
+      summary: List a channel's messages, oldest first (M31)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+        "403":
+          description: Private channel, not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Channel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createChatChannelMessage
+      tags: [chat]
+      summary: Post a message to a channel; posting to a public channel you haven't joined yet joins you automatically (M31)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "201":
+          description: Message posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+        "403":
+          description: Private channel, not a member
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Channel not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/direct-messages/{userId}:
+    get:
+      operationId: listChatDirectMessages
+      tags: [chat]
+      summary: Load the direct-message conversation with a colleague, oldest first; marks their messages to me as read (M31)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ChatMessage"
+        "403":
+          description: Not a cabinet colleague in the same firm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Colleague not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/direct-messages:
+    post:
+      operationId: createChatDirectMessage
+      tags: [chat]
+      summary: Send a direct message to a cabinet colleague in the same firm (M31)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatDirectMessageInput"
+      responses:
+        "201":
+          description: Message sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessage"
+        "403":
+          description: Not a cabinet colleague in the same firm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Colleague not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /chat/upload:
+    post:
+      operationId: uploadChatAttachment
+      tags: [chat]
+      summary: Validate and prepare a file for attaching to a channel or direct message (M31); stateless -- the returned fileData travels with the subsequent send-message call, following this app's in-DB (no object storage) attachment convention
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatUploadInput"
+      responses:
+        "200":
+          description: File validated and ready to attach
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatUploadResponse"
+        "400":
+          description: File too large or invalid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   # Module M28 — Facturier Client & Auto-Génération de Pièces
   # -------------------------------------------------------------------------
   /invoices:
@@ -5690,3 +5961,113 @@ components:
       required: [reason]
       properties:
         reason: { type: string, minLength: 1 }
+
+    # Module M31 — Messagerie Interne du Cabinet
+    # -------------------------------------------------------------------------
+    ChatColleague:
+      type: object
+      required: [id, fullName, role, isOnline]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        role:
+          $ref: "#/components/schemas/UserRole"
+        isOnline: { type: boolean }
+
+    ChatChannel:
+      type: object
+      required: [id, firmId, name, isPrivate, memberCount, isMember, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        name: { type: string }
+        description: { type: ["string", "null"] }
+        isPrivate: { type: boolean }
+        memberCount: { type: integer }
+        isMember: { type: boolean }
+        createdByName: { type: ["string", "null"] }
+        lastMessage: { type: ["string", "null"] }
+        lastMessageAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    ChatChannelDetail:
+      allOf:
+        - $ref: "#/components/schemas/ChatChannel"
+        - type: object
+          required: [members]
+          properties:
+            members:
+              type: array
+              items:
+                $ref: "#/components/schemas/ChatColleague"
+
+    ChatChannelInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, minLength: 1 }
+        description: { type: ["string", "null"] }
+        isPrivate: { type: boolean }
+        memberIds:
+          type: array
+          items: { type: integer }
+          description: Extra colleagues to add as members at creation time (in addition to the creator). Required when isPrivate is true.
+
+    ChatMessage:
+      type: object
+      required: [id, senderId, senderName, senderRole, messageText, createdAt]
+      properties:
+        id: { type: integer }
+        channelId: { type: ["integer", "null"] }
+        recipientId: { type: ["integer", "null"] }
+        senderId: { type: integer }
+        senderName: { type: string }
+        senderRole:
+          $ref: "#/components/schemas/UserRole"
+        messageText: { type: string }
+        attachmentFileName: { type: ["string", "null"] }
+        attachmentMimeType: { type: ["string", "null"] }
+        attachmentUrl:
+          type: ["string", "null"]
+          description: Data URL (data:<mime>;base64,<data>) usable directly as a link/preview href
+        createdAt: { type: string, format: date-time }
+
+    ChatMessageInput:
+      type: object
+      required: [messageText]
+      properties:
+        messageText: { type: string, minLength: 1 }
+        attachmentFileName: { type: string }
+        attachmentMimeType: { type: string }
+        attachmentData:
+          type: string
+          description: Base64-encoded file content, required together with attachmentFileName/attachmentMimeType
+
+    ChatDirectMessageInput:
+      allOf:
+        - $ref: "#/components/schemas/ChatMessageInput"
+        - type: object
+          required: [recipientId]
+          properties:
+            recipientId: { type: integer }
+
+    ChatUploadInput:
+      type: object
+      required: [fileName, mimeType, fileData]
+      properties:
+        fileName: { type: string, minLength: 1 }
+        mimeType: { type: string, minLength: 1 }
+        fileData:
+          type: string
+          description: Base64-encoded file content
+
+    ChatUploadResponse:
+      type: object
+      required: [fileName, mimeType, fileData, previewUrl]
+      properties:
+        fileName: { type: string }
+        mimeType: { type: string }
+        fileData: { type: string }
+        previewUrl:
+          type: string
+          description: Data URL usable to preview the file client-side before it is attached and sent with a message

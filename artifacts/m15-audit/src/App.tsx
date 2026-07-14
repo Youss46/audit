@@ -36,6 +36,7 @@ import ComptabiliteRevision from '@/pages/comptabilite-revision';
 import Scoring from '@/pages/scoring';
 import Facturation from '@/pages/facturation';
 import ClientStaff from '@/pages/client-staff';
+import Communication from '@/pages/communication';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -81,6 +82,7 @@ function Router() {
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/cabinet/compliance" component={Compliance} />
+        <Route path="/cabinet/communication" component={Communication} />
         <Route component={NotFound} />
       </Switch>
     </Shell>

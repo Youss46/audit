@@ -22,3 +22,4 @@
 - [M27 Scoring & Business Valuation design](m27-scoring-valuation-design.md) — Z-Score/valuation formulas, plus a pdfmake 0.3 API break (`new PdfPrinter()` → singleton `createPdf().getBuffer()`) that affects every PDF export app-wide.
 - [M28 Invoicing & PDF receipt design](m28-invoicing-design.md) — serial PKs, HttpError is local per-route, CLIENT_PME_PREFIXES constant for Shell guards, generateInvoicePdf exported from export-engine.
 - [M29 RBAC & staff management design](m29-rbac-staff-design.md) — no separate Staff_Users table; requirePermission only restricts client_staff; staff mgmt gated by literal role not a permission flag.
+- [M31 internal chat design](m31-chat-design.md) — multiplex chat:* events onto the existing single /api/ws hub (no new gateway); "staff" = !isPortalRole(role), no separate Staff_Users table.

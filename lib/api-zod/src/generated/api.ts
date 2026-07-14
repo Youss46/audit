@@ -3480,6 +3480,259 @@ export const MarkAllNotificationsReadResponse = zod.void()
 
 
 /**
+ * @summary List the current user's cabinet colleagues in the same firm, with live online status, for the direct-message sidebar (M31)
+ */
+export const ListChatColleaguesResponseItem = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "isOnline": zod.boolean()
+})
+export const ListChatColleaguesResponse = zod.array(ListChatColleaguesResponseItem)
+
+
+/**
+ * @summary List every public channel of the firm plus the private channels the current user belongs to (M31)
+ */
+export const ListChatChannelsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isPrivate": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean(),
+  "createdByName": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListChatChannelsResponse = zod.array(ListChatChannelsResponseItem)
+
+
+/**
+ * @summary Create a channel; the creator is added as a member automatically (M31)
+ */
+
+
+
+export const CreateChatChannelBody = zod.object({
+  "name": zod.string().min(1),
+  "description": zod.string().nullish(),
+  "isPrivate": zod.boolean().optional(),
+  "memberIds": zod.array(zod.number()).optional().describe('Extra colleagues to add as members at creation time (in addition to the creator). Required when isPrivate is true.')
+})
+
+export const CreateChatChannelResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isPrivate": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean(),
+  "createdByName": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "members": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "isOnline": zod.boolean()
+}))
+}))
+
+
+/**
+ * @summary Get a channel's detail (description, members) for the right-hand info panel (M31)
+ */
+export const GetChatChannelParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetChatChannelResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isPrivate": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean(),
+  "createdByName": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "members": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "isOnline": zod.boolean()
+}))
+}))
+
+
+/**
+ * @summary Join a public channel (M31)
+ */
+export const JoinChatChannelParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const JoinChatChannelResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "name": zod.string(),
+  "description": zod.string().nullish(),
+  "isPrivate": zod.boolean(),
+  "memberCount": zod.number(),
+  "isMember": zod.boolean(),
+  "createdByName": zod.string().nullish(),
+  "lastMessage": zod.string().nullish(),
+  "lastMessageAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}).and(zod.object({
+  "members": zod.array(zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "isOnline": zod.boolean()
+}))
+}))
+
+
+/**
+ * @summary List a channel's messages, oldest first (M31)
+ */
+export const ListChatChannelMessagesParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListChatChannelMessagesResponseItem = zod.object({
+  "id": zod.number(),
+  "channelId": zod.number().nullish(),
+  "recipientId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string(),
+  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "messageText": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+})
+export const ListChatChannelMessagesResponse = zod.array(ListChatChannelMessagesResponseItem)
+
+
+/**
+ * @summary Post a message to a channel; posting to a public channel you haven't joined yet joins you automatically (M31)
+ */
+export const CreateChatChannelMessageParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateChatChannelMessageBody = zod.object({
+  "messageText": zod.string().min(1),
+  "attachmentFileName": zod.string().optional(),
+  "attachmentMimeType": zod.string().optional(),
+  "attachmentData": zod.string().optional().describe('Base64-encoded file content, required together with attachmentFileName\/attachmentMimeType')
+})
+
+export const CreateChatChannelMessageResponse = zod.object({
+  "id": zod.number(),
+  "channelId": zod.number().nullish(),
+  "recipientId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string(),
+  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "messageText": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Load the direct-message conversation with a colleague, oldest first; marks their messages to me as read (M31)
+ */
+export const ListChatDirectMessagesParams = zod.object({
+  "userId": zod.coerce.number()
+})
+
+export const ListChatDirectMessagesResponseItem = zod.object({
+  "id": zod.number(),
+  "channelId": zod.number().nullish(),
+  "recipientId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string(),
+  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "messageText": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+})
+export const ListChatDirectMessagesResponse = zod.array(ListChatDirectMessagesResponseItem)
+
+
+/**
+ * @summary Send a direct message to a cabinet colleague in the same firm (M31)
+ */
+
+
+
+export const CreateChatDirectMessageBody = zod.object({
+  "messageText": zod.string().min(1),
+  "attachmentFileName": zod.string().optional(),
+  "attachmentMimeType": zod.string().optional(),
+  "attachmentData": zod.string().optional().describe('Base64-encoded file content, required together with attachmentFileName\/attachmentMimeType')
+}).and(zod.object({
+  "recipientId": zod.number()
+}))
+
+export const CreateChatDirectMessageResponse = zod.object({
+  "id": zod.number(),
+  "channelId": zod.number().nullish(),
+  "recipientId": zod.number().nullish(),
+  "senderId": zod.number(),
+  "senderName": zod.string(),
+  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "messageText": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Validate and prepare a file for attaching to a channel or direct message (M31); stateless -- the returned fileData travels with the subsequent send-message call, following this app's in-DB (no object storage) attachment convention
+ */
+
+
+
+
+export const UploadChatAttachmentBody = zod.object({
+  "fileName": zod.string().min(1),
+  "mimeType": zod.string().min(1),
+  "fileData": zod.string().describe('Base64-encoded file content')
+})
+
+export const UploadChatAttachmentResponse = zod.object({
+  "fileName": zod.string(),
+  "mimeType": zod.string(),
+  "fileData": zod.string(),
+  "previewUrl": zod.string().describe('Data URL usable to preview the file client-side before it is attached and sent with a message')
+})
+
+
+/**
  * @summary List invoices for a client (M28)
  */
 export const ListInvoicesQueryParams = zod.object({

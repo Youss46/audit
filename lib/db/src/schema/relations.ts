@@ -20,6 +20,7 @@ import { documentTemplatesTable, generatedDocumentsTable } from "./report-docume
 import { collaborationThreadsTable, contextualCommentsTable, notificationsTable } from "./collaboration";
 import { financialScoringResultsTable, businessValuationsTable } from "./scoring";
 import { invoicesTable, invoiceItemsTable } from "./invoicing";
+import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -355,5 +356,44 @@ export const invoiceItemsRelations = relations(invoiceItemsTable, ({ one }) => (
   invoice: one(invoicesTable, {
     fields: [invoiceItemsTable.invoiceId],
     references: [invoicesTable.id],
+  }),
+}));
+
+// Module M31 (Messagerie Interne du Cabinet).
+export const chatChannelsRelations = relations(chatChannelsTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [chatChannelsTable.firmId], references: [firmsTable.id] }),
+  createdBy: one(usersTable, { fields: [chatChannelsTable.createdById], references: [usersTable.id] }),
+  members: many(chatChannelMembersTable),
+  messages: many(chatChannelMessagesTable),
+}));
+
+export const chatChannelMembersRelations = relations(chatChannelMembersTable, ({ one }) => ({
+  channel: one(chatChannelsTable, {
+    fields: [chatChannelMembersTable.channelId],
+    references: [chatChannelsTable.id],
+  }),
+  user: one(usersTable, { fields: [chatChannelMembersTable.userId], references: [usersTable.id] }),
+}));
+
+export const chatChannelMessagesRelations = relations(chatChannelMessagesTable, ({ one }) => ({
+  channel: one(chatChannelsTable, {
+    fields: [chatChannelMessagesTable.channelId],
+    references: [chatChannelsTable.id],
+  }),
+  firm: one(firmsTable, { fields: [chatChannelMessagesTable.firmId], references: [firmsTable.id] }),
+  sender: one(usersTable, { fields: [chatChannelMessagesTable.senderId], references: [usersTable.id] }),
+}));
+
+export const chatDirectMessagesRelations = relations(chatDirectMessagesTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [chatDirectMessagesTable.firmId], references: [firmsTable.id] }),
+  sender: one(usersTable, {
+    fields: [chatDirectMessagesTable.senderId],
+    references: [usersTable.id],
+    relationName: "sentDirectMessages",
+  }),
+  recipient: one(usersTable, {
+    fields: [chatDirectMessagesTable.recipientId],
+    references: [usersTable.id],
+    relationName: "receivedDirectMessages",
   }),
 }));

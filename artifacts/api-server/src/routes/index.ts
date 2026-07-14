@@ -23,6 +23,7 @@ import collaborationRouter from "./collaboration";
 import scoringRouter from "./scoring";
 import invoicingRouter from "./invoicing";
 import staffRouter from "./staff";
+import chatRouter from "./chat";
 
 const router: IRouter = Router();
 
@@ -50,5 +51,6 @@ router.use(collaborationRouter);
 router.use(scoringRouter);
 router.use(invoicingRouter);
 router.use(staffRouter);
+router.use(chatRouter);
 
 export default router;

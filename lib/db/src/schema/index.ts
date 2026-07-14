@@ -20,4 +20,5 @@ export * from "./report-documents";
 export * from "./collaboration";
 export * from "./scoring";
 export * from "./invoicing";
+export * from "./chat";
 export * from "./relations";

@@ -74,6 +74,8 @@ export const AuditAction = {
   INVOICE_MARK_PAID: "INVOICE_MARK_PAID",
   INVOICE_CANCEL: "INVOICE_CANCEL",
   CREDIT_NOTE_CREATE: "CREDIT_NOTE_CREATE",
+  // Module M31 (Messagerie Interne du Cabinet).
+  CHAT_CHANNEL_CREATE: "CHAT_CHANNEL_CREATE",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];
