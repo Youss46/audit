@@ -73,10 +73,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const desktopNavScrollRef = React.useRef<HTMLDivElement>(null)
   const mobileNavScrollRef = React.useRef<HTMLDivElement>(null)
   React.useEffect(() => {
-    for (const container of [desktopNavScrollRef.current, mobileNavScrollRef.current]) {
-      if (!container) continue
-      const activeLink = container.querySelector<HTMLElement>("a.bg-primary")
-      activeLink?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    const scrollActiveLinkIntoView = () => {
+      for (const container of [desktopNavScrollRef.current, mobileNavScrollRef.current]) {
+        if (!container) continue
+        const activeLink = container.querySelector<HTMLElement>("a.bg-primary")
+        activeLink?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+      }
+    }
+    // A single requestAnimationFrame can still fire mid-layout right after
+    // the mobile Sheet mounts (Radix portals it in and starts its 500ms
+    // slide-in transition), so the very first frame sometimes measures the
+    // container before its final size/scrollHeight settle -- wait two
+    // frames, which reliably lands after that first layout pass.
+    let raf2 = 0
+    const raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(scrollActiveLinkIntoView)
+    })
+    return () => {
+      cancelAnimationFrame(raf1)
+      cancelAnimationFrame(raf2)
     }
   }, [location, search, isMobileMenuOpen])
 
