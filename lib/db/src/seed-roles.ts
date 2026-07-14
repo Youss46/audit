@@ -43,8 +43,8 @@ const ROLES: {
     code: "POMPISTE",
     label: "Agent Terrain / Pompiste",
     description:
-      "Saisie des ventes uniquement -- aucun accès aux rapports financiers, à la caisse globale ou aux paramètres du compte.",
-    permissions: ["dashboard.view", "facturation.view", "facturation.create"],
+      "Saisie des ventes et gestion de la caisse terrain -- aucun accès aux rapports financiers ni aux paramètres du compte. Ne voit que Caisse Terrain et Mon Facturier.",
+    permissions: ["caisse.view", "caisse.create", "facturation.view", "facturation.create"],
   },
   {
     code: "COMPTABLE_INTERNE",
