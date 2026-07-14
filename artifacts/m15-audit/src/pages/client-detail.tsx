@@ -434,11 +434,11 @@ export default function ClientDetail() {
       </div>
 
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="mb-4">
-          <TabsTrigger value="overview">Vue d'ensemble</TabsTrigger>
-          <TabsTrigger value="missions">Missions de Visa</TabsTrigger>
-          <TabsTrigger value="documents">Portail Documentaire</TabsTrigger>
-          <TabsTrigger value="etats-financiers" data-testid="tab-etats-financiers">États Financiers</TabsTrigger>
+        <TabsList className="mb-4 w-full overflow-x-auto flex-nowrap justify-start">
+          <TabsTrigger value="overview" className="shrink-0">Vue d'ensemble</TabsTrigger>
+          <TabsTrigger value="missions" className="shrink-0">Missions de Visa</TabsTrigger>
+          <TabsTrigger value="documents" className="shrink-0">Portail Documentaire</TabsTrigger>
+          <TabsTrigger value="etats-financiers" className="shrink-0" data-testid="tab-etats-financiers">États Financiers</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
