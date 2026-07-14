@@ -259,151 +259,185 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </>
       ) : (
         <>
-      <Link href="/dashboard" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location === "/dashboard" 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-dashboard">
-        <ActivitySquare className="h-5 w-5" />
-        Tableau de bord
-      </Link>
-      
-      <Link href="/clients" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/clients") 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-clients">
-        <Building2 className="h-5 w-5" />
-        Registre des Clients
-      </Link>
+          {/* ── Vue d'ensemble ─────────────────────────────── */}
+          <Link href="/dashboard" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location === "/dashboard"
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-dashboard">
+            <ActivitySquare className="h-5 w-5" />
+            Tableau de bord
+          </Link>
 
-      <Link href="/missions" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/missions") 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-missions">
-        <Stamp className="h-5 w-5" />
-        Missions de Visa
-      </Link>
+          {/* ── Gestion des dossiers clients ────────────────── */}
+          <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            Dossiers
+          </p>
 
-      <Link href="/documents" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/documents") 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-documents">
-        <FolderOpen className="h-5 w-5" />
-        Gestion Documentaire (GED)
-      </Link>
+          <Link href="/clients" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/clients")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-clients">
+            <Building2 className="h-5 w-5" />
+            Registre des Clients
+          </Link>
 
-      {/* Module M31 (Messagerie Interne du Cabinet): every cabinet staff
-          role (expert_comptable / collaborateur / stagiaire) can chat --
-          it's a colleague utility, not a permission-gated business module. */}
-      <Link href="/cabinet/communication" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/cabinet/communication")
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-communication">
-        <MessagesSquare className="h-5 w-5" />
-        Messagerie
-      </Link>
+          <Link href="/missions" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/missions")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-missions">
+            <Stamp className="h-5 w-5" />
+            Missions de Visa
+          </Link>
 
-      <Link href="/comptabilite" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/comptabilite") 
-          ? "bg-primary text-primary-foreground" 
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-comptabilite-cabinet">
-        <BookOpenCheck className="h-5 w-5" />
-        Comptabilité &amp; Travaux
-      </Link>
+          <Link href="/documents" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/documents")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-documents">
+            <FolderOpen className="h-5 w-5" />
+            Gestion Documentaire (GED)
+          </Link>
 
-      {/* Module M32 (Notification Instantanée & Compteurs Dynamiques):
-          quick-access shortcuts straight into the unscoped "à valider"
-          queue, pre-filtered by type, with a live count of what's waiting
-          across every client in the firm. */}
-      <Link href="/comptabilite?type=depense" className={cn(
-        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/comptabilite") && location.includes("type=depense")
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-revision-depenses">
-        <span className="flex items-center gap-3">
-          <TrendingDown className="h-4 w-4" />
-          Révision Dépenses
-        </span>
-        {!!firmPendingCounts?.pendingExpenses && (
-          <Badge className="h-5 min-w-5 justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white hover:bg-red-600" data-testid="badge-pending-depenses">
-            {firmPendingCounts.pendingExpenses}
-          </Badge>
-        )}
-      </Link>
+          {/* ── Comptabilité ────────────────────────────────── */}
+          <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            Comptabilité
+          </p>
 
-      <Link href="/comptabilite?type=recette" className={cn(
-        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        location.startsWith("/comptabilite") && location.includes("type=recette")
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-revision-recettes">
-        <span className="flex items-center gap-3">
-          <TrendingUp className="h-4 w-4" />
-          Révision Recettes
-        </span>
-        {!!firmPendingCounts?.pendingRevenues && (
-          <Badge className="h-5 min-w-5 justify-center rounded-full bg-orange-500 px-1.5 text-[11px] font-bold text-white hover:bg-orange-500" data-testid="badge-pending-recettes">
-            {firmPendingCounts.pendingRevenues}
-          </Badge>
-        )}
-      </Link>
+          <Link href="/comptabilite" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/comptabilite")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-comptabilite-cabinet">
+            <BookOpenCheck className="h-5 w-5" />
+            Comptabilité &amp; Travaux
+          </Link>
 
-      <Link href="/immobilisations" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        (location.startsWith("/immobilisations") || (location.startsWith("/cabinet/client") && location.includes("/immobilisations")))
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-immobilisations">
-        <Layers className="h-5 w-5" />
-        Immobilisations
-      </Link>
+          {/* Module M32: quick-access "à valider" queues with live counts */}
+          <Link href="/comptabilite?type=depense" className={cn(
+            "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/comptabilite") && location.includes("type=depense")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-revision-depenses">
+            <span className="flex items-center gap-3">
+              <TrendingDown className="h-4 w-4" />
+              Révision Dépenses
+            </span>
+            {!!firmPendingCounts?.pendingExpenses && (
+              <Badge className="h-5 min-w-5 justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white hover:bg-red-600" data-testid="badge-pending-depenses">
+                {firmPendingCounts.pendingExpenses}
+              </Badge>
+            )}
+          </Link>
 
-      <Link href="/financements" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        (location.startsWith("/financements") || (location.startsWith("/cabinet/client") && location.includes("/finance")))
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-financements">
-        <Landmark className="h-5 w-5" />
-        Financements &amp; Dettes
-      </Link>
+          <Link href="/comptabilite?type=recette" className={cn(
+            "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/comptabilite") && location.includes("type=recette")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-revision-recettes">
+            <span className="flex items-center gap-3">
+              <TrendingUp className="h-4 w-4" />
+              Révision Recettes
+            </span>
+            {!!firmPendingCounts?.pendingRevenues && (
+              <Badge className="h-5 min-w-5 justify-center rounded-full bg-orange-500 px-1.5 text-[11px] font-bold text-white hover:bg-orange-500" data-testid="badge-pending-recettes">
+                {firmPendingCounts.pendingRevenues}
+              </Badge>
+            )}
+          </Link>
 
-      <Link href="/dsf" className={cn(
-        "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-        (location.startsWith("/dsf") || (location.startsWith("/cabinet/client") && location.includes("/dsf")))
-          ? "bg-primary text-primary-foreground"
-          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-      )} data-testid="link-dsf">
-        <FileSpreadsheet className="h-5 w-5" />
-        Déclaration DSF
-      </Link>
-      
+          {/* ── États financiers ────────────────────────────── */}
+          <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            États financiers
+          </p>
+
+          <Link href="/immobilisations" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            (location.startsWith("/immobilisations") || (location.startsWith("/cabinet/client") && location.includes("/immobilisations")))
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-immobilisations">
+            <Layers className="h-5 w-5" />
+            Immobilisations
+          </Link>
+
+          <Link href="/financements" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            (location.startsWith("/financements") || (location.startsWith("/cabinet/client") && location.includes("/finance")))
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-financements">
+            <Landmark className="h-5 w-5" />
+            Financements &amp; Dettes
+          </Link>
+
+          <Link href="/dsf" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            (location.startsWith("/dsf") || (location.startsWith("/cabinet/client") && location.includes("/dsf")))
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-dsf">
+            <FileSpreadsheet className="h-5 w-5" />
+            Déclaration DSF
+          </Link>
+
+          {/* ── Pilotage ────────────────────────────────────── */}
+          {(user?.role === "expert_comptable" || user?.role === "collaborateur") && (
+            <>
+              <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+                Pilotage
+              </p>
+              <Link href="/cabinet/interne/rentabilite" className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                location.startsWith("/cabinet/interne/rentabilite")
+                  ? "bg-primary text-primary-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )} data-testid="link-rentabilite">
+                <BarChart3 className="h-5 w-5" />
+                Pilotage Interne
+              </Link>
+            </>
+          )}
+
+          {/* ── Administration ──────────────────────────────── */}
+          <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            Administration
+          </p>
+
+          {/* Module M31: internal cabinet chat, available to all cabinet roles */}
+          <Link href="/cabinet/communication" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/cabinet/communication")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-communication">
+            <MessagesSquare className="h-5 w-5" />
+            Messagerie
+          </Link>
+
           <Link href="/users" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/users") 
-              ? "bg-primary text-primary-foreground" 
+            location.startsWith("/users")
+              ? "bg-primary text-primary-foreground"
               : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )} data-testid="link-users">
             <Users className="h-5 w-5" />
             Équipe
           </Link>
-          
+
           <Link href="/audit-log" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/audit-log") 
-              ? "bg-primary text-primary-foreground" 
+            location.startsWith("/audit-log")
+              ? "bg-primary text-primary-foreground"
               : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )} data-testid="link-audit-log">
             <Files className="h-5 w-5" />
@@ -419,18 +453,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-compliance">
               <ShieldCheck className="h-5 w-5" />
               Journal de Conformité
-            </Link>
-          )}
-
-          {(user?.role === "expert_comptable" || user?.role === "collaborateur") && (
-            <Link href="/cabinet/interne/rentabilite" className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-              location.startsWith("/cabinet/interne/rentabilite")
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )} data-testid="link-rentabilite">
-              <BarChart3 className="h-5 w-5" />
-              Pilotage Interne
             </Link>
           )}
         </>
