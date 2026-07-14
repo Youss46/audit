@@ -165,7 +165,9 @@ export default function ClientPortal() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Espace PME</h1>
+        <h1 className="text-3xl font-bold tracking-tight">
+          {user?.roleCode === 'POMPISTE' ? 'Espace Pompiste' : 'Espace PME'}
+        </h1>
         <p className="text-muted-foreground mt-2">
           Bienvenue, <span className="font-medium text-foreground">{user?.fullName}</span>.{" "}
           {user?.role === 'client_staff'

@@ -231,7 +231,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )} data-testid="link-portal">
               <Building2 className="h-5 w-5" />
-              Espace PME
+              {user?.roleCode === 'POMPISTE' ? 'Espace Pompiste' : 'Espace PME'}
             </Link>
           )}
 
