@@ -61,26 +61,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(location)
 
-  // Module: mobile sidebar (Sheet). Radix unmounts the sheet's content when
-  // closed, so its scrollable nav list loses scroll position every time --
-  // reopening after tapping a link always snapped back to the top instead
-  // of staying near the item just clicked. We save the last scroll offset
-  // on scroll/close and restore it once the freshly-mounted content is back
-  // in the DOM (a plain assignment on mount is too early -- the Sheet's
-  // open animation hasn't laid out the content yet on the very first
-  // paint, so this restores on the next frame instead).
-  const mobileNavScrollRef = React.useRef(0)
-  const mobileNavScrollElRef = React.useRef<HTMLDivElement | null>(null)
-  React.useLayoutEffect(() => {
-    if (!isMobileMenuOpen) return
-    const el = mobileNavScrollElRef.current
-    if (!el) return
-    const frame = requestAnimationFrame(() => {
-      el.scrollTop = mobileNavScrollRef.current
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [isMobileMenuOpen])
-
   // Module M32: firm-wide "à valider" counters, live behind the global
   // "Révision Dépenses" / "Révision Recettes" nav badges below. Cabinet
   // staff only -- an Espace PME account never sees these links. The
@@ -582,13 +562,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </div>
               AUDIT
             </div>
-            <div
-              ref={mobileNavScrollElRef}
-              className="flex-1 overflow-y-auto py-2"
-              onScroll={(e) => {
-                mobileNavScrollRef.current = e.currentTarget.scrollTop
-              }}
-            >
+            <div className="flex-1 overflow-y-auto py-2">
               <NavItems />
             </div>
             <UserMenu />
