@@ -41,7 +41,7 @@ export default function Login() {
 
   return (
     <div className="grid min-h-screen w-full lg:grid-cols-2">
-      <div className="flex items-center justify-center p-4 bg-muted/30">
+      <div className="flex items-center justify-center p-4 bg-muted/30 lg:order-2">
         <div className="w-full max-w-md">
           <div className="flex items-center justify-center gap-2 font-bold text-2xl tracking-tight text-primary mb-8 lg:hidden">
             <div className="w-10 h-10 rounded bg-primary text-primary-foreground flex items-center justify-center font-mono text-sm shadow-sm">
@@ -108,7 +108,9 @@ export default function Login() {
         </div>
       </div>
 
-      <LoginHeroSlider />
+      <div className="lg:order-1">
+        <LoginHeroSlider />
+      </div>
     </div>
   )
 }
