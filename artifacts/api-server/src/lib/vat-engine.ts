@@ -1,4 +1,4 @@
-// Module M21 (Télédéclaration TVA - Formulaire D-201/VA), Côte d'Ivoire.
+// Module M21 / M21-Settings (Télédéclaration TVA - Formulaire D-201/VA + VAT Settings), Côte d'Ivoire.
 //
 // Deliberately framework-free and side-effect-free (mirrors
 // reporting-engine.ts / closing-engine.ts): routes/tax.ts fetches validated
@@ -15,6 +15,9 @@
 //   445400 — Crédit de TVA à reporter          (debit = new credit c/f,
 //                                                credit = clears prior credit)
 
+import { db, vatSettingsTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+
 export const VAT_RATE_NORMAL = 18;
 export const VAT_RATE_REDUIT = 9;
 export const STANDARD_VAT_RATES = [0, VAT_RATE_REDUIT, VAT_RATE_NORMAL] as const;
@@ -25,6 +28,58 @@ export const ACCOUNT_TVA_A_DECAISSER = "444100";
 export const ACCOUNT_TVA_DEDUCTIBLE_IMMO = "445100";
 export const ACCOUNT_TVA_DEDUCTIBLE_BIENS_SERVICES = "445200";
 export const ACCOUNT_CREDIT_TVA_REPORTE = "445400";
+
+// ---------------------------------------------------------------------------
+// Dynamic VAT account configuration — loaded from vat_settings table per firm.
+// Falls back to the hardcoded SYSCOHADA constants above when DB rows are absent.
+//
+// Note: the SYSCOHADA account for TVA déductible on immobilisations (445100)
+// is a structural asset-type distinction handled by the accounting engine
+// and is not overridable via vat_settings — only the goods/services purchase
+// account (445200) is firm-configurable.
+// ---------------------------------------------------------------------------
+
+export interface VatAccountConfig {
+  /** TVA collectée at the normal rate (default: "443100") */
+  collectee18: string;
+  /** TVA collectée at the reduced rate (default: "443200") */
+  collectee9: string;
+  /** TVA déductible on regular goods & services purchases (default: "445200") */
+  deductibleBiensServices: string;
+  // 444100 (à décaisser) and 445100 (immo) and 445400 (crédit c/f) are
+  // SYSCOHADA-standardized and not exposed for firm-level customisation.
+}
+
+export function getDefaultVatAccountConfig(): VatAccountConfig {
+  return {
+    collectee18: ACCOUNT_TVA_COLLECTEE_18,
+    collectee9: ACCOUNT_TVA_COLLECTEE_9,
+    deductibleBiensServices: ACCOUNT_TVA_DEDUCTIBLE_BIENS_SERVICES,
+  };
+}
+
+/**
+ * Loads firm-specific VAT accounts from the vat_settings table.
+ * Falls back to the statutory SYSCOHADA constants for any missing row.
+ * Only active rows are considered; a deactivated code is skipped.
+ */
+export async function loadFirmVatConfig(firmId: number): Promise<VatAccountConfig> {
+  const rows = await db.query.vatSettingsTable.findMany({
+    where: and(eq(vatSettingsTable.firmId, firmId), eq(vatSettingsTable.isActive, true)),
+  });
+
+  const byCode = Object.fromEntries(rows.map((r) => [r.code, r]));
+  const defaults = getDefaultVatAccountConfig();
+
+  return {
+    collectee18: byCode["TVA_18"]?.salesAccount ?? defaults.collectee18,
+    collectee9: byCode["TVA_9"]?.salesAccount ?? defaults.collectee9,
+    deductibleBiensServices:
+      byCode["TVA_18"]?.purchaseAccount ??
+      byCode["TVA_9"]?.purchaseAccount ??
+      defaults.deductibleBiensServices,
+  };
+}
 
 // True for any account in the VAT collection/deduction classes (443 TVA
 // Collectée, 445 TVA Déductible) -- used to block VAT-account postings for
@@ -283,26 +338,30 @@ export interface VatLiquidationLine {
 
 /**
  * Builds the balanced liquidation OD entry for a period:
- *   Dr 443100/443200 — clears TVA collectée for the period
- *   Cr 445100/445200 — clears TVA déductible for the period
- *   Cr 445400        — clears the prior period's carried-forward credit
- *                       (if any)
+ *   Dr 443xxx        — clears TVA collectée for the period (account from config)
+ *   Cr 445100        — clears TVA déductible immobilisations (hardcoded SYSCOHADA)
+ *   Cr 445200/config — clears TVA déductible biens & services
+ *   Cr 445400        — clears the prior period's carried-forward credit (if any)
  *   Cr 444100        — TVA nette à payer (if the period is payable), OR
- *   Dr 445400        — new credit to carry forward (if the period is a
- *                       credit position)
- * Always balances by construction -- see M21 design notes for the algebra.
+ *   Dr 445400        — new credit to carry forward (if a credit position)
+ * Always balances by construction — see M21 design notes for the algebra.
+ *
+ * Pass `accounts` (from `loadFirmVatConfig`) to use firm-configured SYSCOHADA
+ * accounts; omit it to fall back to the statutory hardcoded constants.
  */
 export function buildVatLiquidationLines(
   sectionA: VatSectionA,
   sectionB: VatSectionB,
   sectionC: VatSectionC,
   period: string,
+  accounts?: VatAccountConfig,
 ): VatLiquidationLine[] {
+  const acc = accounts ?? getDefaultVatAccountConfig();
   const lines: VatLiquidationLine[] = [];
 
   if (sectionA.tvaCollectee18 > 0) {
     lines.push({
-      accountNumber: ACCOUNT_TVA_COLLECTEE_18,
+      accountNumber: acc.collectee18,
       label: `Liquidation TVA ${period} — TVA collectée 18%`,
       debitAmount: sectionA.tvaCollectee18,
       creditAmount: 0,
@@ -310,7 +369,7 @@ export function buildVatLiquidationLines(
   }
   if (sectionA.tvaCollectee9 > 0) {
     lines.push({
-      accountNumber: ACCOUNT_TVA_COLLECTEE_9,
+      accountNumber: acc.collectee9,
       label: `Liquidation TVA ${period} — TVA collectée 9%`,
       debitAmount: sectionA.tvaCollectee9,
       creditAmount: 0,
@@ -318,6 +377,8 @@ export function buildVatLiquidationLines(
   }
   if (sectionB.tvaDeductibleImmo > 0) {
     lines.push({
+      // Immobilisation sub-account is structural (asset-type based, not rate-based)
+      // and stays hardcoded to the SYSCOHADA standard 445100.
       accountNumber: ACCOUNT_TVA_DEDUCTIBLE_IMMO,
       label: `Liquidation TVA ${period} — TVA déductible immobilisations`,
       debitAmount: 0,
@@ -326,7 +387,7 @@ export function buildVatLiquidationLines(
   }
   if (sectionB.tvaDeductibleBiensServices > 0) {
     lines.push({
-      accountNumber: ACCOUNT_TVA_DEDUCTIBLE_BIENS_SERVICES,
+      accountNumber: acc.deductibleBiensServices,
       label: `Liquidation TVA ${period} — TVA déductible biens et services`,
       debitAmount: 0,
       creditAmount: sectionB.tvaDeductibleBiensServices,

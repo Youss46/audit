@@ -22,4 +22,5 @@ export * from "./scoring";
 export * from "./invoicing";
 export * from "./chat";
 export * from "./payroll-settings";
+export * from "./vat-settings";
 export * from "./relations";

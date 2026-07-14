@@ -9,6 +9,7 @@ import {
   journalLinesTable,
   invoicesTable,
   invoiceItemsTable,
+  vatSettingsTable,
   isPortalRole,
 } from "@workspace/db";
 import {
@@ -27,6 +28,7 @@ import {
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { generateInvoicePdf } from "../lib/export-engine";
+import { ACCOUNT_TVA_COLLECTEE_18 } from "../lib/vat-engine";
 
 class HttpError extends Error {
   constructor(
@@ -374,9 +376,22 @@ router.post("/invoices/:id/validate", requirePermission("facturation.create"), a
     })
     .returning();
 
-  // 5. Post SYSCOHADA accounting entry: 411 / 706 / 443100.
-  //    Directly inserted (bypasses PME validation flow, identical to how
-  //    the closing engine and payroll engine write their entries).
+  // 5. Post SYSCOHADA accounting entry: 411 / 706 / 443xxx.
+  //    The TVA collectée account (443100 by default) is resolved from the
+  //    firm's vat_settings table so cabinet accountants can configure
+  //    non-standard accounts without touching code.
+  const vatSettingForRate = inv.vatAmount > 0
+    ? await db.query.vatSettingsTable.findFirst({
+        where: and(
+          eq(vatSettingsTable.firmId, inv.firmId),
+          eq(vatSettingsTable.ratePercentage, inv.vatRate),
+          eq(vatSettingsTable.isActive, true),
+        ),
+      })
+    : null;
+  const tvaCollecteeAccount =
+    vatSettingForRate?.salesAccount ?? ACCOUNT_TVA_COLLECTEE_18;
+
   const txLabel = `Facture ${invoiceNumber} — ${inv.customerName}`;
   const [tx] = await db
     .insert(transactionsTable)
@@ -401,7 +416,7 @@ router.post("/invoices/:id/validate", requirePermission("facturation.create"), a
     })
     .returning();
 
-  await db.insert(journalLinesTable).values([
+  const journalLines = [
     // Débit 411 — Clients (montant TTC)
     {
       transactionId: tx.id,
@@ -418,15 +433,20 @@ router.post("/invoices/:id/validate", requirePermission("facturation.create"), a
       creditAmount:  inv.subtotalHt,
       label:         txLabel,
     },
-    // Crédit 443100 — TVA Facturée
-    {
+  ];
+
+  // Only add the TVA line when there is actual VAT (exempt invoices have vatAmount = 0)
+  if (inv.vatAmount > 0) {
+    journalLines.push({
       transactionId: tx.id,
-      accountNumber: "443100",
+      accountNumber: tvaCollecteeAccount,
       debitAmount:   0,
       creditAmount:  inv.vatAmount,
       label:         `TVA ${inv.vatRate}% — ${invoiceNumber}`,
-    },
-  ]);
+    });
+  }
+
+  await db.insert(journalLinesTable).values(journalLines);
 
   // 6. Mark invoice as VALIDE.
   await db
@@ -654,7 +674,20 @@ router.post("/invoices/:id/credit-note", requirePermission("facturation.create")
     })
     .returning();
 
-  // Reversal accounting entry: mirror 706 / 443100 → 411.
+  // Reversal accounting entry: mirror 706 / 443xxx → 411.
+  // Resolve the TVA account from vat_settings (same logic as validate).
+  const originalVatSetting = original.vatAmount > 0
+    ? await db.query.vatSettingsTable.findFirst({
+        where: and(
+          eq(vatSettingsTable.firmId, original.firmId),
+          eq(vatSettingsTable.ratePercentage, original.vatRate),
+          eq(vatSettingsTable.isActive, true),
+        ),
+      })
+    : null;
+  const creditNoteTvaAccount =
+    originalVatSetting?.salesAccount ?? ACCOUNT_TVA_COLLECTEE_18;
+
   const [tx] = await db
     .insert(transactionsTable)
     .values({
@@ -677,11 +710,20 @@ router.post("/invoices/:id/credit-note", requirePermission("facturation.create")
     })
     .returning();
 
-  await db.insert(journalLinesTable).values([
-    { transactionId: tx.id, accountNumber: "706",    debitAmount: original.subtotalHt, creditAmount: 0,                     label: creditLabel },
-    { transactionId: tx.id, accountNumber: "443100", debitAmount: original.vatAmount,  creditAmount: 0,                     label: `TVA ${original.vatRate}% — ${creditNoteNumber}` },
-    { transactionId: tx.id, accountNumber: "411",    debitAmount: 0,                   creditAmount: original.totalTtc,     label: creditLabel },
-  ]);
+  const creditNoteLines: typeof journalLinesTable.$inferInsert[] = [
+    { transactionId: tx.id, accountNumber: "706", debitAmount: original.subtotalHt, creditAmount: 0,               label: creditLabel },
+    { transactionId: tx.id, accountNumber: "411", debitAmount: 0,                  creditAmount: original.totalTtc, label: creditLabel },
+  ];
+  if (original.vatAmount > 0) {
+    creditNoteLines.push({
+      transactionId: tx.id,
+      accountNumber: creditNoteTvaAccount,
+      debitAmount:   original.vatAmount,
+      creditAmount:  0,
+      label:         `TVA ${original.vatRate}% — ${creditNoteNumber}`,
+    });
+  }
+  await db.insert(journalLinesTable).values(creditNoteLines);
 
   await db
     .update(invoicesTable)

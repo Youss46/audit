@@ -26,6 +26,7 @@ import invoicingRouter from "./invoicing";
 import staffRouter from "./staff";
 import chatRouter from "./chat";
 import payrollSettingsRouter from "./payroll-settings";
+import vatSettingsRouter from "./vat-settings";
 
 const router: IRouter = Router();
 
@@ -56,5 +57,6 @@ router.use(invoicingRouter);
 router.use(staffRouter);
 router.use(chatRouter);
 router.use(payrollSettingsRouter);
+router.use(vatSettingsRouter);
 
 export default router;

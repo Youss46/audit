@@ -22,6 +22,7 @@ import { financialScoringResultsTable, businessValuationsTable } from "./scoring
 import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
+import { vatSettingsTable } from "./vat-settings";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -404,6 +405,15 @@ export const payrollSettingsRelations = relations(payrollSettingsTable, ({ one }
   firm: one(firmsTable, { fields: [payrollSettingsTable.firmId], references: [firmsTable.id] }),
   updatedBy: one(usersTable, {
     fields: [payrollSettingsTable.updatedById],
+    references: [usersTable.id],
+  }),
+}));
+
+// Module M21-Settings (VAT Rate & SYSCOHADA Account Configuration).
+export const vatSettingsRelations = relations(vatSettingsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [vatSettingsTable.firmId], references: [firmsTable.id] }),
+  updatedBy: one(usersTable, {
+    fields: [vatSettingsTable.updatedById],
     references: [usersTable.id],
   }),
 }));
