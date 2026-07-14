@@ -369,12 +369,12 @@ export default function Financements() {
           {/* ---------------------------------------------------------------- */}
           {/* Page header                                                      */}
           {/* ---------------------------------------------------------------- */}
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <Landmark className="h-5 w-5 text-primary" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight">Financements &amp; Dettes</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   Module M18 — Immobilisations Financières &amp; Emprunts SYSCOHADA
@@ -388,7 +388,7 @@ export default function Financements() {
                 setAccountPickerMode("catalogue")
                 setShowAddModal(true)
               }}
-              className="shrink-0"
+              className="w-full sm:w-auto shrink-0"
             >
               <Plus className="h-4 w-4 mr-2" />
               {isLoan ? "Ajouter un emprunt" : "Ajouter une immobilisation financière"}
