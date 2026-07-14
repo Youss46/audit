@@ -24,6 +24,7 @@ import {
   TrendingDown,
   TrendingUp,
   FileSpreadsheet,
+  SlidersHorizontal,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
@@ -131,7 +132,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // own dedicated portal and must never reach the cabinet-facing screens
   // (dashboard, client list, team, audit log) even if they navigate there
   // directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/scoring", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/scoring", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication", "/cabinet/settings"]
   const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/client/settings"]
   React.useEffect(() => {
     if (
@@ -522,6 +523,24 @@ export function Shell({ children }: { children: React.ReactNode }) {
               <ShieldCheck className="h-5 w-5" />
               Journal de Conformité
             </Link>
+          )}
+
+          {/* ── Paramètres cabinet ──────────────────────────── */}
+          {(user?.role === "expert_comptable" || user?.role === "collaborateur" || user?.role === "stagiaire") && (
+            <>
+              <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+                Paramètres
+              </p>
+              <Link href="/cabinet/settings/payroll" className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+                location.startsWith("/cabinet/settings/payroll")
+                  ? "bg-primary text-primary-foreground"
+                  : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )} data-testid="link-payroll-settings">
+                <SlidersHorizontal className="h-5 w-5" />
+                Taux de Paie
+              </Link>
+            </>
           )}
         </>
       )}

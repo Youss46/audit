@@ -38,6 +38,7 @@ import Scoring from '@/pages/scoring';
 import Facturation from '@/pages/facturation';
 import ClientStaff from '@/pages/client-staff';
 import Communication from '@/pages/communication';
+import PayrollSettings from '@/pages/payroll-settings';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -84,6 +85,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/dsf" component={Dsf} />
         <Route path="/cabinet/client/:clientId/revision" component={ComptabiliteRevision} />
         <Route path="/cabinet/client/:clientId/scoring" component={Scoring} />
+        <Route path="/cabinet/settings/payroll" component={PayrollSettings} />
         <Route path="/cabinet/interne/rentabilite" component={Rentabilite} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

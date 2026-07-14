@@ -20,7 +20,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
-import { calculatePayroll, postPayrollLedger, PayrollAlreadyPostedError, NoPayslipsToPostError } from "../lib/payroll-engine";
+import { calculatePayroll, loadFirmPayrollRates, postPayrollLedger, PayrollAlreadyPostedError, NoPayslipsToPostError } from "../lib/payroll-engine";
 import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
@@ -332,13 +332,17 @@ router.post(
       return;
     }
 
-    const activeEmployees = await db.query.employeesTable.findMany({
-      where: and(
-        eq(employeesTable.firmId, req.user!.firmId),
-        eq(employeesTable.clientId, clientId),
-        eq(employeesTable.status, "ACTIF"),
-      ),
-    });
+    const [activeEmployees, firmRates] = await Promise.all([
+      db.query.employeesTable.findMany({
+        where: and(
+          eq(employeesTable.firmId, req.user!.firmId),
+          eq(employeesTable.clientId, clientId),
+          eq(employeesTable.status, "ACTIF"),
+        ),
+      }),
+      // Load firm-specific payroll rates from DB (falls back to statutory defaults)
+      loadFirmPayrollRates(req.user!.firmId),
+    ]);
 
     const results: ReturnType<typeof serializePayslip>[] = [];
     const skipped: Array<{ employeeId: number; employeeName: string; reason: string }> = [];
@@ -356,14 +360,17 @@ router.post(
         continue;
       }
 
-      const calc = calculatePayroll({
-        baseSalary: employee.baseSalary,
-        transportAllowance: employee.transportAllowance,
-        otherTaxablePrimes: employee.otherTaxablePrimes,
-        maritalStatus: employee.maritalStatus,
-        dependentChildren: employee.dependentChildren,
-        workAccidentRate: employee.workAccidentRate,
-      });
+      const calc = calculatePayroll(
+        {
+          baseSalary: employee.baseSalary,
+          transportAllowance: employee.transportAllowance,
+          otherTaxablePrimes: employee.otherTaxablePrimes,
+          maritalStatus: employee.maritalStatus,
+          dependentChildren: employee.dependentChildren,
+          workAccidentRate: employee.workAccidentRate,
+        },
+        firmRates,
+      );
 
       const values = {
         firmId: req.user!.firmId,

@@ -5,6 +5,7 @@ import {
   journalLinesTable,
   employeesTable,
   payslipsTable,
+  payrollSettingsTable,
   type Employee,
   type MaritalStatus,
 } from "@workspace/db";
@@ -44,6 +45,71 @@ export const CNPS_EMPLOYER_AT_RATE_DEFAULT = 2; // Accidents du travail, % (2 à
 // Base imposable = Salaire Brut Imposable x 0,85 (abattement forfaitaire de 15%).
 export const ITS_TAXABLE_BASE_RATE = 0.85;
 
+// ---------------------------------------------------------------------------
+// Dynamic rates — loaded from payroll_settings table per firm.
+// Falls back to the hardcoded constants above when DB rows are absent.
+// ---------------------------------------------------------------------------
+
+export interface PayrollRates {
+  cnpsEmployeeRate: number;          // fraction, e.g. 0.063
+  cnpsEmployerRetraiteRate: number;  // fraction, e.g. 0.077
+  cnpsEmployerPfRate: number;        // fraction, e.g. 0.0575
+  cnpsCeilingMonthly: number;        // FCFA, e.g. 3_375_000
+  itsTaxableBaseRate: number;        // fraction kept (1 - abattement), e.g. 0.85
+  taxeApprentissageRate: number;     // fraction, e.g. 0.004
+  taxeFormationContinueRate: number; // fraction, e.g. 0.006
+  transportAllowanceExemption: number; // FCFA, e.g. 30_000
+}
+
+export function getDefaultPayrollRates(): PayrollRates {
+  return {
+    cnpsEmployeeRate: CNPS_EMPLOYEE_RATE,
+    cnpsEmployerRetraiteRate: CNPS_EMPLOYER_RETRAITE_RATE,
+    cnpsEmployerPfRate: CNPS_EMPLOYER_PF_RATE,
+    cnpsCeilingMonthly: CNPS_CEILING_MONTHLY,
+    itsTaxableBaseRate: ITS_TAXABLE_BASE_RATE,
+    taxeApprentissageRate: TAXE_APPRENTISSAGE_RATE,
+    taxeFormationContinueRate: TAXE_FORMATION_CONTINUE_RATE,
+    transportAllowanceExemption: TRANSPORT_ALLOWANCE_EXEMPTION,
+  };
+}
+
+/**
+ * Loads firm-specific payroll rates from the payroll_settings table.
+ * Falls back to the statutory hardcoded constants for any missing row.
+ * Triggers the lazy-seed implicitly via the GET route on first access;
+ * here we just read whatever rows exist.
+ */
+export async function loadFirmPayrollRates(firmId: number): Promise<PayrollRates> {
+  const rows = await db.query.payrollSettingsTable.findMany({
+    where: eq(payrollSettingsTable.firmId, firmId),
+  });
+
+  const byKey = Object.fromEntries(rows.map((r) => [r.ruleKey, r]));
+  const defaults = getDefaultPayrollRates();
+
+  const rate = (key: string, fallback: number): number =>
+    byKey[key]?.ratePercentage ?? fallback;
+  const ceiling = (key: string, fallback: number): number =>
+    byKey[key]?.ceilingAmount ?? fallback;
+  const abattement = byKey["its_taxable_base_abattement"]?.ratePercentage;
+
+  return {
+    cnpsEmployeeRate: rate("cnps_employee_rate", defaults.cnpsEmployeeRate),
+    cnpsEmployerRetraiteRate: rate("cnps_employer_retraite_rate", defaults.cnpsEmployerRetraiteRate),
+    cnpsEmployerPfRate: rate("cnps_employer_pf_rate", defaults.cnpsEmployerPfRate),
+    cnpsCeilingMonthly: ceiling("cnps_ceiling_monthly", defaults.cnpsCeilingMonthly),
+    // its_taxable_base_abattement stores the abattement fraction (0.15);
+    // the engine uses the complement (base rate = 1 - abattement).
+    itsTaxableBaseRate: abattement !== undefined && abattement !== null
+      ? 1 - abattement
+      : defaults.itsTaxableBaseRate,
+    taxeApprentissageRate: rate("taxe_apprentissage_rate", defaults.taxeApprentissageRate),
+    taxeFormationContinueRate: rate("taxe_formation_continue_rate", defaults.taxeFormationContinueRate),
+    transportAllowanceExemption: ceiling("transport_allowance_exemption", defaults.transportAllowanceExemption),
+  };
+}
+
 // Barème progressif mensuel par tranches (méthode des "correctifs"/déductions
 // cumulatives) : impôt brut = base x taux - correctif, sur la base imposable
 // (déjà abattue de 15%), sans division par le quotient familial.
@@ -75,6 +141,7 @@ const RICF_REDUCTION_BY_PARTS: Record<number, number> = {
 // -- Taxes patronales sur la masse salariale (FDFP) --------------------------
 export const TAXE_APPRENTISSAGE_RATE = 0.004;
 export const TAXE_FORMATION_CONTINUE_RATE = 0.006;
+
 
 /** Applies the ITS quick-deduction bracket scale to a taxable base (FCFA). */
 function computeGrossIts(base: number): number {
@@ -130,25 +197,33 @@ export interface PayrollCalculationResult {
   fiscalParts: number;
 }
 
-/** Runs the full Ivorian payroll calculation for a single employee/period. */
-export function calculatePayroll(input: PayrollCalculationInput): PayrollCalculationResult {
+/**
+ * Runs the full Ivorian payroll calculation for a single employee/period.
+ * Pass `rates` (from `loadFirmPayrollRates`) to use firm-specific DB values;
+ * omit it to fall back to the statutory hardcoded constants.
+ */
+export function calculatePayroll(
+  input: PayrollCalculationInput,
+  rates?: PayrollRates,
+): PayrollCalculationResult {
+  const r = rates ?? getDefaultPayrollRates();
   const round = Math.round;
 
   const grossSalary =
     input.baseSalary + input.transportAllowance + input.otherTaxablePrimes;
-  const taxableTransport = Math.max(0, input.transportAllowance - TRANSPORT_ALLOWANCE_EXEMPTION);
+  const taxableTransport = Math.max(0, input.transportAllowance - r.transportAllowanceExemption);
   const grossTaxable = input.baseSalary + taxableTransport + input.otherTaxablePrimes;
 
   // -- CNPS (plafond unique, part salariale sur le salaire brut total) ---
-  const cnpsBase = Math.min(grossSalary, CNPS_CEILING_MONTHLY);
-  const cnpsEmployeeAmount = round(cnpsBase * CNPS_EMPLOYEE_RATE);
-  const cnpsEmployerRetraite = round(cnpsBase * CNPS_EMPLOYER_RETRAITE_RATE);
-  const cnpsEmployerPrestationsFamiliales = round(cnpsBase * CNPS_EMPLOYER_PF_RATE);
+  const cnpsBase = Math.min(grossSalary, r.cnpsCeilingMonthly);
+  const cnpsEmployeeAmount = round(cnpsBase * r.cnpsEmployeeRate);
+  const cnpsEmployerRetraite = round(cnpsBase * r.cnpsEmployerRetraiteRate);
+  const cnpsEmployerPrestationsFamiliales = round(cnpsBase * r.cnpsEmployerPfRate);
   const cnpsEmployerAccidentTravail = round(cnpsBase * (input.workAccidentRate / 100));
 
-  // -- ITS unifié (base imposable = assiette x 0,85, barème direct + RICF) ---
+  // -- ITS unifié (base imposable = assiette x itsTaxableBaseRate, barème direct + RICF) ---
   const fiscalParts = computeFiscalParts(input.maritalStatus, input.dependentChildren);
-  const taxableBase = grossTaxable * ITS_TAXABLE_BASE_RATE;
+  const taxableBase = grossTaxable * r.itsTaxableBaseRate;
   const grossIts = computeGrossIts(taxableBase);
   const itsAmount = round(grossIts * (1 - ricfReductionRate(fiscalParts)));
 
@@ -160,8 +235,8 @@ export function calculatePayroll(input: PayrollCalculationInput): PayrollCalcula
   const netSalary = grossSalary - cnpsEmployeeAmount - isAmount - cnAmount - itsAmount;
 
   // -- Taxes patronales (masse salariale) ---
-  const taxeApprentissage = round(grossTaxable * TAXE_APPRENTISSAGE_RATE);
-  const taxeFormationContinue = round(grossTaxable * TAXE_FORMATION_CONTINUE_RATE);
+  const taxeApprentissage = round(grossTaxable * r.taxeApprentissageRate);
+  const taxeFormationContinue = round(grossTaxable * r.taxeFormationContinueRate);
 
   const totalEmployerCost =
     grossSalary +
@@ -190,15 +265,21 @@ export function calculatePayroll(input: PayrollCalculationInput): PayrollCalcula
 }
 
 /** Convenience wrapper computing payroll directly from an Employee row. */
-export function calculatePayrollForEmployee(employee: Employee): PayrollCalculationResult {
-  return calculatePayroll({
-    baseSalary: employee.baseSalary,
-    transportAllowance: employee.transportAllowance,
-    otherTaxablePrimes: employee.otherTaxablePrimes,
-    maritalStatus: employee.maritalStatus,
-    dependentChildren: employee.dependentChildren,
-    workAccidentRate: employee.workAccidentRate,
-  });
+export function calculatePayrollForEmployee(
+  employee: Employee,
+  rates?: PayrollRates,
+): PayrollCalculationResult {
+  return calculatePayroll(
+    {
+      baseSalary: employee.baseSalary,
+      transportAllowance: employee.transportAllowance,
+      otherTaxablePrimes: employee.otherTaxablePrimes,
+      maritalStatus: employee.maritalStatus,
+      dependentChildren: employee.dependentChildren,
+      workAccidentRate: employee.workAccidentRate,
+    },
+    rates,
+  );
 }
 
 // ---------------------------------------------------------------------------
