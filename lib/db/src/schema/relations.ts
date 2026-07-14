@@ -16,6 +16,7 @@ import { vatDeclarationsTable } from "./vat";
 import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } from "./cabinet-ops";
 import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable } from "./analytical";
 import { documentTemplatesTable, generatedDocumentsTable } from "./report-documents";
+import { collaborationThreadsTable, contextualCommentsTable, notificationsTable } from "./collaboration";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -283,4 +284,30 @@ export const generatedDocumentsRelations = relations(generatedDocumentsTable, ({
   firm: one(firmsTable, { fields: [generatedDocumentsTable.firmId], references: [firmsTable.id] }),
   template: one(documentTemplatesTable, { fields: [generatedDocumentsTable.templateId], references: [documentTemplatesTable.id] }),
   createdBy: one(usersTable, { fields: [generatedDocumentsTable.createdByUserId], references: [usersTable.id] }),
+}));
+
+// Module M26 (Révision Collaborative & Chat Contextuel).
+export const collaborationThreadsRelations = relations(collaborationThreadsTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [collaborationThreadsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [collaborationThreadsTable.clientId], references: [clientsTable.id] }),
+  resolvedBy: one(usersTable, {
+    fields: [collaborationThreadsTable.resolvedById],
+    references: [usersTable.id],
+  }),
+  comments: many(contextualCommentsTable),
+}));
+
+export const contextualCommentsRelations = relations(contextualCommentsTable, ({ one }) => ({
+  thread: one(collaborationThreadsTable, {
+    fields: [contextualCommentsTable.threadId],
+    references: [collaborationThreadsTable.id],
+  }),
+  firm: one(firmsTable, { fields: [contextualCommentsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [contextualCommentsTable.clientId], references: [clientsTable.id] }),
+  user: one(usersTable, { fields: [contextualCommentsTable.userId], references: [usersTable.id] }),
+}));
+
+export const notificationsRelations = relations(notificationsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [notificationsTable.firmId], references: [firmsTable.id] }),
+  recipient: one(usersTable, { fields: [notificationsTable.recipientId], references: [usersTable.id] }),
 }));

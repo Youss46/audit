@@ -52,8 +52,13 @@ import type {
   CloseDailyClosureResult,
   ClosePeriodResult,
   ClosingStatus,
+  CollaborationTargetType,
+  CollaborationThread,
+  CollaborationThreadDetail,
   CompiledDocumentPreview,
   CompteDeResultatResult,
+  ContextualComment,
+  ContextualCommentInput,
   DailyClosure,
   DashboardSummary,
   DepreciationSchedule,
@@ -101,6 +106,7 @@ import type {
   ListGeneratedDocumentsParams,
   ListMissionsParams,
   ListPayslipsParams,
+  ListThreadsParams,
   ListTimesheetEntriesParams,
   ListTransactionCategoriesParams,
   ListTransactionsParams,
@@ -110,6 +116,7 @@ import type {
   MissionInput,
   MissionUpdate,
   NewGeneratedDocumentInput,
+  NotificationItem,
   Payslip,
   PilotageDashboardResult,
   PostPayrollLedgerResult,
@@ -7934,5 +7941,534 @@ export const useFinalizeGeneratedDocument = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getFinalizeGeneratedDocumentMutationOptions(options));
+    }
+
+export const getCreateCommentUrl = () => {
+
+
+
+
+  return `/api/collaboration/comments`
+}
+
+/**
+ * @summary Post a contextual comment on a ledger line, pending document, or tax declaration (M26)
+ */
+export const createComment = async (contextualCommentInput: ContextualCommentInput, options?: RequestInit): Promise<ContextualComment> => {
+
+  return customFetch<ContextualComment>(getCreateCommentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(contextualCommentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateCommentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComment>>, TError,{data: BodyType<ContextualCommentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createComment>>, TError,{data: BodyType<ContextualCommentInput>}, TContext> => {
+
+const mutationKey = ['createComment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createComment>>, {data: BodyType<ContextualCommentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createComment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateCommentMutationResult = NonNullable<Awaited<ReturnType<typeof createComment>>>
+    export type CreateCommentMutationBody = BodyType<ContextualCommentInput>
+    export type CreateCommentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Post a contextual comment on a ledger line, pending document, or tax declaration (M26)
+ */
+export const useCreateComment = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createComment>>, TError,{data: BodyType<ContextualCommentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createComment>>,
+        TError,
+        {data: BodyType<ContextualCommentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateCommentMutationOptions(options));
+    }
+
+export const getListCommentsUrl = (targetType: CollaborationTargetType,
+    targetId: number,) => {
+
+
+
+
+  return `/api/collaboration/comments/${targetType}/${targetId}`
+}
+
+/**
+ * @summary Load the discussion thread for a specific ledger line, document, or tax declaration (M26)
+ */
+export const listComments = async (targetType: CollaborationTargetType,
+    targetId: number, options?: RequestInit): Promise<CollaborationThreadDetail> => {
+
+  return customFetch<CollaborationThreadDetail>(getListCommentsUrl(targetType,targetId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListCommentsQueryKey = (targetType: CollaborationTargetType,
+    targetId: number,) => {
+    return [
+    `/api/collaboration/comments/${targetType}/${targetId}`
+    ] as const;
+    }
+
+
+export const getListCommentsQueryOptions = <TData = Awaited<ReturnType<typeof listComments>>, TError = ErrorType<ErrorResponse>>(targetType: CollaborationTargetType,
+    targetId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListCommentsQueryKey(targetType,targetId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listComments>>> = ({ signal }) => listComments(targetType,targetId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: targetType !== null && targetType !== undefined && targetId !== null && targetId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listComments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListCommentsQueryResult = NonNullable<Awaited<ReturnType<typeof listComments>>>
+export type ListCommentsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Load the discussion thread for a specific ledger line, document, or tax declaration (M26)
+ */
+
+export function useListComments<TData = Awaited<ReturnType<typeof listComments>>, TError = ErrorType<ErrorResponse>>(
+ targetType: CollaborationTargetType,
+    targetId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listComments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListCommentsQueryOptions(targetType,targetId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListThreadsUrl = (params?: ListThreadsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/collaboration/threads?${stringifiedParams}` : `/api/collaboration/threads`
+}
+
+/**
+ * @summary List discussion threads for a client, with comment counts and resolution state, for the review table and the client-portal widget (M26)
+ */
+export const listThreads = async (params?: ListThreadsParams, options?: RequestInit): Promise<CollaborationThread[]> => {
+
+  return customFetch<CollaborationThread[]>(getListThreadsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListThreadsQueryKey = (params?: ListThreadsParams,) => {
+    return [
+    `/api/collaboration/threads`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListThreadsQueryOptions = <TData = Awaited<ReturnType<typeof listThreads>>, TError = ErrorType<unknown>>(params?: ListThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListThreadsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listThreads>>> = ({ signal }) => listThreads(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listThreads>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListThreadsQueryResult = NonNullable<Awaited<ReturnType<typeof listThreads>>>
+export type ListThreadsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List discussion threads for a client, with comment counts and resolution state, for the review table and the client-portal widget (M26)
+ */
+
+export function useListThreads<TData = Awaited<ReturnType<typeof listThreads>>, TError = ErrorType<unknown>>(
+ params?: ListThreadsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listThreads>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListThreadsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getResolveThreadUrl = (targetType: CollaborationTargetType,
+    targetId: number,) => {
+
+
+
+
+  return `/api/collaboration/threads/${targetType}/${targetId}/resolve`
+}
+
+/**
+ * @summary Mark a discussion as resolved, archiving it and clearing the ledger-line alert flag (M26)
+ */
+export const resolveThread = async (targetType: CollaborationTargetType,
+    targetId: number, options?: RequestInit): Promise<CollaborationThread> => {
+
+  return customFetch<CollaborationThread>(getResolveThreadUrl(targetType,targetId),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getResolveThreadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveThread>>, TError,{targetType: CollaborationTargetType;targetId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof resolveThread>>, TError,{targetType: CollaborationTargetType;targetId: number}, TContext> => {
+
+const mutationKey = ['resolveThread'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof resolveThread>>, {targetType: CollaborationTargetType;targetId: number}> = (props) => {
+          const {targetType,targetId} = props ?? {};
+
+          return  resolveThread(targetType,targetId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ResolveThreadMutationResult = NonNullable<Awaited<ReturnType<typeof resolveThread>>>
+
+    export type ResolveThreadMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Mark a discussion as resolved, archiving it and clearing the ledger-line alert flag (M26)
+ */
+export const useResolveThread = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof resolveThread>>, TError,{targetType: CollaborationTargetType;targetId: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof resolveThread>>,
+        TError,
+        {targetType: CollaborationTargetType;targetId: number},
+        TContext
+      > => {
+      return useMutation(getResolveThreadMutationOptions(options));
+    }
+
+export const getListNotificationsUrl = () => {
+
+
+
+
+  return `/api/collaboration/notifications`
+}
+
+/**
+ * @summary List the current user's notifications, most recent first (M26)
+ */
+export const listNotifications = async ( options?: RequestInit): Promise<NotificationItem[]> => {
+
+  return customFetch<NotificationItem[]>(getListNotificationsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListNotificationsQueryKey = () => {
+    return [
+    `/api/collaboration/notifications`
+    ] as const;
+    }
+
+
+export const getListNotificationsQueryOptions = <TData = Awaited<ReturnType<typeof listNotifications>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListNotificationsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listNotifications>>> = ({ signal }) => listNotifications({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListNotificationsQueryResult = NonNullable<Awaited<ReturnType<typeof listNotifications>>>
+export type ListNotificationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the current user's notifications, most recent first (M26)
+ */
+
+export function useListNotifications<TData = Awaited<ReturnType<typeof listNotifications>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listNotifications>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListNotificationsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getMarkNotificationReadUrl = (id: number,) => {
+
+
+
+
+  return `/api/collaboration/notifications/${id}/read`
+}
+
+/**
+ * @summary Mark a single notification as read (M26)
+ */
+export const markNotificationRead = async (id: number, options?: RequestInit): Promise<NotificationItem> => {
+
+  return customFetch<NotificationItem>(getMarkNotificationReadUrl(id),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkNotificationReadMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['markNotificationRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markNotificationRead>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markNotificationRead(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkNotificationReadMutationResult = NonNullable<Awaited<ReturnType<typeof markNotificationRead>>>
+
+    export type MarkNotificationReadMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Mark a single notification as read (M26)
+ */
+export const useMarkNotificationRead = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markNotificationRead>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markNotificationRead>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getMarkNotificationReadMutationOptions(options));
+    }
+
+export const getMarkAllNotificationsReadUrl = () => {
+
+
+
+
+  return `/api/collaboration/notifications/read-all`
+}
+
+/**
+ * @summary Mark every notification for the current user as read (M26)
+ */
+export const markAllNotificationsRead = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getMarkAllNotificationsReadUrl(),
+  {
+    ...options,
+    method: 'PATCH'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkAllNotificationsReadMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext> => {
+
+const mutationKey = ['markAllNotificationsRead'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markAllNotificationsRead>>, void> = () => {
+
+
+          return  markAllNotificationsRead(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkAllNotificationsReadMutationResult = NonNullable<Awaited<ReturnType<typeof markAllNotificationsRead>>>
+
+    export type MarkAllNotificationsReadMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Mark every notification for the current user as read (M26)
+ */
+export const useMarkAllNotificationsRead = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markAllNotificationsRead>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof markAllNotificationsRead>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getMarkAllNotificationsReadMutationOptions(options));
     }
 

@@ -19,6 +19,7 @@ import cabinetAnalyticsRouter from "./cabinet-analytics";
 import analyticalRouter from "./analytical";
 import dsfRouter from "./dsf";
 import reportDocumentsRouter from "./report-documents";
+import collaborationRouter from "./collaboration";
 
 const router: IRouter = Router();
 
@@ -42,5 +43,6 @@ router.use(cabinetAnalyticsRouter);
 router.use(analyticalRouter);
 router.use(dsfRouter);
 router.use(reportDocumentsRouter);
+router.use(collaborationRouter);
 
 export default router;

@@ -7,15 +7,19 @@ import {
   useListClientDocuments,
   getListClientDocumentsQueryKey,
   useUploadClientDocument,
+  useListThreads,
+  getListThreadsQueryKey,
   MissionStatus,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime } from "@/lib/utils"
 import { getSystemDescription } from "@/lib/visa-engine"
-import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle } from "lucide-react"
+import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
+import { CommentThreadSidebar } from "@/components/collaboration/CommentThreadSidebar"
 
 // `status` is null when no mission has been opened for this client yet.
 function getStatusLabel(status: MissionStatus | null | undefined) {
@@ -82,6 +86,14 @@ export default function ClientPortal() {
   const { data: documents, refetch: refetchDocs } = useListClientDocuments(clientId, {
     query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId) },
   })
+
+  // Module M26: open discussions the cabinet has raised on this dossier —
+  // the client's own view into "le Slack de la Révision Comptable".
+  const { data: threads } = useListThreads(
+    { clientId, unresolvedOnly: true },
+    { query: { enabled: !!clientId, queryKey: getListThreadsQueryKey({ clientId, unresolvedOnly: true }) } },
+  )
+  const [openThread, setOpenThread] = useState<{ targetType: "TRANSACTION_LINE" | "PENDING_DOCUMENT" | "TAX_DECLARATION"; targetId: number; label: string } | null>(null)
 
   const uploadMutation = useUploadClientDocument({
     mutation: {
@@ -183,6 +195,45 @@ export default function ClientPortal() {
         )}
       </Card>
 
+      {threads && threads.length > 0 && (
+        <Card className="shadow-sm border-blue-200 dark:border-blue-900" data-testid="card-pending-requests">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageSquare className="h-4 w-4 text-blue-600" />
+              Demandes du Cabinet en cours ({threads.length})
+            </CardTitle>
+            <CardDescription>
+              Votre expert-comptable attend une réponse sur ces points. Cliquez pour répondre directement.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y" data-testid="list-pending-requests">
+              {threads.map((thread) => (
+                <li key={thread.id} className="flex items-center justify-between py-3 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{thread.targetLabel}</p>
+                    {thread.lastMessage && (
+                      <p className="text-xs text-muted-foreground truncate">{thread.lastMessage}</p>
+                    )}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={() =>
+                      setOpenThread({ targetType: thread.targetType, targetId: thread.targetId, label: thread.targetLabel })
+                    }
+                    data-testid={`button-open-thread-${thread.id}`}
+                  >
+                    Répondre
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       <Card className="shadow-sm">
         <CardHeader>
           <CardTitle>Déposer un document</CardTitle>
@@ -248,6 +299,17 @@ export default function ClientPortal() {
           )}
         </CardContent>
       </Card>
+
+      {clientId && openThread && (
+        <CommentThreadSidebar
+          open={!!openThread}
+          onOpenChange={(open) => !open && setOpenThread(null)}
+          clientId={clientId}
+          targetType={openThread.targetType}
+          targetId={openThread.targetId}
+          targetSummary={<div className="text-xs text-muted-foreground">{openThread.label}</div>}
+        />
+      )}
     </div>
   )
 }

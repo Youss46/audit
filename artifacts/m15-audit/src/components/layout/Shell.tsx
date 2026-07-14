@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
+import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -347,6 +348,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
           AUDIT
         </div>
+        <div className="flex items-center gap-1">
+          <NotificationBell />
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
             <Button variant="ghost" size="icon" className="-mr-2">
@@ -365,6 +368,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <UserMenu />
           </SheetContent>
         </Sheet>
+        </div>
       </header>
 
       {/* Desktop Sidebar */}
@@ -392,6 +396,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <span className="text-sm font-medium text-foreground" data-testid="text-topbar-username">
               {user?.fullName}
             </span>

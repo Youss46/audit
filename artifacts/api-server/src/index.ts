@@ -1,5 +1,7 @@
+import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
+import { initRealtime } from "./lib/realtime";
 
 const rawPort = process.env["PORT"];
 
@@ -15,7 +17,13 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
-app.listen(port, (err) => {
+// Module M26: the WebSocket server (real-time comment/notification push)
+// shares the same HTTP server/port as Express, upgrading requests on the
+// /api/ws path -- no second port to expose through Replit's proxy.
+const server = createServer(app);
+initRealtime(server);
+
+server.listen(port, (err?: Error) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
     process.exit(1);

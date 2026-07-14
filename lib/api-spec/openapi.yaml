@@ -2769,6 +2769,167 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /collaboration/comments:
+    post:
+      operationId: createComment
+      tags: [collaboration]
+      summary: Post a contextual comment on a ledger line, pending document, or tax declaration (M26)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContextualCommentInput"
+      responses:
+        "201":
+          description: Comment posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ContextualComment"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Target record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /collaboration/comments/{targetType}/{targetId}:
+    get:
+      operationId: listComments
+      tags: [collaboration]
+      summary: Load the discussion thread for a specific ledger line, document, or tax declaration (M26)
+      parameters:
+        - name: targetType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/CollaborationTargetType"
+        - name: targetId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Thread (comments + resolution state); an empty, unresolved thread when nothing has been posted yet
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborationThreadDetail"
+        "404":
+          description: Target record not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /collaboration/threads:
+    get:
+      operationId: listThreads
+      tags: [collaboration]
+      summary: List discussion threads for a client, with comment counts and resolution state, for the review table and the client-portal widget (M26)
+      parameters:
+        - name: clientId
+          in: query
+          required: false
+          schema: { type: integer }
+        - name: unresolvedOnly
+          in: query
+          required: false
+          schema: { type: boolean }
+      responses:
+        "200":
+          description: List of threads
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CollaborationThread"
+
+  /collaboration/threads/{targetType}/{targetId}/resolve:
+    patch:
+      operationId: resolveThread
+      tags: [collaboration]
+      summary: Mark a discussion as resolved, archiving it and clearing the ledger-line alert flag (M26)
+      parameters:
+        - name: targetType
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/CollaborationTargetType"
+        - name: targetId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Thread resolved
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CollaborationThread"
+        "404":
+          description: Thread not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /collaboration/notifications:
+    get:
+      operationId: listNotifications
+      tags: [collaboration]
+      summary: List the current user's notifications, most recent first (M26)
+      responses:
+        "200":
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/NotificationItem"
+
+  /collaboration/notifications/{id}/read:
+    patch:
+      operationId: markNotificationRead
+      tags: [collaboration]
+      summary: Mark a single notification as read (M26)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Notification updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationItem"
+        "404":
+          description: Notification not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /collaboration/notifications/read-all:
+    patch:
+      operationId: markAllNotificationsRead
+      tags: [collaboration]
+      summary: Mark every notification for the current user as read (M26)
+      responses:
+        "204":
+          description: All notifications marked read
+
 components:
   schemas:
     HealthStatus:
@@ -4832,3 +4993,119 @@ components:
       properties:
         title: { type: string }
         contentHtml: { type: string }
+
+    CollaborationTargetType:
+      type: string
+      enum:
+        - TRANSACTION_LINE
+        - PENDING_DOCUMENT
+        - TAX_DECLARATION
+      description: >
+        TRANSACTION_LINE targetId = a transactions.id (ledger/grand-livre
+        entry); PENDING_DOCUMENT targetId = a documents.id (GED/OCR
+        receipt); TAX_DECLARATION targetId = a vat_declarations.id.
+
+    ContextualCommentInput:
+      type: object
+      required: [clientId, targetType, targetId, message]
+      properties:
+        clientId: { type: integer }
+        targetType:
+          $ref: "#/components/schemas/CollaborationTargetType"
+        targetId: { type: integer }
+        message: { type: string, minLength: 1 }
+        attachmentFileName: { type: string }
+        attachmentMimeType: { type: string }
+        attachmentData:
+          type: string
+          description: Base64-encoded file content, required together with attachmentFileName/attachmentMimeType
+
+    ContextualComment:
+      type: object
+      required: [id, threadId, clientId, userId, userName, userRole, targetType, targetId, message, createdAt]
+      properties:
+        id: { type: integer }
+        threadId: { type: integer }
+        clientId: { type: integer }
+        userId: { type: integer }
+        userName: { type: string }
+        userRole:
+          $ref: "#/components/schemas/UserRole"
+        targetType:
+          $ref: "#/components/schemas/CollaborationTargetType"
+        targetId: { type: integer }
+        message: { type: string }
+        attachmentFileName: { type: ["string", "null"] }
+        attachmentMimeType: { type: ["string", "null"] }
+        attachmentUrl:
+          type: ["string", "null"]
+          description: Data URL (data:<mime>;base64,<data>) usable directly as a link/preview href
+        createdAt: { type: string, format: date-time }
+
+    CollaborationThread:
+      type: object
+      required:
+        [
+          id,
+          firmId,
+          clientId,
+          targetType,
+          targetId,
+          isResolved,
+          commentCount,
+          lastMessage,
+          lastMessageAt,
+          lastAuthorRole,
+          targetLabel,
+          createdAt,
+          updatedAt,
+        ]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        targetType:
+          $ref: "#/components/schemas/CollaborationTargetType"
+        targetId: { type: integer }
+        isResolved: { type: boolean }
+        resolvedByName: { type: ["string", "null"] }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+        commentCount: { type: integer }
+        lastMessage: { type: ["string", "null"] }
+        lastMessageAt: { type: ["string", "null"], format: date-time }
+        lastAuthorRole:
+          type: ["string", "null"]
+        targetLabel:
+          type: string
+          description: Human-readable French summary of the discussed record (e.g. the transaction's date + libellé)
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CollaborationThreadDetail:
+      type: object
+      required: [targetType, targetId, isResolved, comments]
+      properties:
+        threadId: { type: ["integer", "null"] }
+        targetType:
+          $ref: "#/components/schemas/CollaborationTargetType"
+        targetId: { type: integer }
+        clientId: { type: integer }
+        isResolved: { type: boolean }
+        resolvedByName: { type: ["string", "null"] }
+        resolvedAt: { type: ["string", "null"], format: date-time }
+        targetLabel: { type: string }
+        comments:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContextualComment"
+
+    NotificationItem:
+      type: object
+      required: [id, title, body, isRead, createdAt]
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        body: { type: string }
+        isRead: { type: boolean }
+        linkToRoute: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }

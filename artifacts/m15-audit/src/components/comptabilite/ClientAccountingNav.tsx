@@ -4,6 +4,8 @@ import {
   getGetClientQueryKey,
   useListTransactions,
   getListTransactionsQueryKey,
+  useListThreads,
+  getListThreadsQueryKey,
 } from "@workspace/api-client-react"
 import { useLocation, useRoute } from "wouter"
 import { Building2, ChevronRight, Cpu } from "lucide-react"
@@ -79,6 +81,7 @@ const TABS = [
   { slug: "pilotage",         label: "Tableau de Bord"       },
   { slug: "analytique",       label: "Analytique"             },
   { slug: "dsf",              label: "Liasse Fiscale (DSF)"  },
+  { slug: "revision",         label: "Révision Collaborative" },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
@@ -91,6 +94,7 @@ const CABINET_TABS = new Set<string>([
   "pilotage",
   "analytique",
   "dsf",
+  "revision",
 ])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
@@ -108,7 +112,8 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, pilotageParams]   = useRoute<{ clientId: string }>("/cabinet/client/:clientId/pilotage")
   const [, analytiqueParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/analytique")
   const [, dsfParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/dsf")
-  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams ?? dsfParams
+  const [, revisionParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/revision")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams ?? dsfParams ?? revisionParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.
@@ -134,6 +139,18 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
     },
   )
   const pendingCount = pendingTransactions?.length ?? 0
+
+  // Unresolved discussions count for the "Révision Collaborative" tab badge.
+  const { data: unresolvedThreads } = useListThreads(
+    { clientId: clientId ?? 0, unresolvedOnly: true },
+    {
+      query: {
+        enabled:  !!clientId,
+        queryKey: getListThreadsQueryKey({ clientId: clientId ?? 0, unresolvedOnly: true }),
+      },
+    },
+  )
+  const unresolvedCount = unresolvedThreads?.length ?? 0
 
   // Route helper: build the destination URL for a given tab + clientId.
   function tabUrl(tab: string, id: number | string): string {
@@ -232,6 +249,11 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
                   {tab.slug === "saisie" && pendingCount > 0 && (
                     <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-primary-foreground">
                       {pendingCount}
+                    </span>
+                  )}
+                  {tab.slug === "revision" && unresolvedCount > 0 && (
+                    <span className="ml-1.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] font-bold text-white">
+                      {unresolvedCount}
                     </span>
                   )}
                 </TabsTrigger>

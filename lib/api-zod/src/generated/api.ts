@@ -3124,3 +3124,163 @@ export const FinalizeGeneratedDocumentResponse = zod.object({
 }))
 
 
+/**
+ * @summary Post a contextual comment on a ledger line, pending document, or tax declaration (M26)
+ */
+
+
+
+export const CreateCommentBody = zod.object({
+  "clientId": zod.number(),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "message": zod.string().min(1),
+  "attachmentFileName": zod.string().optional(),
+  "attachmentMimeType": zod.string().optional(),
+  "attachmentData": zod.string().optional().describe('Base64-encoded file content, required together with attachmentFileName\/attachmentMimeType')
+})
+
+export const CreateCommentResponse = zod.object({
+  "id": zod.number(),
+  "threadId": zod.number(),
+  "clientId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string(),
+  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "message": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Load the discussion thread for a specific ledger line, document, or tax declaration (M26)
+ */
+export const ListCommentsParams = zod.object({
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']),
+  "targetId": zod.coerce.number()
+})
+
+export const ListCommentsResponse = zod.object({
+  "threadId": zod.number().nullish(),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "clientId": zod.number().optional(),
+  "isResolved": zod.boolean(),
+  "resolvedByName": zod.string().nullish(),
+  "resolvedAt": zod.coerce.date().nullish(),
+  "targetLabel": zod.string().optional(),
+  "comments": zod.array(zod.object({
+  "id": zod.number(),
+  "threadId": zod.number(),
+  "clientId": zod.number(),
+  "userId": zod.number(),
+  "userName": zod.string(),
+  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "message": zod.string(),
+  "attachmentFileName": zod.string().nullish(),
+  "attachmentMimeType": zod.string().nullish(),
+  "attachmentUrl": zod.string().nullish().describe('Data URL (data:<mime>;base64,<data>) usable directly as a link\/preview href'),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary List discussion threads for a client, with comment counts and resolution state, for the review table and the client-portal widget (M26)
+ */
+export const ListThreadsQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional(),
+  "unresolvedOnly": zod.coerce.boolean().optional()
+})
+
+export const ListThreadsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "isResolved": zod.boolean(),
+  "resolvedByName": zod.string().nullish(),
+  "resolvedAt": zod.coerce.date().nullish(),
+  "commentCount": zod.number(),
+  "lastMessage": zod.string().nullable(),
+  "lastMessageAt": zod.coerce.date().nullable(),
+  "lastAuthorRole": zod.string().nullable(),
+  "targetLabel": zod.string().describe('Human-readable French summary of the discussed record (e.g. the transaction\'s date + libellé)'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListThreadsResponse = zod.array(ListThreadsResponseItem)
+
+
+/**
+ * @summary Mark a discussion as resolved, archiving it and clearing the ledger-line alert flag (M26)
+ */
+export const ResolveThreadParams = zod.object({
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']),
+  "targetId": zod.coerce.number()
+})
+
+export const ResolveThreadResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
+  "targetId": zod.number(),
+  "isResolved": zod.boolean(),
+  "resolvedByName": zod.string().nullish(),
+  "resolvedAt": zod.coerce.date().nullish(),
+  "commentCount": zod.number(),
+  "lastMessage": zod.string().nullable(),
+  "lastMessageAt": zod.coerce.date().nullable(),
+  "lastAuthorRole": zod.string().nullable(),
+  "targetLabel": zod.string().describe('Human-readable French summary of the discussed record (e.g. the transaction\'s date + libellé)'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List the current user's notifications, most recent first (M26)
+ */
+export const ListNotificationsResponseItem = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "isRead": zod.boolean(),
+  "linkToRoute": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListNotificationsResponse = zod.array(ListNotificationsResponseItem)
+
+
+/**
+ * @summary Mark a single notification as read (M26)
+ */
+export const MarkNotificationReadParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkNotificationReadResponse = zod.object({
+  "id": zod.number(),
+  "title": zod.string(),
+  "body": zod.string(),
+  "isRead": zod.boolean(),
+  "linkToRoute": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Mark every notification for the current user as read (M26)
+ */
+export const MarkAllNotificationsReadResponse = zod.void()
+
+

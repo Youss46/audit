@@ -1666,6 +1666,101 @@ export interface GeneratedDocumentPatchInput {
   contentHtml?: string;
 }
 
+/**
+ * TRANSACTION_LINE targetId = a transactions.id (ledger/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.
+ */
+export type CollaborationTargetType = typeof CollaborationTargetType[keyof typeof CollaborationTargetType];
+
+
+export const CollaborationTargetType = {
+  TRANSACTION_LINE: 'TRANSACTION_LINE',
+  PENDING_DOCUMENT: 'PENDING_DOCUMENT',
+  TAX_DECLARATION: 'TAX_DECLARATION',
+} as const;
+
+export interface ContextualCommentInput {
+  clientId: number;
+  targetType: CollaborationTargetType;
+  targetId: number;
+  /** @minLength 1 */
+  message: string;
+  attachmentFileName?: string;
+  attachmentMimeType?: string;
+  /** Base64-encoded file content, required together with attachmentFileName/attachmentMimeType */
+  attachmentData?: string;
+}
+
+export interface ContextualComment {
+  id: number;
+  threadId: number;
+  clientId: number;
+  userId: number;
+  userName: string;
+  userRole: UserRole;
+  targetType: CollaborationTargetType;
+  targetId: number;
+  message: string;
+  /** @nullable */
+  attachmentFileName?: string | null;
+  /** @nullable */
+  attachmentMimeType?: string | null;
+  /**
+     * Data URL (data:<mime>;base64,<data>) usable directly as a link/preview href
+     * @nullable
+     */
+  attachmentUrl?: string | null;
+  createdAt: string;
+}
+
+export interface CollaborationThread {
+  id: number;
+  firmId: number;
+  clientId: number;
+  targetType: CollaborationTargetType;
+  targetId: number;
+  isResolved: boolean;
+  /** @nullable */
+  resolvedByName?: string | null;
+  /** @nullable */
+  resolvedAt?: string | null;
+  commentCount: number;
+  /** @nullable */
+  lastMessage: string | null;
+  /** @nullable */
+  lastMessageAt: string | null;
+  /** @nullable */
+  lastAuthorRole: string | null;
+  /** Human-readable French summary of the discussed record (e.g. the transaction's date + libellé) */
+  targetLabel: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CollaborationThreadDetail {
+  /** @nullable */
+  threadId?: number | null;
+  targetType: CollaborationTargetType;
+  targetId: number;
+  clientId?: number;
+  isResolved: boolean;
+  /** @nullable */
+  resolvedByName?: string | null;
+  /** @nullable */
+  resolvedAt?: string | null;
+  targetLabel?: string;
+  comments: ContextualComment[];
+}
+
+export interface NotificationItem {
+  id: number;
+  title: string;
+  body: string;
+  isRead: boolean;
+  /** @nullable */
+  linkToRoute?: string | null;
+  createdAt: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1802,5 +1897,10 @@ year: number;
 export type ListGeneratedDocumentsParams = {
 clientId: number;
 year?: number;
+};
+
+export type ListThreadsParams = {
+clientId?: number;
+unresolvedOnly?: boolean;
 };
 
