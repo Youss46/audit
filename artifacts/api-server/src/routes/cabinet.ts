@@ -16,26 +16,33 @@ import { computePendingCounts, computeFirmPendingCounts } from "../lib/pending-c
 const router: IRouter = Router();
 
 router.use(requireAuth);
-router.use(requireRole("expert_comptable", "collaborateur", "stagiaire"));
 
-router.get("/cabinet/pending-counts/:clientId", async (req, res) => {
-  const { clientId } = GetCabinetPendingCountsParams.parse(req.params);
+router.get(
+  "/cabinet/pending-counts/:clientId",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
+    const { clientId } = GetCabinetPendingCountsParams.parse(req.params);
 
-  const client = await db.query.clientsTable.findFirst({
-    where: (t, { and, eq }) => and(eq(t.id, clientId), eq(t.firmId, req.user!.firmId)),
-  });
-  if (!client) {
-    res.status(404).json({ error: "Client introuvable." });
-    return;
-  }
+    const client = await db.query.clientsTable.findFirst({
+      where: (t, { and, eq }) => and(eq(t.id, clientId), eq(t.firmId, req.user!.firmId)),
+    });
+    if (!client) {
+      res.status(404).json({ error: "Client introuvable." });
+      return;
+    }
 
-  const counts = await computePendingCounts(req.user!.firmId, clientId);
-  res.json(GetCabinetPendingCountsResponse.parse(counts));
-});
+    const counts = await computePendingCounts(req.user!.firmId, clientId);
+    res.json(GetCabinetPendingCountsResponse.parse(counts));
+  },
+);
 
-router.get("/cabinet/pending-counts", async (req, res) => {
-  const counts = await computeFirmPendingCounts(req.user!.firmId);
-  res.json(GetFirmPendingCountsResponse.parse(counts));
-});
+router.get(
+  "/cabinet/pending-counts",
+  requireRole("expert_comptable", "collaborateur", "stagiaire"),
+  async (req, res) => {
+    const counts = await computeFirmPendingCounts(req.user!.firmId);
+    res.json(GetFirmPendingCountsResponse.parse(counts));
+  },
+);
 
 export default router;

@@ -25,3 +25,4 @@
 - [M31 internal chat design](m31-chat-design.md) — multiplex chat:* events onto the existing single /api/ws hub (no new gateway); "staff" = !isPortalRole(role), no separate Staff_Users table.
 - [Re-import bootstrap checklist](reimport-bootstrap-checklist.md) — after a GitHub re-import, DB is empty and workflows aren't registered yet; run seeds, not just `drizzle-kit push`.
 - [M33 forced password reset design](m33-forced-password-reset-design.md) — restricted-scope JWT reset flow; single-use tokens need a DB-state re-check, not just a scope claim, to actually block reuse.
+- [Unscoped router.use(requireRole) blocks unrelated routes](unscoped-router-middleware-collision.md) — a sub-router's blanket role-gate `.use()` with no path can 403 requests meant for a different, later-mounted router.
