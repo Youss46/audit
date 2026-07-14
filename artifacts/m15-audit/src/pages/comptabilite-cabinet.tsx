@@ -1,5 +1,5 @@
-import { useState, useMemo } from "react"
-import { useRoute } from "wouter"
+import { useState, useMemo, useEffect, useRef } from "react"
+import { useRoute, useSearch } from "wouter"
 import {
   useListTransactions,
   getListTransactionsQueryKey,
@@ -19,7 +19,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
-import { formatDate, formatDateTime } from "@/lib/utils"
+import { formatDate, formatDateTime, cn } from "@/lib/utils"
 import {
   getTransactionStatusColor,
   getTransactionStatusLabel,
@@ -275,6 +275,22 @@ export default function ComptabiliteCabinet() {
   const [, scopedParams] = useRoute<{ clientId: string }>("/comptabilite/:clientId/saisie")
   const clientId = scopedParams?.clientId ? Number(scopedParams.clientId) : null
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "ALL">("a_valider")
+  // Module M32: the global "Révision Dépenses" / "Révision Recettes" nav
+  // links land here with a `?type=` query param so the unscoped "all
+  // clients" queue opens pre-filtered to just that operation type.
+  const search = useSearch()
+  const typeParam = new URLSearchParams(search).get("type")
+  const [typeFilter, setTypeFilter] = useState<"depense" | "recette" | "ALL">(
+    typeParam === "depense" || typeParam === "recette" ? typeParam : "ALL",
+  )
+  useEffect(() => {
+    if (typeParam === "depense" || typeParam === "recette") setTypeFilter(typeParam)
+  }, [typeParam])
+  // Module M32: a notification's "Voir" action deep-links here with
+  // `?highlight=<transactionId>` so the accountant lands directly on the
+  // entry the client just submitted instead of having to hunt for it.
+  const highlightId = Number(new URLSearchParams(search).get("highlight")) || null
+  const highlightRef = useRef<HTMLDivElement | null>(null)
   // Module M8: "Smart Filter" -- lets the accountant narrow the review
   // queue down to only the entries the anomaly detector flagged.
   const [anomaliesOnly, setAnomaliesOnly] = useState(false)
@@ -416,8 +432,17 @@ export default function ComptabiliteCabinet() {
   }
 
   const allRows = transactions ?? []
-  const rows = anomaliesOnly ? allRows.filter((t) => (t.anomalies?.length ?? 0) > 0) : allRows
-  const anomalyCount = allRows.filter((t) => (t.anomalies?.length ?? 0) > 0).length
+  const typeFiltered = typeFilter === "ALL" ? allRows : allRows.filter((t) => t.type === typeFilter)
+  const rows = anomaliesOnly ? typeFiltered.filter((t) => (t.anomalies?.length ?? 0) > 0) : typeFiltered
+  const anomalyCount = typeFiltered.filter((t) => (t.anomalies?.length ?? 0) > 0).length
+
+  // Module M32: scroll to and briefly highlight the entry a notification's
+  // "Voir" action deep-linked to, once it's actually rendered in the list.
+  useEffect(() => {
+    if (highlightId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" })
+    }
+  }, [highlightId, rows.length])
 
   return (
     <div className="space-y-6">
@@ -445,6 +470,25 @@ export default function ComptabiliteCabinet() {
               className="cursor-pointer whitespace-nowrap"
               onClick={() => setStatusFilter(value)}
               data-testid={`filter-status-${value}`}
+            >
+              {label}
+            </Badge>
+          ))}
+          <Separator orientation="vertical" className="h-5 mx-1" />
+          {/* Module M32: type filter, mirrored by the "Révision Dépenses" /
+              "Révision Recettes" sidebar links (which land here with
+              `?type=`). */}
+          {([
+            ["ALL", "Tous types"],
+            ["depense", "Dépenses"],
+            ["recette", "Recettes"],
+          ] as const).map(([value, label]) => (
+            <Badge
+              key={value}
+              variant={typeFilter === value ? "default" : "outline"}
+              className="cursor-pointer whitespace-nowrap"
+              onClick={() => setTypeFilter(value)}
+              data-testid={`filter-type-${value}`}
             >
               {label}
             </Badge>
@@ -491,9 +535,13 @@ export default function ComptabiliteCabinet() {
             return (
             <Card
               key={t.id}
-              className={hasAnomalies
-                ? "shadow-sm border-red-300 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
-                : "shadow-sm"}
+              ref={t.id === highlightId ? highlightRef : undefined}
+              className={cn(
+                hasAnomalies
+                  ? "shadow-sm border-red-300 bg-red-50/50 dark:border-red-900 dark:bg-red-950/20"
+                  : "shadow-sm",
+                t.id === highlightId && "ring-2 ring-primary ring-offset-2",
+              )}
               data-testid={`card-transaction-${t.id}`}
             >
               <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">

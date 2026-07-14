@@ -819,6 +819,30 @@ export const ListTransactionCategoriesResponse = zod.array(ListTransactionCatego
 
 
 /**
+ * @summary Instant counters for the cabinet review queue (module M32) -- how many of this client's submitted entries are still "à valider", split by type, so nav badges can update live without polling the full transaction list.
+ */
+export const GetCabinetPendingCountsParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const GetCabinetPendingCountsResponse = zod.object({
+  "pendingExpenses": zod.number(),
+  "pendingRevenues": zod.number(),
+  "totalPending": zod.number()
+})
+
+
+/**
+ * @summary Instant counters for the cabinet review queue (module M32), aggregated across every client in the firm -- used for the global "Révision Dépenses" / "Révision Recettes" navigation badges, which are not scoped to a single client dossier.
+ */
+export const GetFirmPendingCountsResponse = zod.object({
+  "pendingExpenses": zod.number(),
+  "pendingRevenues": zod.number(),
+  "totalPending": zod.number()
+})
+
+
+/**
  * @summary List journal entries (module P3/M3). Espace PME accounts only ever see their own client's entries.
  */
 export const ListTransactionsQueryParams = zod.object({

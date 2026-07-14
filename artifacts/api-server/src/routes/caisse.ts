@@ -9,6 +9,7 @@ import {
   journalLinesTable,
   isPortalRole,
 } from "@workspace/db";
+import { broadcastPendingCounts } from "../lib/pending-counts";
 import {
   ListCashRegistersQueryParams,
   ListCashRegistersResponse,
@@ -292,6 +293,12 @@ router.post("/cash-registers/:id/closures/:closureId/close", requirePermission("
     details: `Clôture de la caisse "${register.name}" (${closure.date}), écart de ${discrepancyAmount} FCFA`,
     ipAddress: req.ip,
   });
+
+  // Module M32: an écart de caisse lands in the "à valider" queue exactly
+  // like any other entry, so the counters must reflect it right away.
+  if (summaryTransaction) {
+    await broadcastPendingCounts(req.user!.firmId, register.clientId);
+  }
 
   res.json(
     CloseDailyClosureResponse.parse({

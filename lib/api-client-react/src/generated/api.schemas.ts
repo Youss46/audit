@@ -436,6 +436,12 @@ export const TransactionSource = {
   caisse_closure: 'caisse_closure',
 } as const;
 
+export interface PendingCounts {
+  pendingExpenses: number;
+  pendingRevenues: number;
+  totalPending: number;
+}
+
 export type PaymentMethod = typeof PaymentMethod[keyof typeof PaymentMethod];
 
 

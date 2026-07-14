@@ -10,6 +10,16 @@ import {
 } from "@workspace/api-client-react"
 import { getToken } from "@/lib/auth"
 
+// Module M32 notification payload shape (mirrors the server's
+// NotificationDto -- see routes/collaboration.ts and lib/pending-counts.ts).
+export type RealtimeNotificationPayload = {
+  id: number
+  title: string
+  body: string
+  linkToRoute: string | null
+  createdAt: string
+}
+
 // Module M26 (Révision Collaborative & Chat Contextuel): best-effort
 // real-time push. When a socket message arrives we simply invalidate the
 // relevant React Query caches -- the already-mounted components refetch
@@ -20,17 +30,28 @@ import { getToken } from "@/lib/auth"
 // the socket never connects (offline, restrictive proxy, etc.) the app
 // still works via the notification bell's periodic refetch.
 type RealtimeMessage =
-  | { type: "notification:new"; payload: unknown }
+  | { type: "notification:new"; payload: RealtimeNotificationPayload }
   | { type: "comment:new"; payload: { targetType: string; targetId: number; clientId: number } }
   | { type: "thread:resolved"; payload: { targetType: string; targetId: number; clientId: number } }
   // Module M31 (Messagerie Interne du Cabinet).
   | { type: "chat:channel-message"; payload: { channelId: number; message: unknown } }
   | { type: "chat:direct-message"; payload: { message: { senderId: number; recipientId: number } } }
   | { type: "chat:presence"; payload: { userId: number; online: boolean } }
+  // Module M32 (Notification Instantanée & Compteurs Dynamiques): fired on
+  // every création/approbation/rejet touching a client's "à valider" queue.
+  | {
+      type: "pendingTransactionsUpdated"
+      payload: { clientId: number; pendingExpenses: number; pendingRevenues: number; totalPending: number }
+    }
 
-export function useRealtime(enabled: boolean) {
+export function useRealtime(
+  enabled: boolean,
+  options?: { onNotification?: (notification: RealtimeNotificationPayload) => void },
+) {
   const queryClient = useQueryClient()
   const socketRef = useRef<WebSocket | null>(null)
+  const onNotificationRef = useRef(options?.onNotification)
+  onNotificationRef.current = options?.onNotification
 
   useEffect(() => {
     if (!enabled) return
@@ -51,6 +72,23 @@ export function useRealtime(enabled: boolean) {
 
       if (message.type === "notification:new") {
         queryClient.invalidateQueries({ queryKey: getListNotificationsQueryKey() })
+        onNotificationRef.current?.(message.payload)
+      } else if (message.type === "pendingTransactionsUpdated") {
+        // Both the per-client counter (used on the "Flux de Saisie" tab)
+        // and the firm-wide counter (used by the global "Révision
+        // Dépenses"/"Révision Recettes" nav badges) share the same
+        // "/cabinet/pending-counts" URL prefix in their generated query
+        // keys, so one broad predicate refreshes every badge at once.
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && String(q.queryKey[0]).includes("/cabinet/pending-counts"),
+        })
+        // ClientAccountingNav's existing "Flux de Saisie" tab badge (module
+        // M3) already counts this same client's "à valider" entries via
+        // the plain transactions list -- refresh it too so it doesn't lag
+        // behind the dedicated M32 counters above.
+        queryClient.invalidateQueries({
+          predicate: (q) => Array.isArray(q.queryKey) && String(q.queryKey[0]).includes("/transactions"),
+        })
       } else if (message.type === "comment:new" || message.type === "thread:resolved") {
         queryClient.invalidateQueries({ queryKey: getListThreadsQueryKey({ clientId: message.payload.clientId }) })
         queryClient.invalidateQueries({ queryKey: getListThreadsQueryKey() })

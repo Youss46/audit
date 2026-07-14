@@ -21,10 +21,13 @@ import {
   BarChart3,
   Receipt,
   MessagesSquare,
+  TrendingDown,
+  TrendingUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
 import { UserCog } from "lucide-react"
+import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
 import { Button } from "@/components/ui/button"
@@ -50,6 +53,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [location, setLocation] = useLocation()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(location)
+
+  // Module M32: firm-wide "à valider" counters, live behind the global
+  // "Révision Dépenses" / "Révision Recettes" nav badges below. Cabinet
+  // staff only -- an Espace PME account never sees these links. The
+  // WebSocket push (see use-realtime.ts) invalidates this query on every
+  // create/approve/reject, with a 30s poll as a fallback if the socket
+  // never connects.
+  const isCabinetStaff = !!user && !isPortalRole(user.role)
+  const { data: firmPendingCounts } = useGetFirmPendingCounts({
+    query: { queryKey: getGetFirmPendingCountsQueryKey(), enabled: isCabinetStaff, refetchInterval: 30_000 },
+  })
 
   // Close mobile menu when location changes
   React.useEffect(() => {
@@ -301,6 +315,44 @@ export function Shell({ children }: { children: React.ReactNode }) {
       )} data-testid="link-comptabilite-cabinet">
         <BookOpenCheck className="h-5 w-5" />
         Comptabilité &amp; Travaux
+      </Link>
+
+      {/* Module M32 (Notification Instantanée & Compteurs Dynamiques):
+          quick-access shortcuts straight into the unscoped "à valider"
+          queue, pre-filtered by type, with a live count of what's waiting
+          across every client in the firm. */}
+      <Link href="/comptabilite?type=depense" className={cn(
+        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/comptabilite") && location.includes("type=depense")
+          ? "bg-primary text-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-revision-depenses">
+        <span className="flex items-center gap-3">
+          <TrendingDown className="h-4 w-4" />
+          Révision Dépenses
+        </span>
+        {!!firmPendingCounts?.pendingExpenses && (
+          <Badge className="h-5 min-w-5 justify-center rounded-full bg-red-600 px-1.5 text-[11px] font-bold text-white hover:bg-red-600" data-testid="badge-pending-depenses">
+            {firmPendingCounts.pendingExpenses}
+          </Badge>
+        )}
+      </Link>
+
+      <Link href="/comptabilite?type=recette" className={cn(
+        "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+        location.startsWith("/comptabilite") && location.includes("type=recette")
+          ? "bg-primary text-primary-foreground"
+          : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+      )} data-testid="link-revision-recettes">
+        <span className="flex items-center gap-3">
+          <TrendingUp className="h-4 w-4" />
+          Révision Recettes
+        </span>
+        {!!firmPendingCounts?.pendingRevenues && (
+          <Badge className="h-5 min-w-5 justify-center rounded-full bg-orange-500 px-1.5 text-[11px] font-bold text-white hover:bg-orange-500" data-testid="badge-pending-recettes">
+            {firmPendingCounts.pendingRevenues}
+          </Badge>
+        )}
       </Link>
 
       <Link href="/immobilisations" className={cn(

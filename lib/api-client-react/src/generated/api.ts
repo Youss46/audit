@@ -134,6 +134,7 @@ import type {
   NewGeneratedDocumentInput,
   NotificationItem,
   Payslip,
+  PendingCounts,
   PilotageDashboardResult,
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
@@ -2591,6 +2592,160 @@ export function useListTransactionCategories<TData = Awaited<ReturnType<typeof l
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
   const queryOptions = getListTransactionCategoriesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetCabinetPendingCountsUrl = (clientId: number,) => {
+
+
+
+
+  return `/api/cabinet/pending-counts/${clientId}`
+}
+
+/**
+ * @summary Instant counters for the cabinet review queue (module M32) -- how many of this client's submitted entries are still "à valider", split by type, so nav badges can update live without polling the full transaction list.
+ */
+export const getCabinetPendingCounts = async (clientId: number, options?: RequestInit): Promise<PendingCounts> => {
+
+  return customFetch<PendingCounts>(getGetCabinetPendingCountsUrl(clientId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCabinetPendingCountsQueryKey = (clientId: number,) => {
+    return [
+    `/api/cabinet/pending-counts/${clientId}`
+    ] as const;
+    }
+
+
+export const getGetCabinetPendingCountsQueryOptions = <TData = Awaited<ReturnType<typeof getCabinetPendingCounts>>, TError = ErrorType<ErrorResponse>>(clientId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCabinetPendingCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCabinetPendingCountsQueryKey(clientId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCabinetPendingCounts>>> = ({ signal }) => getCabinetPendingCounts(clientId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCabinetPendingCounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCabinetPendingCountsQueryResult = NonNullable<Awaited<ReturnType<typeof getCabinetPendingCounts>>>
+export type GetCabinetPendingCountsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Instant counters for the cabinet review queue (module M32) -- how many of this client's submitted entries are still "à valider", split by type, so nav badges can update live without polling the full transaction list.
+ */
+
+export function useGetCabinetPendingCounts<TData = Awaited<ReturnType<typeof getCabinetPendingCounts>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCabinetPendingCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCabinetPendingCountsQueryOptions(clientId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetFirmPendingCountsUrl = () => {
+
+
+
+
+  return `/api/cabinet/pending-counts`
+}
+
+/**
+ * @summary Instant counters for the cabinet review queue (module M32), aggregated across every client in the firm -- used for the global "Révision Dépenses" / "Révision Recettes" navigation badges, which are not scoped to a single client dossier.
+ */
+export const getFirmPendingCounts = async ( options?: RequestInit): Promise<PendingCounts> => {
+
+  return customFetch<PendingCounts>(getGetFirmPendingCountsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetFirmPendingCountsQueryKey = () => {
+    return [
+    `/api/cabinet/pending-counts`
+    ] as const;
+    }
+
+
+export const getGetFirmPendingCountsQueryOptions = <TData = Awaited<ReturnType<typeof getFirmPendingCounts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFirmPendingCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetFirmPendingCountsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getFirmPendingCounts>>> = ({ signal }) => getFirmPendingCounts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getFirmPendingCounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetFirmPendingCountsQueryResult = NonNullable<Awaited<ReturnType<typeof getFirmPendingCounts>>>
+export type GetFirmPendingCountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Instant counters for the cabinet review queue (module M32), aggregated across every client in the firm -- used for the global "Révision Dépenses" / "Révision Recettes" navigation badges, which are not scoped to a single client dossier.
+ */
+
+export function useGetFirmPendingCounts<TData = Awaited<ReturnType<typeof getFirmPendingCounts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getFirmPendingCounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetFirmPendingCountsQueryOptions(options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

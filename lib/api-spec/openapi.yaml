@@ -810,6 +810,19 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /cabinet/pending-counts:
+    get:
+      operationId: getFirmPendingCounts
+      tags: [accounting]
+      summary: Instant counters for the cabinet review queue (module M32), aggregated across every client in the firm -- used for the global "Révision Dépenses" / "Révision Recettes" navigation badges, which are not scoped to a single client dossier.
+      responses:
+        "200":
+          description: Pending review counts across the whole firm
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PendingCounts"
+
   /transactions:
     get:
       operationId: listTransactions

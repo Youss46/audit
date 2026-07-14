@@ -184,6 +184,7 @@ export * from './paymentFrequency';
 export * from './paymentMethod';
 export * from './paymentType';
 export * from './payslip';
+export * from './pendingCounts';
 export * from './pilotageDashboardResult';
 export * from './pilotageDashboardResultBasis';
 export * from './postPayrollLedgerResult';

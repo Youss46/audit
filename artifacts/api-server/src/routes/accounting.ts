@@ -11,6 +11,7 @@ import {
   fixedAssetsTable,
   isPortalRole,
 } from "@workspace/db";
+import { broadcastPendingCounts, notifyPmeTransactionSubmitted } from "../lib/pending-counts";
 import {
   ListTransactionCategoriesQueryParams,
   ListTransactionCategoriesResponse,
@@ -306,6 +307,24 @@ async function createTransactionEntry(
     ipAddress: req.ip,
   });
 
+  // Module M32: an Espace PME submission needs the cabinet's review queue
+  // counters and notification bell to react instantly, not just on the
+  // caller's own next poll. Cabinet-authored entries ("manual_cabinet")
+  // never notify the cabinet about itself, but they still change the "à
+  // valider" count, so the counter broadcast always fires while the
+  // submission banner only fires for real PME-originated entries.
+  await broadcastPendingCounts(req.user!.firmId, body.clientId);
+  if (source === "pme_entry") {
+    await notifyPmeTransactionSubmitted({
+      firmId: req.user!.firmId,
+      clientId: body.clientId,
+      transactionId: tx.id,
+      clientName: client.name,
+      type: body.type,
+      amount: body.amount,
+    });
+  }
+
   return { tx, client, cashRegisterName };
 }
 
@@ -588,6 +607,10 @@ router.post(
       });
     }
 
+    // Module M32: validating removes this entry from the "à valider" queue --
+    // the counter must decrement instantly, not wait for the next poll.
+    await broadcastPendingCounts(req.user!.firmId, tx.clientId);
+
     res.json(
       ApproveTransactionResponse.parse({
         ...(await withJournalLines(updated, {
@@ -648,6 +671,10 @@ router.post(
       details: `Invalidation de "${tx.label}" : ${body.clarificationNote}`,
       ipAddress: req.ip,
     });
+
+    // Module M32: rejecting also removes this entry from the "à valider"
+    // count (it moves to "anomalie", awaiting the client's correction).
+    await broadcastPendingCounts(req.user!.firmId, tx.clientId);
 
     res.json(
       RejectTransactionResponse.parse(
@@ -783,6 +810,10 @@ router.post("/transactions/:id/settle", requirePermission("operations.create"), 
     details: `Règlement de "${tx.label}" (${tx.amount} FCFA) pour "${tx.client?.name}"`,
     ipAddress: req.ip,
   });
+
+  // Module M32: the settlement itself lands in the "à valider" queue as a
+  // brand-new entry, so the counters must reflect it immediately.
+  await broadcastPendingCounts(req.user!.firmId, tx.clientId);
 
   res
     .status(201)

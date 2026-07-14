@@ -11,8 +11,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
+import { ToastAction } from "@/components/ui/toast"
 import { formatDateTime } from "@/lib/utils"
 import { useRealtime } from "@/hooks/use-realtime"
+import { useToast } from "@/hooks/use-toast"
 
 // Module M26 (Révision Collaborative & Chat Contextuel): the persistent
 // "Notification_Center" -- lives in the topbar for every authenticated
@@ -23,8 +25,26 @@ import { useRealtime } from "@/hooks/use-realtime"
 export function NotificationBell() {
   const [, setLocation] = useLocation()
   const queryClient = useQueryClient()
+  const { toast } = useToast()
 
-  useRealtime(true)
+  // Module M32: on top of the bell dropdown (which just waits for the next
+  // poll/click), pop an instant slide-down banner the moment a new
+  // notification arrives -- e.g. "Le client X a soumis une nouvelle dépense
+  // à valider." -- with a one-click "Voir" action that deep-links straight
+  // to the review queue for that entry.
+  useRealtime(true, {
+    onNotification: (notification) => {
+      toast({
+        title: notification.title,
+        description: notification.body,
+        action: notification.linkToRoute ? (
+          <ToastAction altText="Voir" onClick={() => setLocation(notification.linkToRoute!)}>
+            Voir
+          </ToastAction>
+        ) : undefined,
+      })
+    },
+  })
 
   const { data: notifications } = useListNotifications({
     query: {
