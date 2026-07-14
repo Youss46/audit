@@ -273,7 +273,7 @@ export default function Dsf() {
     <div className="min-h-screen bg-background">
       {clientId && (
         <div className="border-b bg-card px-6 py-3">
-          <Link href="/cabinet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link href="/clients" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
             <ChevronLeft className="h-4 w-4" /> Retour au cabinet
           </Link>
         </div>
