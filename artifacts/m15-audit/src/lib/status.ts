@@ -60,6 +60,10 @@ export function getRoleLabel(role: UserRole | string | null | undefined) {
     case 'collaborateur': return 'Collaborateur'
     case 'stagiaire': return 'Stagiaire'
     case 'client_pme': return 'Espace PME'
+    // Module M29: generic fallback -- callers that have the current user
+    // object should prefer getUserRoleLabel(user) below, which shows the
+    // specific staff role (e.g. "Agent Terrain / Pompiste") instead.
+    case 'client_staff': return 'Collaborateur PME'
     default: return '—'
   }
 }
@@ -70,8 +74,42 @@ export function getRoleBadgeColor(role: UserRole | string | null | undefined) {
     case 'collaborateur': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
     case 'stagiaire': return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
     case 'client_pme': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300'
+    case 'client_staff': return 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300'
     default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
   }
+}
+
+// Module M29 (RBAC & Gestion du Personnel PME).
+//
+// "client_pme" (the company owner) and "client_staff" (its employees) share
+// the same Espace PME portal, scoped to one client dossier -- see
+// PORTAL_ROLES / isPortalRole() server-side (lib/db/src/schema/users.ts).
+// Kept as a small frontend-only mirror since the frontend never imports
+// @workspace/db.
+export function isPortalRole(role: UserRole | string | null | undefined) {
+  return role === 'client_pme' || role === 'client_staff'
+}
+
+// Shows the specific staff role label (e.g. "Agent Terrain / Pompiste") for
+// a client_staff account, falling back to getRoleLabel() for every other
+// role -- prefer this over getRoleLabel() wherever the full user object is
+// available (topbar, user menu, staff list).
+export function getUserRoleLabel(user: { role?: UserRole | string | null; roleLabel?: string | null } | null | undefined) {
+  if (user?.role === 'client_staff' && user.roleLabel) return user.roleLabel
+  return getRoleLabel(user?.role)
+}
+
+// A permission gate only ever restricts "client_staff" accounts -- the
+// "client_pme" owner and every cabinet role remain unrestricted, mirroring
+// requirePermission() server-side (artifacts/api-server/src/middlewares/auth.ts).
+export function hasPermission(
+  user: { role?: UserRole | string | null; permissions?: string[] | null } | null | undefined,
+  ...permissions: string[]
+) {
+  if (!user) return false
+  if (user.role !== 'client_staff') return true
+  const granted = user.permissions ?? []
+  return permissions.some((p) => granted.includes(p))
 }
 
 // Module M14 (Journal de Conformité - Espace Cabinet): human-readable

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, clientsTable } from "@workspace/db";
+import { db, clientsTable, isPortalRole } from "@workspace/db";
 import {
   ListClientsQueryParams,
   ListClientsResponse,
@@ -25,7 +25,7 @@ router.get("/clients", async (req, res) => {
   const { missionStatus } = ListClientsQueryParams.parse(req.query);
 
   // Espace PME (client_pme) accounts only ever see their own dossier.
-  if (req.user!.role === "client_pme") {
+  if (isPortalRole(req.user!.role)) {
     if (!req.user!.clientId) {
       res.json(ListClientsResponse.parse([]));
       return;
@@ -35,7 +35,7 @@ router.get("/clients", async (req, res) => {
 
   const conditions = [eq(clientsTable.firmId, req.user!.firmId)];
   if (missionStatus) conditions.push(eq(clientsTable.missionStatus, missionStatus));
-  if (req.user!.role === "client_pme") conditions.push(eq(clientsTable.id, req.user!.clientId!));
+  if (isPortalRole(req.user!.role)) conditions.push(eq(clientsTable.id, req.user!.clientId!));
 
   const clients = await db.query.clientsTable.findMany({
     where: and(...conditions),

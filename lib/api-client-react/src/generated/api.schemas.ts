@@ -21,6 +21,7 @@ export const UserRole = {
   collaborateur: 'collaborateur',
   stagiaire: 'stagiaire',
   client_pme: 'client_pme',
+  client_staff: 'client_staff',
 } as const;
 
 export type UserStatus = typeof UserStatus[keyof typeof UserStatus];
@@ -40,13 +41,25 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   /**
-     * Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+     * Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.
      * @nullable
      */
   clientId?: number | null;
   /** @nullable */
   firmName?: string | null;
   createdAt: string;
+  /**
+     * Module M29 - set only for client_staff accounts; references the assigned staff Role.
+     * @nullable
+     */
+  roleId?: number | null;
+  /**
+     * Module M29 - French display label of the staff Role (e.g. "Agent Terrain / Pompiste"), null for non-client_staff accounts.
+     * @nullable
+     */
+  roleLabel?: string | null;
+  /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
+  permissions?: string[];
 }
 
 export interface RegisterInput {
@@ -90,6 +103,48 @@ export interface UserUpdate {
   status?: UserStatus;
   /** @nullable */
   clientId?: number | null;
+}
+
+export interface Role {
+  id: number;
+  /** Stable machine key, e.g. "POMPISTE". */
+  code: string;
+  /** French display label, e.g. "Agent Terrain / Pompiste". */
+  label: string;
+  /** @nullable */
+  description?: string | null;
+  permissions: string[];
+}
+
+export interface StaffUser {
+  id: number;
+  fullName: string;
+  email: string;
+  status: UserStatus;
+  /** @nullable */
+  roleId: number | null;
+  /** @nullable */
+  roleCode?: string | null;
+  /** @nullable */
+  roleLabel?: string | null;
+  createdAt: string;
+}
+
+export interface StaffInput {
+  /** @minLength 3 */
+  email: string;
+  /** @minLength 2 */
+  fullName: string;
+  /** @minLength 8 */
+  password: string;
+  roleId: number;
+}
+
+export interface StaffUpdate {
+  /** @minLength 2 */
+  fullName?: string;
+  status?: UserStatus;
+  roleId?: number;
 }
 
 /**

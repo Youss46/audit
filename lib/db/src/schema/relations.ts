@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { firmsTable } from "./firms";
 import { usersTable } from "./users";
+import { rolesTable } from "./roles";
 import { clientsTable } from "./clients";
 import { missionsTable } from "./missions";
 import { checklistItemsTable } from "./checklist-items";
@@ -28,6 +29,13 @@ export const firmsRelations = relations(firmsTable, ({ many }) => ({
 export const usersRelations = relations(usersTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [usersTable.firmId], references: [firmsTable.id] }),
   client: one(clientsTable, { fields: [usersTable.clientId], references: [clientsTable.id] }),
+  // Module M29: only set for "client_staff" accounts.
+  role: one(rolesTable, { fields: [usersTable.roleId], references: [rolesTable.id] }),
+}));
+
+// Module M29 (RBAC & Gestion du Personnel PME).
+export const rolesRelations = relations(rolesTable, ({ many }) => ({
+  staff: many(usersTable),
 }));
 
 export const clientsRelations = relations(clientsTable, ({ one, many }) => ({

@@ -22,6 +22,7 @@ import reportDocumentsRouter from "./report-documents";
 import collaborationRouter from "./collaboration";
 import scoringRouter from "./scoring";
 import invoicingRouter from "./invoicing";
+import staffRouter from "./staff";
 
 const router: IRouter = Router();
 
@@ -48,5 +49,6 @@ router.use(reportDocumentsRouter);
 router.use(collaborationRouter);
 router.use(scoringRouter);
 router.use(invoicingRouter);
+router.use(staffRouter);
 
 export default router;

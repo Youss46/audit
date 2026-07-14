@@ -20,6 +20,13 @@ export interface AuthTokenPayload {
   // Only present for "client_pme" accounts: scopes the Espace PME portal
   // session to a single client dossier (module P2).
   clientId?: number | null;
+  // Module M29: only present for "client_staff" accounts. `permissions` is
+  // resolved from the referenced role at login time and embedded in the
+  // JWT (like `role`/`clientId` above) rather than re-fetched per request --
+  // consistent with the existing session model, where role changes already
+  // require a fresh login to take effect.
+  roleId?: number | null;
+  permissions?: string[];
 }
 
 export async function hashPassword(password: string): Promise<string> {

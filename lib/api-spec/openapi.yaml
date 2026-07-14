@@ -14,6 +14,8 @@ tags:
     description: Authentication
   - name: users
     description: Firm user administration (RBAC)
+  - name: staff
+    description: Module M29 - PME staff management (RBAC & Gestion du Personnel PME); the company owner creates restricted "client_staff" accounts
   - name: audit
     description: Audit trail
   - name: clients
@@ -210,6 +212,109 @@ paths:
           description: Deleted
         "404":
           description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [staff]
+      summary: List the system-wide staff role catalog (module M29)
+      responses:
+        "200":
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+
+  /staff:
+    get:
+      operationId: listStaff
+      tags: [staff]
+      summary: List the current PME's staff accounts (module M29, owner only)
+      responses:
+        "200":
+          description: List of staff accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/StaffUser"
+    post:
+      operationId: createStaff
+      tags: [staff]
+      summary: Create a new staff account for the current PME (module M29, owner only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffInput"
+      responses:
+        "201":
+          description: Staff account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUser"
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /staff/{id}:
+    patch:
+      operationId: updateStaff
+      tags: [staff]
+      summary: Update a staff account's role or status (module M29, owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StaffUpdate"
+      responses:
+        "200":
+          description: Updated staff account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StaffUser"
+        "404":
+          description: Staff account not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteStaff
+      tags: [staff]
+      summary: Remove a staff account (module M29, owner only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Staff account not found
           content:
             application/json:
               schema:
@@ -3201,6 +3306,7 @@ components:
         - collaborateur
         - stagiaire
         - client_pme
+        - client_staff
 
     UserStatus:
       type: string
@@ -3223,9 +3329,19 @@ components:
           $ref: "#/components/schemas/UserStatus"
         clientId:
           type: ["integer", "null"]
-          description: Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+          description: Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.
         firmName: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+        roleId:
+          type: ["integer", "null"]
+          description: Module M29 - set only for client_staff accounts; references the assigned staff Role.
+        roleLabel:
+          type: ["string", "null"]
+          description: Module M29 - French display label of the staff Role (e.g. "Agent Terrain / Pompiste"), null for non-client_staff accounts.
+        permissions:
+          type: array
+          items: { type: string }
+          description: Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.
 
     RegisterInput:
       type: object
@@ -3274,6 +3390,50 @@ components:
           $ref: "#/components/schemas/UserStatus"
         clientId:
           type: ["integer", "null"]
+
+    # Module M29 (RBAC & Gestion du Personnel PME).
+    Role:
+      type: object
+      required: [id, code, label, permissions]
+      properties:
+        id: { type: integer }
+        code: { type: string, description: "Stable machine key, e.g. \"POMPISTE\"." }
+        label: { type: string, description: "French display label, e.g. \"Agent Terrain / Pompiste\"." }
+        description: { type: ["string", "null"] }
+        permissions:
+          type: array
+          items: { type: string }
+
+    StaffUser:
+      type: object
+      required: [id, fullName, email, status, roleId, createdAt]
+      properties:
+        id: { type: integer }
+        fullName: { type: string }
+        email: { type: string }
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        roleId: { type: ["integer", "null"] }
+        roleCode: { type: ["string", "null"] }
+        roleLabel: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    StaffInput:
+      type: object
+      required: [email, fullName, password, roleId]
+      properties:
+        email: { type: string, minLength: 3 }
+        fullName: { type: string, minLength: 2 }
+        password: { type: string, minLength: 8 }
+        roleId: { type: integer }
+
+    StaffUpdate:
+      type: object
+      properties:
+        fullName: { type: string, minLength: 2 }
+        status:
+          $ref: "#/components/schemas/UserStatus"
+        roleId: { type: integer }
 
     AuditLog:
       type: object

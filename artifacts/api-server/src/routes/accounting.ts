@@ -9,6 +9,7 @@ import {
   usersTable,
   cashRegistersTable,
   fixedAssetsTable,
+  isPortalRole,
 } from "@workspace/db";
 import {
   ListTransactionCategoriesQueryParams,
@@ -33,7 +34,7 @@ import {
   BatchCreateTransactionsBody,
   BatchCreateTransactionsResponse,
 } from "@workspace/api-zod";
-import { canAccessClient, requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
+import { canAccessClient, requireAuth, requireOwnClient, requirePermission, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { auditInterceptor } from "../middlewares/audit-interceptor";
 import {
@@ -240,7 +241,7 @@ async function createTransactionEntry(
     }
   }
 
-  const source = req.user!.role === "client_pme" ? "pme_entry" : "manual_cabinet";
+  const source = isPortalRole(req.user!.role) ? "pme_entry" : "manual_cabinet";
 
   // Module M8: run the rule-based anomaly/duplicate detector before this
   // entry reaches the M3 review queue, so the accountant sees the warning
@@ -319,16 +320,16 @@ router.get("/accounting/categories", (req, res) => {
 // only ever see their own client's entries; cabinet staff see every entry for
 // the firm (optionally filtered to one client), which is what drives the
 // M3 "à valider" review queue.
-router.get("/transactions", async (req, res) => {
+router.get("/transactions", requirePermission("operations.view", "caisse.view"), async (req, res) => {
   const { clientId, status } = ListTransactionsQueryParams.parse(req.query);
 
-  if (req.user!.role === "client_pme") {
+  if (isPortalRole(req.user!.role)) {
     if (!req.user!.clientId || (clientId && clientId !== req.user!.clientId)) {
       res.json(ListTransactionsResponse.parse([]));
       return;
     }
   }
-  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+  const effectiveClientId = isPortalRole(req.user!.role) ? req.user!.clientId! : clientId;
 
   const conditions = [eq(transactionsTable.firmId, req.user!.firmId)];
   if (effectiveClientId) conditions.push(eq(transactionsTable.clientId, effectiveClientId));
@@ -367,7 +368,7 @@ router.get("/transactions", async (req, res) => {
 // movement in plain language. The matching engine immediately computes its
 // SYSCOHADA double-entry lines and the transaction lands as "à valider" in
 // the M3 review queue.
-router.post("/transactions", async (req, res) => {
+router.post("/transactions", requirePermission("operations.create", "caisse.create"), async (req, res) => {
   const body = CreateTransactionBody.parse(req.body);
 
   try {
@@ -396,7 +397,7 @@ router.post("/transactions", async (req, res) => {
 // quick cash entries locally (LocalStorage/IndexedDB) while hors-ligne, then
 // flushes them here once back online. Each entry is validated and inserted
 // independently so one bad entry never blocks the rest of the batch.
-router.post("/transactions/batch", async (req, res) => {
+router.post("/transactions/batch", requirePermission("operations.create", "caisse.create"), async (req, res) => {
   const body = BatchCreateTransactionsBody.parse(req.body);
 
   const created: Awaited<ReturnType<typeof withJournalLines>>[] = [];
@@ -440,7 +441,7 @@ router.post("/transactions/batch", async (req, res) => {
   res.json(BatchCreateTransactionsResponse.parse({ created, errors }));
 });
 
-router.get("/transactions/:id", async (req, res) => {
+router.get("/transactions/:id", requirePermission("operations.view", "caisse.view"), async (req, res) => {
   const { id } = GetTransactionParams.parse(req.params);
 
   const tx = await db.query.transactionsTable.findFirst({
@@ -665,7 +666,7 @@ router.post(
 // entry; it creates a new, separately reviewed "settlement" transaction
 // carrying the second SYSCOHADA leg (4111/4011 -> treasury), so the general
 // ledger always keeps both legs auditable.
-router.post("/transactions/:id/settle", async (req, res) => {
+router.post("/transactions/:id/settle", requirePermission("operations.create"), async (req, res) => {
   const { id } = SettleTransactionParams.parse(req.params);
   const body = SettleTransactionBody.parse(req.body);
 

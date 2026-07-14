@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyToken } from "../lib/auth";
-import type { UserRole } from "@workspace/db";
+import { isPortalRole, type UserRole } from "@workspace/db";
 
 // Verifies the Bearer JWT and attaches the authenticated principal to
 // `req.user`. All routes except /auth/register and /auth/login require this.
@@ -39,15 +39,16 @@ export function requireRole(...roles: UserRole[]) {
   };
 }
 
-// Module P2 (Espace PME) scoping: a client_pme account is bound to exactly
-// one client dossier (req.user.clientId) and must never be able to read or
-// write another client's data within the same firm. Cabinet staff (any
-// other role) are unrestricted -- firmId scoping alone applies to them.
+// Module P2 (Espace PME) scoping: a client_pme account (and, since module
+// M29, its client_staff accounts) is bound to exactly one client dossier
+// (req.user.clientId) and must never be able to read or write another
+// client's data within the same firm. Cabinet staff (any other role) are
+// unrestricted -- firmId scoping alone applies to them.
 export function canAccessClient(
   req: Request,
   clientId: number,
 ): boolean {
-  if (req.user!.role !== "client_pme") return true;
+  if (!isPortalRole(req.user!.role)) return true;
   return req.user!.clientId === clientId;
 }
 
@@ -59,4 +60,30 @@ export function requireOwnClient(req: Request, res: Response, clientId: number):
     return false;
   }
   return true;
+}
+
+// Module M29 (RBAC & Gestion du Personnel PME): restricts a route to
+// accounts holding at least one of the given permission keys. Only
+// "client_staff" accounts are ever restricted -- every other role
+// (cabinet staff, and the "client_pme" owner itself) bypasses this check
+// unchanged, so existing behavior for those roles never regresses.
+export function requirePermission(...permissions: string[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.user) {
+      res.status(401).json({ error: "Authentification requise." });
+      return;
+    }
+    if (req.user.role !== "client_staff") {
+      next();
+      return;
+    }
+    const granted = req.user.permissions ?? [];
+    if (!permissions.some((p) => granted.includes(p))) {
+      res.status(403).json({
+        error: "Accès refusé : votre rôle ne dispose pas de cette autorisation.",
+      });
+      return;
+    }
+    next();
+  };
 }

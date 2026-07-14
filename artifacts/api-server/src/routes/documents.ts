@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, clientsTable, documentsTable, missionsTable } from "@workspace/db";
+import { db, clientsTable, documentsTable, missionsTable, isPortalRole } from "@workspace/db";
 import {
   ListClientDocumentsParams,
   ListClientDocumentsResponse,
@@ -57,11 +57,11 @@ function serializeMetadata(
 router.get("/documents", async (req, res) => {
   const { clientId } = ListDocumentsQueryParams.parse(req.query);
 
-  if (req.user!.role === "client_pme" && !req.user!.clientId) {
+  if (isPortalRole(req.user!.role) && !req.user!.clientId) {
     res.json(ListDocumentsResponse.parse([]));
     return;
   }
-  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+  const effectiveClientId = isPortalRole(req.user!.role) ? req.user!.clientId! : clientId;
 
   const conditions = [eq(documentsTable.firmId, req.user!.firmId)];
   if (effectiveClientId) conditions.push(eq(documentsTable.clientId, effectiveClientId));
@@ -126,7 +126,7 @@ router.post("/clients/:id/documents", async (req, res) => {
     return;
   }
 
-  const isPortalUpload = req.user!.role === "client_pme";
+  const isPortalUpload = isPortalRole(req.user!.role);
 
   let missionId = body.missionId ?? null;
   let category = body.category;

@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, firmsTable, usersTable } from "@workspace/db";
+import { db, firmsTable, usersTable, rolesTable } from "@workspace/db";
 import {
   RegisterBody,
   RegisterResponse,
@@ -14,7 +14,11 @@ import { AuditAction, logAudit } from "../lib/audit";
 
 const router: IRouter = Router();
 
-function serializeUser(user: typeof usersTable.$inferSelect, firmName?: string | null) {
+function serializeUser(
+  user: typeof usersTable.$inferSelect,
+  firmName?: string | null,
+  role?: typeof rolesTable.$inferSelect | null,
+) {
   return {
     id: user.id,
     firmId: user.firmId,
@@ -25,7 +29,22 @@ function serializeUser(user: typeof usersTable.$inferSelect, firmName?: string |
     clientId: user.clientId ?? null,
     firmName: firmName ?? null,
     createdAt: user.createdAt,
+    // Module M29: only populated for "client_staff" accounts.
+    roleId: user.roleId ?? null,
+    roleLabel: role?.label ?? null,
+    permissions: role?.permissions ?? [],
   };
+}
+
+// Module M29: resolves the staff role (and its permission list) for the
+// JWT payload and the serialized user. Returns null for every other role.
+async function resolveStaffRole(user: typeof usersTable.$inferSelect) {
+  if (user.role !== "client_staff" || !user.roleId) return null;
+  return (
+    (await db.query.rolesTable.findFirst({
+      where: eq(rolesTable.id, user.roleId),
+    })) ?? null
+  );
 }
 
 // Creates a new accounting firm and its first Expert-comptable user.
@@ -113,6 +132,7 @@ router.post("/auth/login", async (req, res) => {
     ipAddress: req.ip,
   });
 
+  const staffRole = await resolveStaffRole(user);
   const token = signToken({
     id: user.id,
     firmId: user.firmId,
@@ -120,12 +140,14 @@ router.post("/auth/login", async (req, res) => {
     email: user.email,
     fullName: user.fullName,
     clientId: user.clientId,
+    roleId: user.roleId,
+    permissions: staffRole?.permissions ?? [],
   });
 
   const firm = await db.query.firmsTable.findFirst({
     where: eq(firmsTable.id, user.firmId),
   });
-  res.json(LoginResponse.parse({ token, user: serializeUser(user, firm?.name) }));
+  res.json(LoginResponse.parse({ token, user: serializeUser(user, firm?.name, staffRole) }));
 });
 
 router.get("/auth/me", requireAuth, async (req, res) => {
@@ -139,7 +161,8 @@ router.get("/auth/me", requireAuth, async (req, res) => {
   const firm = await db.query.firmsTable.findFirst({
     where: eq(firmsTable.id, user.firmId),
   });
-  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name)));
+  const staffRole = await resolveStaffRole(user);
+  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name, staffRole)));
 });
 
 export default router;

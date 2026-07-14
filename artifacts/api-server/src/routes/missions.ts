@@ -6,6 +6,7 @@ import {
   db,
   missionsTable,
   usersTable,
+  isPortalRole,
 } from "@workspace/db";
 import {
   ListMissionsQueryParams,
@@ -104,13 +105,13 @@ router.get("/missions", async (req, res) => {
 
   // Espace PME (client_pme) accounts only ever see missions for their own
   // client dossier, regardless of what clientId was requested.
-  if (req.user!.role === "client_pme") {
+  if (isPortalRole(req.user!.role)) {
     if (!req.user!.clientId || (clientId && clientId !== req.user!.clientId)) {
       res.json(ListMissionsResponse.parse([]));
       return;
     }
   }
-  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+  const effectiveClientId = isPortalRole(req.user!.role) ? req.user!.clientId! : clientId;
 
   const conditions = [eq(missionsTable.firmId, req.user!.firmId)];
   if (effectiveClientId) conditions.push(eq(missionsTable.clientId, effectiveClientId));

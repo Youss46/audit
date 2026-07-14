@@ -44,11 +44,14 @@ export const RegisterResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 })
 
@@ -72,11 +75,14 @@ export const LoginResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 })
 
@@ -89,11 +95,14 @@ export const GetCurrentUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 
 
@@ -105,11 +114,14 @@ export const ListUsersResponseItem = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -128,7 +140,7 @@ export const createUserBodyPasswordMin = 8;
 export const CreateUserBody = zod.object({
   "email": zod.string().min(createUserBodyEmailMin),
   "fullName": zod.string().min(createUserBodyFullNameMin),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "password": zod.string().min(createUserBodyPasswordMin),
   "clientId": zod.number().optional().describe('Required when role is client_pme; links the portal account to its client dossier.')
 })
@@ -138,11 +150,14 @@ export const CreateUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 
 
@@ -159,7 +174,7 @@ export const updateUserBodyFullNameMin = 2;
 
 export const UpdateUserBody = zod.object({
   "fullName": zod.string().min(updateUserBodyFullNameMin).optional(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']).optional(),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']).optional(),
   "status": zod.enum(['active', 'invited', 'disabled']).optional(),
   "clientId": zod.number().nullish()
 })
@@ -169,11 +184,14 @@ export const UpdateUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
-  "clientId": zod.number().nullish().describe('Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.'),
+  "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
-  "createdAt": zod.coerce.date()
+  "createdAt": zod.coerce.date(),
+  "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.')
 })
 
 
@@ -185,6 +203,104 @@ export const DeleteUserParams = zod.object({
 })
 
 export const DeleteUserResponse = zod.void()
+
+
+/**
+ * @summary List the system-wide staff role catalog (module M29)
+ */
+export const ListRolesResponseItem = zod.object({
+  "id": zod.number(),
+  "code": zod.string().describe('Stable machine key, e.g. \"POMPISTE\".'),
+  "label": zod.string().describe('French display label, e.g. \"Agent Terrain \/ Pompiste\".'),
+  "description": zod.string().nullish(),
+  "permissions": zod.array(zod.string())
+})
+export const ListRolesResponse = zod.array(ListRolesResponseItem)
+
+
+/**
+ * @summary List the current PME's staff accounts (module M29, owner only)
+ */
+export const ListStaffResponseItem = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['active', 'invited', 'disabled']),
+  "roleId": zod.number().nullable(),
+  "roleCode": zod.string().nullish(),
+  "roleLabel": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListStaffResponse = zod.array(ListStaffResponseItem)
+
+
+/**
+ * @summary Create a new staff account for the current PME (module M29, owner only)
+ */
+export const createStaffBodyEmailMin = 3;
+
+export const createStaffBodyFullNameMin = 2;
+
+export const createStaffBodyPasswordMin = 8;
+
+
+
+export const CreateStaffBody = zod.object({
+  "email": zod.string().min(createStaffBodyEmailMin),
+  "fullName": zod.string().min(createStaffBodyFullNameMin),
+  "password": zod.string().min(createStaffBodyPasswordMin),
+  "roleId": zod.number()
+})
+
+export const CreateStaffResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['active', 'invited', 'disabled']),
+  "roleId": zod.number().nullable(),
+  "roleCode": zod.string().nullish(),
+  "roleLabel": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a staff account's role or status (module M29, owner only)
+ */
+export const UpdateStaffParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateStaffBodyFullNameMin = 2;
+
+
+
+export const UpdateStaffBody = zod.object({
+  "fullName": zod.string().min(updateStaffBodyFullNameMin).optional(),
+  "status": zod.enum(['active', 'invited', 'disabled']).optional(),
+  "roleId": zod.number().optional()
+})
+
+export const UpdateStaffResponse = zod.object({
+  "id": zod.number(),
+  "fullName": zod.string(),
+  "email": zod.string(),
+  "status": zod.enum(['active', 'invited', 'disabled']),
+  "roleId": zod.number().nullable(),
+  "roleCode": zod.string().nullish(),
+  "roleLabel": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a staff account (module M29, owner only)
+ */
+export const DeleteStaffParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteStaffResponse = zod.void()
 
 
 /**
@@ -3225,7 +3341,7 @@ export const CreateCommentResponse = zod.object({
   "clientId": zod.number(),
   "userId": zod.number(),
   "userName": zod.string(),
-  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
   "targetId": zod.number(),
   "message": zod.string(),
@@ -3259,7 +3375,7 @@ export const ListCommentsResponse = zod.object({
   "clientId": zod.number(),
   "userId": zod.number(),
   "userName": zod.string(),
-  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme']),
+  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
   "targetId": zod.number(),
   "message": zod.string(),

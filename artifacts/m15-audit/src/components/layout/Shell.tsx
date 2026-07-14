@@ -22,7 +22,8 @@ import {
   Receipt,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
+import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
+import { UserCog } from "lucide-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -65,19 +66,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Redirect away from login/register once already authenticated.
   React.useEffect(() => {
     if (!isLoading && user && isPublicRoute) {
-      setLocation(user.role === "client_pme" ? "/portal" : "/dashboard")
+      setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
     }
   }, [isLoading, user, isPublicRoute, setLocation])
 
-  // Espace PME (client_pme) accounts have their own dedicated portal and
-  // must never reach the cabinet-facing screens (dashboard, client list,
-  // team, audit log) even if they navigate there directly by URL.
+  // Espace PME (client_pme + client_staff, module M29) accounts have their
+  // own dedicated portal and must never reach the cabinet-facing screens
+  // (dashboard, client list, team, audit log) even if they navigate there
+  // directly by URL.
   const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/cabinet/client", "/cabinet/compliance"]
-  const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation"]
+  const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/client/settings"]
   React.useEffect(() => {
     if (
       !isLoading &&
-      user?.role === "client_pme" &&
+      isPortalRole(user?.role) &&
       (location === "/" || CABINET_ONLY_PREFIXES.some((p) => location.startsWith(p)))
     ) {
       setLocation("/portal")
@@ -91,10 +93,32 @@ export function Shell({ children }: { children: React.ReactNode }) {
     if (
       !isLoading &&
       user &&
-      user.role !== "client_pme" &&
+      !isPortalRole(user.role) &&
       CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))
     ) {
       setLocation("/dashboard")
+    }
+  }, [isLoading, user, location, setLocation])
+
+  // Module M29: only the PME owner account ("client_pme") manages staff --
+  // even an ADMIN-role client_staff account is redirected away.
+  React.useEffect(() => {
+    if (!isLoading && user && user.role !== "client_pme" && location.startsWith("/client/settings/staff")) {
+      setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
+    }
+  }, [isLoading, user, location, setLocation])
+
+  // Module M29: a client_staff account is redirected away from any Espace
+  // PME screen its role's permissions don't grant, e.g. a POMPISTE hitting
+  // "/pilotage" directly by URL only ever sees Dashboard + Facturation.
+  React.useEffect(() => {
+    if (!isLoading && user?.role === "client_staff") {
+      const blocked =
+        (location.startsWith("/mes-operations") && !hasPermission(user, "operations.view")) ||
+        (location.startsWith("/caisse") && !hasPermission(user, "caisse.view")) ||
+        (location.startsWith("/pilotage") && !hasPermission(user, "pilotage.view")) ||
+        (location.startsWith("/facturation") && !hasPermission(user, "facturation.view"))
+      if (blocked) setLocation("/portal")
     }
   }, [isLoading, user, location, setLocation])
 
@@ -104,7 +128,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // requireRole("expert_comptable") guard on GET /audit-logs.
   React.useEffect(() => {
     if (!isLoading && user && user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
-      setLocation(user.role === "client_pme" ? "/portal" : "/dashboard")
+      setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
     }
   }, [isLoading, user, location, setLocation])
 
@@ -123,10 +147,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // Same reasoning while the Espace PME redirect above is about to fire —
   // don't flash cabinet-only pages/data to a client_pme user.
   const isCabinetOnlyRoute = location === "/" || CABINET_ONLY_PREFIXES.some((p) => location.startsWith(p))
-  if (user.role === "client_pme" && isCabinetOnlyRoute) {
+  if (isPortalRole(user.role) && isCabinetOnlyRoute) {
     return <div className="min-h-screen bg-background" />
   }
-  if (user.role !== "client_pme" && CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))) {
+  if (!isPortalRole(user.role) && CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))) {
+    return <div className="min-h-screen bg-background" />
+  }
+  if (user.role !== "client_pme" && location.startsWith("/client/settings/staff")) {
     return <div className="min-h-screen bg-background" />
   }
   if (user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
@@ -135,7 +162,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   const NavItems = () => (
     <nav className="space-y-1 mt-6 px-3" data-testid="nav-menu">
-      {user?.role === 'client_pme' ? (
+      {isPortalRole(user?.role) ? (
         <>
           <Link href="/portal" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
@@ -147,45 +174,67 @@ export function Shell({ children }: { children: React.ReactNode }) {
             Espace PME
           </Link>
 
-          <Link href="/mes-operations" className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/mes-operations")
-              ? "bg-primary text-primary-foreground"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )} data-testid="link-comptabilite-pme">
-            <Wallet className="h-5 w-5" />
-            Mes Opérations
-          </Link>
+          {hasPermission(user, "operations.view") && (
+            <Link href="/mes-operations" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/mes-operations")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-comptabilite-pme">
+              <Wallet className="h-5 w-5" />
+              Mes Opérations
+            </Link>
+          )}
 
-          <Link href="/caisse" className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/caisse")
-              ? "bg-primary text-primary-foreground"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )} data-testid="link-caisse-express">
-            <Banknote className="h-5 w-5" />
-            Caisse Terrain
-          </Link>
+          {hasPermission(user, "caisse.view") && (
+            <Link href="/caisse" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/caisse")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-caisse-express">
+              <Banknote className="h-5 w-5" />
+              Caisse Terrain
+            </Link>
+          )}
 
-          <Link href="/pilotage" className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/pilotage")
-              ? "bg-primary text-primary-foreground"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )} data-testid="link-pilotage">
-            <Gauge className="h-5 w-5" />
-            Pilotage
-          </Link>
+          {hasPermission(user, "pilotage.view") && (
+            <Link href="/pilotage" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/pilotage")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-pilotage">
+              <Gauge className="h-5 w-5" />
+              Pilotage
+            </Link>
+          )}
 
-          <Link href="/facturation" className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/facturation")
-              ? "bg-primary text-primary-foreground"
-              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-          )} data-testid="link-facturation">
-            <Receipt className="h-5 w-5" />
-            Mon Facturier
-          </Link>
+          {hasPermission(user, "facturation.view") && (
+            <Link href="/facturation" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/facturation")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-facturation">
+              <Receipt className="h-5 w-5" />
+              Mon Facturier
+            </Link>
+          )}
+
+          {/* Module M29: only the account that owns the dossier ("client_pme")
+              manages staff -- not a staff account, even an ADMIN one. */}
+          {user?.role === "client_pme" && (
+            <Link href="/client/settings/staff" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/client/settings/staff")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-staff">
+              <UserCog className="h-5 w-5" />
+              Équipe
+            </Link>
+          )}
         </>
       ) : (
         <>
@@ -316,7 +365,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             {user?.fullName}
           </span>
           <span className="text-xs text-sidebar-foreground/60 truncate">
-            {getRoleLabel(user?.role)}
+            {getUserRoleLabel(user)}
           </span>
         </div>
         <AlertDialog>
@@ -413,7 +462,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               {user?.fullName}
             </span>
             <Badge variant="outline" className={cn("border-transparent", getRoleBadgeColor(user?.role))} data-testid="badge-topbar-role">
-              {getRoleLabel(user?.role)}
+              {getUserRoleLabel(user)}
             </Badge>
           </div>
         </header>

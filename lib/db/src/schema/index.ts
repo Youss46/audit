@@ -1,4 +1,5 @@
 export * from "./firms";
+export * from "./roles";
 export * from "./users";
 export * from "./clients";
 export * from "./missions";

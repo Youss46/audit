@@ -14,4 +14,5 @@ export const UserRole = {
   collaborateur: 'collaborateur',
   stagiaire: 'stagiaire',
   client_pme: 'client_pme',
+  client_staff: 'client_staff',
 } as const;

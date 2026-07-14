@@ -16,11 +16,23 @@ export interface User {
   role: UserRole;
   status: UserStatus;
   /**
-     * Set only for client_pme accounts; scopes the Espace PME portal to one client dossier.
+     * Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.
      * @nullable
      */
   clientId?: number | null;
   /** @nullable */
   firmName?: string | null;
   createdAt: Date;
+  /**
+     * Module M29 - set only for client_staff accounts; references the assigned staff Role.
+     * @nullable
+     */
+  roleId?: number | null;
+  /**
+     * Module M29 - French display label of the staff Role (e.g. "Agent Terrain / Pompiste"), null for non-client_staff accounts.
+     * @nullable
+     */
+  roleLabel?: string | null;
+  /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
+  permissions?: string[];
 }

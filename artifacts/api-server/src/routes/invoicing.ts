@@ -9,6 +9,7 @@ import {
   journalLinesTable,
   invoicesTable,
   invoiceItemsTable,
+  isPortalRole,
 } from "@workspace/db";
 import {
   ListInvoicesQueryParams,
@@ -23,7 +24,7 @@ import {
   CreateCreditNoteParams,
   CreateCreditNoteBody,
 } from "@workspace/api-zod";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { generateInvoicePdf } from "../lib/export-engine";
 
@@ -50,7 +51,7 @@ async function fetchFullInvoice(id: number) {
     where: eq(invoicesTable.id, id),
     with: {
       client: { columns: { id: true, name: true, address: true, rccm: true } },
-      createdBy: { columns: { firstName: true, lastName: true } },
+      createdBy: { columns: { fullName: true } },
       items: { orderBy: (t, { asc }) => [asc(t.id)] },
     },
   });
@@ -78,7 +79,7 @@ function serializeInvoice(inv: NonNullable<InvoiceRow>) {
     pdfDocumentId: inv.pdfDocumentId ?? null,
     postedTransactionId: inv.postedTransactionId ?? null,
     createdByName: inv.createdBy
-      ? `${inv.createdBy.firstName} ${inv.createdBy.lastName}`
+      ? inv.createdBy.fullName
       : null,
     createdAt: inv.createdAt,
     updatedAt: inv.updatedAt,
@@ -145,7 +146,7 @@ function assertOwnership(
   req: Parameters<typeof requireAuth>[0],
 ) {
   if (inv.firmId !== req.user!.firmId) throw new HttpError(404, "Facture introuvable.");
-  if (req.user!.role === "client_pme" && inv.clientId !== req.user!.clientId) {
+  if (isPortalRole(req.user!.role) && inv.clientId !== req.user!.clientId) {
     throw new HttpError(403, "Accès non autorisé à cette facture.");
   }
 }
@@ -153,9 +154,9 @@ function assertOwnership(
 // ---------------------------------------------------------------------------
 // GET /invoices  — list
 // ---------------------------------------------------------------------------
-router.get("/invoices", async (req, res) => {
+router.get("/invoices", requirePermission("facturation.view"), async (req, res) => {
   const query = ListInvoicesQueryParams.parse(req.query);
-  const isClientPme = req.user!.role === "client_pme";
+  const isClientPme = isPortalRole(req.user!.role);
   const effectiveClientId = isClientPme ? req.user!.clientId! : query.clientId;
 
   const conditions = [eq(invoicesTable.firmId, req.user!.firmId)];
@@ -166,7 +167,7 @@ router.get("/invoices", async (req, res) => {
     where: and(...conditions),
     with: {
       client:    { columns: { id: true, name: true, address: true, rccm: true } },
-      createdBy: { columns: { firstName: true, lastName: true } },
+      createdBy: { columns: { fullName: true } },
       items:     { orderBy: (t, { asc }) => [asc(t.id)] },
     },
     orderBy: [desc(invoicesTable.createdAt)],
@@ -178,9 +179,9 @@ router.get("/invoices", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /invoices  — create draft
 // ---------------------------------------------------------------------------
-router.post("/invoices", async (req, res) => {
+router.post("/invoices", requirePermission("facturation.create"), async (req, res) => {
   const body = CreateInvoiceBody.parse(req.body);
-  const isClientPme = req.user!.role === "client_pme";
+  const isClientPme = isPortalRole(req.user!.role);
   const clientId = isClientPme ? req.user!.clientId! : body.clientId;
 
   // Verify client belongs to this firm.
@@ -226,7 +227,7 @@ router.post("/invoices", async (req, res) => {
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
-    userName:   `${req.user!.firstName} ${req.user!.lastName}`,
+    userName:   req.user!.fullName,
     userRole:   req.user!.role,
     action:     AuditAction.INVOICE_CREATE,
     entityType: "invoice",
@@ -241,7 +242,7 @@ router.post("/invoices", async (req, res) => {
 // ---------------------------------------------------------------------------
 // GET /invoices/:id  — detail
 // ---------------------------------------------------------------------------
-router.get("/invoices/:id", async (req, res) => {
+router.get("/invoices/:id", requirePermission("facturation.view"), async (req, res) => {
   const { id } = GetInvoiceParams.parse(req.params);
   const inv = await fetchFullInvoice(id);
   if (!inv) throw new HttpError(404, "Facture introuvable.");
@@ -252,7 +253,7 @@ router.get("/invoices/:id", async (req, res) => {
 // ---------------------------------------------------------------------------
 // PUT /invoices/:id  — update (BROUILLON only)
 // ---------------------------------------------------------------------------
-router.put("/invoices/:id", async (req, res) => {
+router.put("/invoices/:id", requirePermission("facturation.create"), async (req, res) => {
   const { id } = UpdateInvoiceParams.parse(req.params);
   const body  = UpdateInvoiceBody.parse(req.body);
 
@@ -307,7 +308,7 @@ router.put("/invoices/:id", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /invoices/:id/validate  — validate + PDF + accounting
 // ---------------------------------------------------------------------------
-router.post("/invoices/:id/validate", async (req, res) => {
+router.post("/invoices/:id/validate", requirePermission("facturation.create"), async (req, res) => {
   const { id } = ValidateInvoiceParams.parse(req.params);
 
   const inv = await fetchFullInvoice(id);
@@ -441,7 +442,7 @@ router.post("/invoices/:id/validate", async (req, res) => {
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
-    userName:   `${req.user!.firstName} ${req.user!.lastName}`,
+    userName:   req.user!.fullName,
     userRole:   req.user!.role,
     action:     AuditAction.INVOICE_VALIDATE,
     entityType: "invoice",
@@ -456,7 +457,7 @@ router.post("/invoices/:id/validate", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /invoices/:id/mark-paid  — mark as PAYE
 // ---------------------------------------------------------------------------
-router.post("/invoices/:id/mark-paid", async (req, res) => {
+router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), async (req, res) => {
   const { id } = MarkInvoicePaidParams.parse(req.params);
 
   const inv = await fetchFullInvoice(id);
@@ -474,7 +475,7 @@ router.post("/invoices/:id/mark-paid", async (req, res) => {
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
-    userName:   `${req.user!.firstName} ${req.user!.lastName}`,
+    userName:   req.user!.fullName,
     userRole:   req.user!.role,
     action:     AuditAction.INVOICE_MARK_PAID,
     entityType: "invoice",
@@ -489,7 +490,7 @@ router.post("/invoices/:id/mark-paid", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /invoices/:id/cancel  — cancel (BROUILLON only)
 // ---------------------------------------------------------------------------
-router.post("/invoices/:id/cancel", async (req, res) => {
+router.post("/invoices/:id/cancel", requirePermission("facturation.create"), async (req, res) => {
   const { id } = CancelInvoiceParams.parse(req.params);
 
   const inv = await fetchFullInvoice(id);
@@ -510,7 +511,7 @@ router.post("/invoices/:id/cancel", async (req, res) => {
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
-    userName:   `${req.user!.firstName} ${req.user!.lastName}`,
+    userName:   req.user!.fullName,
     userRole:   req.user!.role,
     action:     AuditAction.INVOICE_CANCEL,
     entityType: "invoice",
@@ -525,7 +526,7 @@ router.post("/invoices/:id/cancel", async (req, res) => {
 // ---------------------------------------------------------------------------
 // GET /invoices/:id/pdf  — download PDF (base64)
 // ---------------------------------------------------------------------------
-router.get("/invoices/:id/pdf", async (req, res) => {
+router.get("/invoices/:id/pdf", requirePermission("facturation.view"), async (req, res) => {
   const { id } = DownloadInvoicePdfParams.parse(req.params);
 
   const inv = await fetchFullInvoice(id);
@@ -555,7 +556,7 @@ router.get("/invoices/:id/pdf", async (req, res) => {
 // ---------------------------------------------------------------------------
 // POST /invoices/:id/credit-note  — generate avoir (credit note)
 // ---------------------------------------------------------------------------
-router.post("/invoices/:id/credit-note", async (req, res) => {
+router.post("/invoices/:id/credit-note", requirePermission("facturation.create"), async (req, res) => {
   const { id }  = CreateCreditNoteParams.parse(req.params);
   const body     = CreateCreditNoteBody.parse(req.body);
 
@@ -690,7 +691,7 @@ router.post("/invoices/:id/credit-note", async (req, res) => {
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
-    userName:   `${req.user!.firstName} ${req.user!.lastName}`,
+    userName:   req.user!.fullName,
     userRole:   req.user!.role,
     action:     AuditAction.CREDIT_NOTE_CREATE,
     entityType: "invoice",

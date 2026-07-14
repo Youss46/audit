@@ -21,7 +21,7 @@ import {
   ExportLiasseFiscaleBody,
   ExportLiasseFiscaleResponse,
 } from "@workspace/api-zod";
-import { requireAuth, requireOwnClient } from "../middlewares/auth";
+import { requireAuth, requireOwnClient, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { CATEGORY_RULES } from "../lib/accounting-engine";
 import {
@@ -125,7 +125,7 @@ async function findAuthorizedClient(req: Parameters<typeof requireOwnClient>[0],
 }
 
 // Module M3 reporting: "La Balance des Comptes".
-router.get("/reports/balance", async (req, res) => {
+router.get("/reports/balance", requirePermission("pilotage.view"), async (req, res) => {
   const { clientId, year } = GetBalanceDesComptesQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
@@ -144,7 +144,7 @@ router.get("/reports/balance", async (req, res) => {
 });
 
 // Module M3 reporting: "Le Bilan Simplifié".
-router.get("/reports/bilan", async (req, res) => {
+router.get("/reports/bilan", requirePermission("pilotage.view"), async (req, res) => {
   const { clientId, year } = GetBilanSimplifieQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
@@ -163,7 +163,7 @@ router.get("/reports/bilan", async (req, res) => {
 });
 
 // Module M3 reporting: "Le Compte de Résultat Simplifié".
-router.get("/reports/compte-resultat", async (req, res) => {
+router.get("/reports/compte-resultat", requirePermission("pilotage.view"), async (req, res) => {
   const { clientId, year } = GetCompteDeResultatQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
@@ -183,7 +183,7 @@ router.get("/reports/compte-resultat", async (req, res) => {
 
 // Module M3 reporting: "Le Grand Livre" -- every SYSCOHADA account grouped
 // with its chronological movements and running balance.
-router.get("/reports/grand-livre", async (req, res) => {
+router.get("/reports/grand-livre", requirePermission("pilotage.view"), async (req, res) => {
   const { clientId, year } = GetGrandLivreQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
@@ -204,7 +204,7 @@ router.get("/reports/grand-livre", async (req, res) => {
 // Module P4/M21 (Tableau de Bord Dirigeant): plain-language dashboard for
 // the PME director, plus the richer executive KPIs (marge, trésorerie
 // mensuelle, seuil de rentabilité, répartition par nature) added by M21.
-router.get("/reports/pilotage", async (req, res) => {
+router.get("/reports/pilotage", requirePermission("pilotage.view"), async (req, res) => {
   const { clientId, year, basis } = GetPilotageDashboardQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
@@ -314,7 +314,7 @@ function sendFile(
 
 // GET /reports/exports/balance?clientId=N&year=YYYY&format=pdf|excel
 // Streams a formatted Balance des Comptes document.
-router.get("/reports/exports/balance", async (req, res) => {
+router.get("/reports/exports/balance", requirePermission("pilotage.view"), async (req, res) => {
   const params = parseExportParams(req.query as Record<string, unknown>);
   if (!params) {
     res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
@@ -358,7 +358,7 @@ router.get("/reports/exports/balance", async (req, res) => {
 
 // GET /reports/exports/financial-statements?clientId=N&year=YYYY&format=pdf|excel
 // Streams a full financial bundle: Bilan Actif/Passif + Compte de Résultat.
-router.get("/reports/exports/financial-statements", async (req, res) => {
+router.get("/reports/exports/financial-statements", requirePermission("pilotage.view"), async (req, res) => {
   const params = parseExportParams(req.query as Record<string, unknown>);
   if (!params) {
     res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
@@ -404,7 +404,7 @@ router.get("/reports/exports/financial-statements", async (req, res) => {
 // generated in this MVP, but every export attempt is still logged to the
 // module M9 audit trail, since it's a compliance-relevant action a firm
 // would want a trace of regardless.
-router.post("/reports/export-liasse", async (req, res) => {
+router.post("/reports/export-liasse", requirePermission("pilotage.view"), async (req, res) => {
   const body = ExportLiasseFiscaleBody.parse(req.body);
   if (!requireOwnClient(req, res, body.clientId)) return;
 

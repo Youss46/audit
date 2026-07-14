@@ -12,6 +12,9 @@ declare global {
         email: string;
         fullName: string;
         clientId?: number | null;
+        // Module M29: only present for "client_staff" accounts.
+        roleId?: number | null;
+        permissions?: string[];
       };
     }
   }

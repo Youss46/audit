@@ -7,6 +7,7 @@ import {
   clientsTable,
   transactionsTable,
   journalLinesTable,
+  isPortalRole,
 } from "@workspace/db";
 import {
   ListCashRegistersQueryParams,
@@ -23,7 +24,7 @@ import {
   CloseDailyClosureBody,
   CloseDailyClosureResponse,
 } from "@workspace/api-zod";
-import { requireAuth, requireOwnClient } from "../middlewares/auth";
+import { requireAuth, requireOwnClient, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { computeJournalLines } from "../lib/accounting-engine";
 
@@ -93,16 +94,16 @@ async function loadRegisterForRequest(
 // Module P5: list the cash registers a PME (or the cabinet, for a given
 // client) can operate. A client_pme account is always scoped to its own
 // client, matching the rest of the Espace PME.
-router.get("/cash-registers", async (req, res) => {
+router.get("/cash-registers", requirePermission("caisse.view", "operations.view"), async (req, res) => {
   const { clientId } = ListCashRegistersQueryParams.parse(req.query);
 
-  if (req.user!.role === "client_pme") {
+  if (isPortalRole(req.user!.role)) {
     if (!req.user!.clientId || (clientId && clientId !== req.user!.clientId)) {
       res.json(ListCashRegistersResponse.parse([]));
       return;
     }
   }
-  const effectiveClientId = req.user!.role === "client_pme" ? req.user!.clientId! : clientId;
+  const effectiveClientId = isPortalRole(req.user!.role) ? req.user!.clientId! : clientId;
 
   const registers = await db.query.cashRegistersTable.findMany({
     where: effectiveClientId ? eq(cashRegistersTable.clientId, effectiveClientId) : undefined,
@@ -119,7 +120,7 @@ router.get("/cash-registers", async (req, res) => {
   );
 });
 
-router.post("/cash-registers", async (req, res) => {
+router.post("/cash-registers", requirePermission("caisse.create", "operations.create"), async (req, res) => {
   const body = CreateCashRegisterBody.parse(req.body);
   if (!requireOwnClient(req, res, body.clientId)) return;
 
@@ -153,7 +154,7 @@ router.post("/cash-registers", async (req, res) => {
     .json(CreateCashRegisterResponse.parse(serializeCashRegister(register, { clientName: client.name })));
 });
 
-router.get("/cash-registers/:id", async (req, res) => {
+router.get("/cash-registers/:id", requirePermission("caisse.view", "operations.view"), async (req, res) => {
   const { id } = GetCashRegisterParams.parse(req.params);
   const register = await loadRegisterForRequest(req, res, id);
   if (!register) return;
@@ -167,7 +168,7 @@ router.get("/cash-registers/:id", async (req, res) => {
 // auto-creating it on first use. `openingBalance` is simply the register's
 // running balance at that moment, since `currentBalance` already carries
 // forward every prior day's physically-counted close.
-router.get("/cash-registers/:id/closure-today", async (req, res) => {
+router.get("/cash-registers/:id/closure-today", requirePermission("caisse.view"), async (req, res) => {
   const { id } = GetTodayClosureParams.parse(req.params);
   const register = await loadRegisterForRequest(req, res, id);
   if (!register) return;
@@ -186,7 +187,7 @@ router.get("/cash-registers/:id/closure-today", async (req, res) => {
   res.json(GetTodayClosureResponse.parse(serializeClosure(closure, register.currentBalance)));
 });
 
-router.get("/cash-registers/:id/closures", async (req, res) => {
+router.get("/cash-registers/:id/closures", requirePermission("caisse.view"), async (req, res) => {
   const { id } = ListClosuresParams.parse(req.params);
   const register = await loadRegisterForRequest(req, res, id);
   if (!register) return;
@@ -216,7 +217,7 @@ router.get("/cash-registers/:id/closures", async (req, res) => {
 // the cabinet reviews it like any other entry. The register's
 // currentBalance is then reset to the physical count: what was actually
 // counted in the drawer is the new source of truth for tomorrow's opening.
-router.post("/cash-registers/:id/closures/:closureId/close", async (req, res) => {
+router.post("/cash-registers/:id/closures/:closureId/close", requirePermission("caisse.create"), async (req, res) => {
   const { id, closureId } = CloseDailyClosureParams.parse(req.params);
   const body = CloseDailyClosureBody.parse(req.body);
   const register = await loadRegisterForRequest(req, res, id);

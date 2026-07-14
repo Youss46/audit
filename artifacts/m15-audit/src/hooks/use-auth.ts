@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { useGetCurrentUser, useLogin, useRegister, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
 import { setToken, removeToken, getToken } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
+import { isPortalRole } from "@/lib/status";
 
 export function useAuth() {
   const queryClient = useQueryClient();
@@ -32,7 +33,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(data.user.role === "client_pme" ? "/portal" : "/dashboard");
+        setLocation(isPortalRole(data.user.role) ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({
@@ -49,7 +50,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(data.user.role === "client_pme" ? "/portal" : "/dashboard");
+        setLocation(isPortalRole(data.user.role) ? "/portal" : "/dashboard");
       },
       onError: (error) => {
         toast({
