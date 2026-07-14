@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from "react"
+import { Link } from "wouter"
 import {
   useGetClient,
   getGetClientQueryKey,
@@ -14,7 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime } from "@/lib/utils"
 import { getSystemDescription } from "@/lib/visa-engine"
-import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare } from "lucide-react"
+import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -166,9 +167,93 @@ export default function ClientPortal() {
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Espace PME</h1>
         <p className="text-muted-foreground mt-2">
-          Bienvenue, <span className="font-medium text-foreground">{user?.fullName}</span>. Déposez vos documents pour votre cabinet comptable.
+          Bienvenue, <span className="font-medium text-foreground">{user?.fullName}</span>.{" "}
+          {user?.role === 'client_staff'
+            ? "Accédez rapidement à vos outils de travail."
+            : "Déposez vos documents pour votre cabinet comptable."}
         </p>
       </div>
+
+      {/* Module M29 — quick-access dashboard for client_staff accounts.
+          Rendered above the visa-portal content so field agents land
+          immediately on their primary tools without scrolling. */}
+      {user?.role === 'client_staff' && user.roleCode === 'POMPISTE' && (
+        <Card className="shadow-sm border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-amber-800 dark:text-amber-300">
+              <Fuel className="h-5 w-5" />
+              Actions du pompiste
+            </CardTitle>
+            <CardDescription>
+              Saisie des relevés et des ventes — vos outils de travail quotidien.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button asChild size="lg" className="justify-between bg-amber-600 hover:bg-amber-700 text-white h-auto py-4">
+                <Link href="/caisse">
+                  <div className="text-left">
+                    <div className="font-semibold">Relevé d'index de pompe</div>
+                    <div className="text-xs opacity-80 font-normal mt-0.5">Saisir les compteurs en début / fin de service</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="justify-between border-amber-300 dark:border-amber-700 h-auto py-4">
+                <Link href="/caisse">
+                  <div className="text-left">
+                    <div className="font-semibold">Ventes de carburant</div>
+                    <div className="text-xs text-muted-foreground font-normal mt-0.5">Enregistrer les recettes de la pompe</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
+                </Link>
+              </Button>
+              <Button asChild size="sm" variant="ghost" className="sm:col-span-2 text-muted-foreground justify-start">
+                <Link href="/caisse">
+                  <Wallet className="h-4 w-4 mr-2" />
+                  Ouvrir la Caisse Terrain complète
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {user?.role === 'client_staff' && user.roleCode === 'AGENT_TERRAIN' && (
+        <Card className="shadow-sm border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-blue-800 dark:text-blue-300">
+              <MapPin className="h-5 w-5" />
+              Actions de terrain
+            </CardTitle>
+            <CardDescription>
+              Suivi des mouvements et déclarations — vos outils de saisie quotidienne.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Button asChild size="lg" className="justify-between h-auto py-4">
+                <Link href="/caisse">
+                  <div className="text-left">
+                    <div className="font-semibold">Saisir un mouvement de caisse</div>
+                    <div className="text-xs opacity-80 font-normal mt-0.5">Recette ou dépense en espèces</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
+                </Link>
+              </Button>
+              <Button asChild size="lg" variant="outline" className="justify-between h-auto py-4">
+                <Link href="/mes-operations">
+                  <div className="text-left">
+                    <div className="font-semibold">Déclarer une opération</div>
+                    <div className="text-xs text-muted-foreground font-normal mt-0.5">Achats, ventes ou autres opérations</div>
+                  </div>
+                  <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
+                </Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="shadow-sm" data-testid="card-client-summary">
         <CardHeader className="flex flex-row items-center justify-between">

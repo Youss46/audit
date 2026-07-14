@@ -3698,7 +3698,10 @@ components:
           description: Module M29 - set only for client_staff accounts; references the assigned staff Role.
         roleLabel:
           type: ["string", "null"]
-          description: Module M29 - French display label of the staff Role (e.g. "Agent Terrain / Pompiste"), null for non-client_staff accounts.
+          description: Module M29 - French display label of the staff Role (e.g. "Pompiste"), null for non-client_staff accounts.
+        roleCode:
+          type: ["string", "null"]
+          description: Module M29 - stable machine key of the staff Role (e.g. "POMPISTE", "AGENT_TERRAIN"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.
         permissions:
           type: array
           items: { type: string }
@@ -3860,6 +3863,7 @@ components:
         - commerce
         - artisanat
         - services
+        - STATION_SERVICE
 
     AccountingSystem:
       type: string

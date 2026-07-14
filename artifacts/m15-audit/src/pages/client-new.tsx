@@ -4,7 +4,7 @@ import * as z from "zod"
 import { useLocation } from "wouter"
 import { useCreateClient, Sector, TaxRegime } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
-import { Building2, ChevronLeft, Calculator } from "lucide-react"
+import { Building2, ChevronLeft, Calculator, Fuel } from "lucide-react"
 import { Link } from "wouter"
 import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
 import { getTaxRegimeLabel } from "@/lib/status"
@@ -43,7 +43,7 @@ const TAX_REGIME_VALUES = [
 const clientSchema = z.object({
   name: z.string().min(1, "Le nom est requis"),
   legalForm: z.string().min(1, "La forme juridique est requise"),
-  sector: z.enum([Sector.commerce, Sector.artisanat, Sector.services], {
+  sector: z.enum([Sector.commerce, Sector.artisanat, Sector.services, Sector.STATION_SERVICE], {
     required_error: "Le secteur est requis"
   }),
   rccm: z.string().optional(),
@@ -189,6 +189,7 @@ export default function ClientNew() {
                             <SelectItem value="commerce">Commerce</SelectItem>
                             <SelectItem value="artisanat">Artisanat</SelectItem>
                             <SelectItem value="services">Services</SelectItem>
+                            <SelectItem value="STATION_SERVICE">Station-service</SelectItem>
                           </SelectContent>
                         </Select>
                         <FormMessage />
@@ -305,6 +306,17 @@ export default function ClientNew() {
                   )}
                 />
 
+                {watchedSector === Sector.STATION_SERVICE && (
+                  <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3">
+                    <Fuel className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-300">Secteur Station-service</p>
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-0.5">
+                        Ce dossier bénéficiera du rôle <span className="font-semibold">Pompiste</span> dans la gestion de son équipe — dédié à la saisie des relevés d'index de pompe et des ventes de carburant.
+                      </p>
+                    </div>
+                  </div>
+                )}
                 {computedSystem && (
                   <div className="flex items-center gap-3 rounded-lg border border-primary/30 bg-primary/5 p-3">
                     <Calculator className="h-5 w-5 text-primary shrink-0" />

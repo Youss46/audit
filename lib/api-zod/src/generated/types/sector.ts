@@ -13,4 +13,5 @@ export const Sector = {
   commerce: 'commerce',
   artisanat: 'artisanat',
   services: 'services',
+  STATION_SERVICE: 'STATION_SERVICE',
 } as const;

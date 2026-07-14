@@ -7,6 +7,8 @@ const THRESHOLDS: Record<Sector, { smt: number; allege: number }> = {
   [Sector.commerce]: { smt: 60_000_000, allege: 100_000_000 },
   [Sector.artisanat]: { smt: 40_000_000, allege: 100_000_000 },
   [Sector.services]: { smt: 30_000_000, allege: 100_000_000 },
+  // Same SYSCOHADA thresholds as commerce — mirrors backend visa-engine.ts.
+  [Sector.STATION_SERVICE]: { smt: 60_000_000, allege: 100_000_000 },
 }
 
 export function determineAccountingSystem(sector: Sector, annualTurnover: number): AccountingSystem {

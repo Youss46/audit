@@ -11,6 +11,10 @@ const THRESHOLDS: Record<Sector, { smt: number; allege: number }> = {
   commerce: { smt: 60_000_000, allege: 100_000_000 },
   artisanat: { smt: 40_000_000, allege: 100_000_000 },
   services: { smt: 30_000_000, allege: 100_000_000 },
+  // STATION_SERVICE is a specialised commerce sub-sector: same SYSCOHADA
+  // thresholds as "commerce" but unlocks the POMPISTE staff role and
+  // Pompiste-tailored quick actions on the Espace PME portal.
+  STATION_SERVICE: { smt: 60_000_000, allege: 100_000_000 },
 };
 
 export function determineAccountingSystem(

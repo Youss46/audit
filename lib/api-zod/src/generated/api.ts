@@ -51,7 +51,8 @@ export const RegisterResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
@@ -85,7 +86,8 @@ export const LoginResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
@@ -121,7 +123,8 @@ export const ResetFirstPasswordResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
@@ -142,7 +145,8 @@ export const GetCurrentUserResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
@@ -162,7 +166,8 @@ export const ListUsersResponseItem = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
@@ -196,7 +201,8 @@ export const CreateUserResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
@@ -231,7 +237,8 @@ export const UpdateUserResponse = zod.object({
   "firmName": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
   "roleId": zod.number().nullish().describe('Module M29 - set only for client_staff accounts; references the assigned staff Role.'),
-  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Agent Terrain \/ Pompiste\"), null for non-client_staff accounts.'),
+  "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
+  "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
@@ -403,7 +410,7 @@ export const ListClientsResponseItem = zod.object({
   "firmId": zod.number(),
   "name": zod.string(),
   "legalForm": zod.string(),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),
   "rccm": zod.string().nullish(),
   "taxId": zod.string().nullish(),
   "address": zod.string().nullish(),
@@ -431,7 +438,7 @@ export const ListClientsResponse = zod.array(ListClientsResponseItem)
 export const CreateClientBody = zod.object({
   "name": zod.string().min(1),
   "legalForm": zod.string().min(1),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),
   "rccm": zod.string().optional(),
   "taxId": zod.string().optional(),
   "address": zod.string().optional(),
@@ -448,7 +455,7 @@ export const CreateClientResponse = zod.object({
   "firmId": zod.number(),
   "name": zod.string(),
   "legalForm": zod.string(),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),
   "rccm": zod.string().nullish(),
   "taxId": zod.string().nullish(),
   "address": zod.string().nullish(),
@@ -477,7 +484,7 @@ export const GetClientResponse = zod.object({
   "firmId": zod.number(),
   "name": zod.string(),
   "legalForm": zod.string(),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),
   "rccm": zod.string().nullish(),
   "taxId": zod.string().nullish(),
   "address": zod.string().nullish(),
@@ -508,7 +515,7 @@ export const UpdateClientParams = zod.object({
 export const UpdateClientBody = zod.object({
   "name": zod.string().min(1).optional(),
   "legalForm": zod.string().min(1).optional(),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']).optional(),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']).optional(),
   "rccm": zod.string().optional(),
   "taxId": zod.string().optional(),
   "address": zod.string().optional(),
@@ -526,7 +533,7 @@ export const UpdateClientResponse = zod.object({
   "firmId": zod.number(),
   "name": zod.string(),
   "legalForm": zod.string(),
-  "sector": zod.enum(['commerce', 'artisanat', 'services']),
+  "sector": zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),
   "rccm": zod.string().nullish(),
   "taxId": zod.string().nullish(),
   "address": zod.string().nullish(),
@@ -682,7 +689,7 @@ export const ListMissionsResponseItem = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "clientLegalForm": zod.string().nullish(),
-  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),zod.null()]).optional(),
   "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
@@ -714,7 +721,7 @@ export const CreateMissionResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "clientLegalForm": zod.string().nullish(),
-  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),zod.null()]).optional(),
   "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
@@ -743,7 +750,7 @@ export const GetMissionResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "clientLegalForm": zod.string().nullish(),
-  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),zod.null()]).optional(),
   "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),
@@ -787,7 +794,7 @@ export const UpdateMissionResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "clientLegalForm": zod.string().nullish(),
-  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services']),zod.null()]).optional(),
+  "clientSector": zod.union([zod.enum(['commerce', 'artisanat', 'services', 'STATION_SERVICE']),zod.null()]).optional(),
   "clientAnnualTurnover": zod.number().nullish(),
   "fiscalYear": zod.number(),
   "accountingSystem": zod.enum(['SMT', 'ALLEGE', 'NORMAL']),

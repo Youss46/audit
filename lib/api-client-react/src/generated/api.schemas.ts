@@ -54,10 +54,15 @@ export interface User {
      */
   roleId?: number | null;
   /**
-     * Module M29 - French display label of the staff Role (e.g. "Agent Terrain / Pompiste"), null for non-client_staff accounts.
+     * Module M29 - French display label of the staff Role (e.g. "Pompiste"), null for non-client_staff accounts.
      * @nullable
      */
   roleLabel?: string | null;
+  /**
+     * Module M29 - stable machine key of the staff Role (e.g. "POMPISTE", "AGENT_TERRAIN"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.
+     * @nullable
+     */
+  roleCode?: string | null;
   /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
   permissions?: string[];
   /**
@@ -234,6 +239,7 @@ export const Sector = {
   commerce: 'commerce',
   artisanat: 'artisanat',
   services: 'services',
+  STATION_SERVICE: 'STATION_SERVICE',
 } as const;
 
 export type AccountingSystem = typeof AccountingSystem[keyof typeof AccountingSystem];

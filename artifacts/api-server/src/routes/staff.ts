@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, usersTable, rolesTable } from "@workspace/db";
+import { db, usersTable, rolesTable, clientsTable } from "@workspace/db";
 import {
   ListRolesResponse,
   ListStaffResponse,
@@ -49,8 +49,31 @@ function serializeStaff(
 // Module M29: catalog of assignable staff roles for the "Ajouter un
 // collaborateur" dropdown. System-wide, seeded (see
 // lib/db/src/seed-roles.ts) -- not editable from this MVP's UI.
-router.get("/roles", requireRole("client_pme"), async (_req, res) => {
+//
+// Sector-aware filtering:
+//   - POMPISTE     is shown ONLY for STATION_SERVICE clients.
+//   - AGENT_TERRAIN is shown for every other sector.
+// This keeps the dropdown free of irrelevant roles without changing the
+// underlying permissions model.
+router.get("/roles", requireRole("client_pme"), async (req, res) => {
+  // Resolve the client's activity sector to decide which field-agent role
+  // variant to expose.
+  let clientSector: string | null = null;
+  if (req.user!.clientId) {
+    const client = await db.query.clientsTable.findFirst({
+      where: eq(clientsTable.id, req.user!.clientId),
+      columns: { sector: true },
+    });
+    clientSector = client?.sector ?? null;
+  }
+
+  const isStationService = clientSector === "STATION_SERVICE";
+  // For station-service clients: hide AGENT_TERRAIN (Pompiste is the
+  // sector-specific equivalent). For every other sector: hide POMPISTE.
+  const excludedCode = isStationService ? "AGENT_TERRAIN" : "POMPISTE";
+
   const roles = await db.query.rolesTable.findMany({
+    where: (t, { ne }) => ne(t.code, excludedCode),
     orderBy: (t, { asc }) => [asc(t.id)],
   });
   res.json(

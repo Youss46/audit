@@ -1,5 +1,6 @@
 import { useState } from "react"
-import { useListStaff, useListRoles, useCreateStaff, useUpdateStaff, useDeleteStaff } from "@workspace/api-client-react"
+import { useListStaff, useListRoles, useCreateStaff, useUpdateStaff, useDeleteStaff, useGetClient, getGetClientQueryKey } from "@workspace/api-client-react"
+import { useAuth } from "@/hooks/use-auth"
 import {
   UserCog,
   Plus,
@@ -11,6 +12,7 @@ import {
   AlertCircle,
   Copy,
   KeyRound,
+  Fuel,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -69,6 +71,13 @@ import { useToast } from "@/hooks/use-toast"
 // editor in this MVP.
 export default function ClientStaff() {
   const { toast } = useToast()
+  const { user } = useAuth()
+  const clientId = user?.clientId ?? 0
+  const { data: client } = useGetClient(clientId, {
+    query: { enabled: !!clientId, queryKey: getGetClientQueryKey(clientId) },
+  })
+  const isStationService = client?.sector === 'STATION_SERVICE'
+
   const { data: staff, isLoading, refetch } = useListStaff()
   const { data: roles } = useListRoles()
 
@@ -154,9 +163,19 @@ export default function ClientStaff() {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Équipe</h1>
+          <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+            Équipe
+            {isStationService && (
+              <span className="inline-flex items-center gap-1 text-sm font-normal text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-full px-2.5 py-0.5">
+                <Fuel className="h-3.5 w-3.5" />
+                Station-service
+              </span>
+            )}
+          </h1>
           <p className="text-muted-foreground mt-1">
-            Créez des accès restreints pour vos collaborateurs (agent terrain, comptable interne, commercial...).
+            {isStationService
+              ? "Créez des accès pour vos pompistes, votre comptable interne et votre personnel commercial."
+              : "Créez des accès restreints pour vos collaborateurs (agent terrain, comptable interne, commercial...)."}
           </p>
         </div>
         <Button onClick={() => setIsCreateOpen(true)} data-testid="button-add-staff">

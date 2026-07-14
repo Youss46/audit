@@ -46,6 +46,7 @@ export type PermissionKey = (typeof PERMISSION_KEYS)[number];
 export const SYSTEM_ROLE_CODES = [
   "ADMIN",
   "COMMERCIAL",
+  "AGENT_TERRAIN",
   "POMPISTE",
   "COMPTABLE_INTERNE",
 ] as const;

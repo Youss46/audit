@@ -5,6 +5,13 @@ import { sql } from "drizzle-orm";
 // catalog consumed by the "Ajouter un collaborateur" dropdown and by
 // requirePermission() (artifacts/api-server/src/middlewares/auth.ts).
 // Safe to re-run: upserts on `code`.
+//
+// Sector-restricted roles:
+//   - AGENT_TERRAIN  — generic field-agent role, shown for all sectors
+//                      EXCEPT STATION_SERVICE (see GET /roles filtering).
+//   - POMPISTE       — station-service pump attendant, shown ONLY for
+//                      STATION_SERVICE clients (same permission set as
+//                      AGENT_TERRAIN, distinct label and description).
 const ROLES: {
   code: string;
   label: string;
@@ -40,10 +47,17 @@ const ROLES: {
     ],
   },
   {
-    code: "POMPISTE",
-    label: "Agent Terrain / Pompiste",
+    code: "AGENT_TERRAIN",
+    label: "Agent de terrain",
     description:
-      "Saisie des ventes et gestion de la caisse terrain -- aucun accès aux rapports financiers ni aux paramètres du compte. Ne voit que Caisse Terrain et Mon Facturier.",
+      "Saisie des mouvements de caisse et facturation terrain — aucun accès aux rapports financiers ni aux paramètres du compte. Ne voit que Caisse Terrain et Mon Facturier.",
+    permissions: ["caisse.view", "caisse.create", "facturation.view", "facturation.create"],
+  },
+  {
+    code: "POMPISTE",
+    label: "Pompiste",
+    description:
+      "Saisie des relevés d'index de pompe et des ventes de carburant — accès dédié à la caisse terrain et à la facturation de la station-service. Rôle réservé aux entreprises du secteur Station-service.",
     permissions: ["caisse.view", "caisse.create", "facturation.view", "facturation.create"],
   },
   {

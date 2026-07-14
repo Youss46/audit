@@ -39,6 +39,7 @@ function serializeUser(
     createdAt: user.createdAt,
     // Module M29: only populated for "client_staff" accounts.
     roleId: user.roleId ?? null,
+    roleCode: role?.code ?? null,
     roleLabel: role?.label ?? null,
     permissions: role?.permissions ?? [],
   };
