@@ -184,6 +184,8 @@ export * from './notificationItem';
 export * from './paymentFrequency';
 export * from './paymentMethod';
 export * from './paymentType';
+export * from './payrollSetting';
+export * from './payrollSettingUpdate';
 export * from './payslip';
 export * from './pendingCounts';
 export * from './pilotageDashboardResult';

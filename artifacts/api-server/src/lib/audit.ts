@@ -78,6 +78,8 @@ export const AuditAction = {
   CHAT_CHANNEL_CREATE: "CHAT_CHANNEL_CREATE",
   // Module M33 (Réinitialisation Forcée du Mot de Passe Temporaire).
   AUTH_FORCED_PASSWORD_RESET: "AUTH_FORCED_PASSWORD_RESET",
+  // Module M20-Settings (Configuration des Taux de Paie).
+  PAYROLL_SETTING_UPDATE: "PAYROLL_SETTING_UPDATE",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

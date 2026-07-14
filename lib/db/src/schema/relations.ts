@@ -21,6 +21,7 @@ import { collaborationThreadsTable, contextualCommentsTable, notificationsTable 
 import { financialScoringResultsTable, businessValuationsTable } from "./scoring";
 import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
+import { payrollSettingsTable } from "./payroll-settings";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -395,5 +396,14 @@ export const chatDirectMessagesRelations = relations(chatDirectMessagesTable, ({
     fields: [chatDirectMessagesTable.recipientId],
     references: [usersTable.id],
     relationName: "receivedDirectMessages",
+  }),
+}));
+
+// Module M20-Settings (Payroll Tax & Social Contribution Settings).
+export const payrollSettingsRelations = relations(payrollSettingsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [payrollSettingsTable.firmId], references: [firmsTable.id] }),
+  updatedBy: one(usersTable, {
+    fields: [payrollSettingsTable.updatedById],
+    references: [usersTable.id],
   }),
 }));

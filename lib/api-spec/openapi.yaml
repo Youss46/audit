@@ -47,6 +47,8 @@ tags:
     description: Module M28 — Facturier Client & Auto-Génération de Pièces — structured invoice registry, chronological numbering (FAC-YYYY-XXXX), PDF receipt generation, and automatic SYSCOHADA 411/706/443 ledger posting
   - name: chat
     description: Module M31 — Messagerie Interne du Cabinet ("le Slack du Cabinet") — internal channels and direct messages for cabinet staff only (expert_comptable / collaborateur / stagiaire); client portal accounts have no access
+  - name: payroll-settings
+    description: Module M20-Settings — Cabinet-level editable payroll tax & social contribution rates (CNPS, ITS, FDFP, Transport exemption). Read access for all cabinet roles; write access restricted to expert_comptable and collaborateur.
 paths:
   /healthz:
     get:
@@ -864,6 +866,52 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PendingCounts"
+
+  /cabinet/payroll-settings:
+    get:
+      operationId: listPayrollSettings
+      tags: [payroll-settings]
+      summary: List all payroll tax & social contribution rate settings for the authenticated cabinet firm (M20-Settings). Lazy-seeds statutory defaults on first call. Read access for all cabinet roles.
+      responses:
+        "200":
+          description: Ordered list of payroll settings grouped by category
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PayrollSetting"
+
+  /cabinet/payroll-settings/{id}:
+    put:
+      operationId: updatePayrollSetting
+      tags: [payroll-settings]
+      summary: Update a payroll rate percentage or ceiling amount (M20-Settings). Restricted to expert_comptable and collaborateur; returns 403 for any other role or for non-editable rows.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PayrollSettingUpdate"
+      responses:
+        "200":
+          description: Updated setting with auditor info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PayrollSetting"
+        "400":
+          description: Validation error or no-op update
+        "403":
+          description: Forbidden — row is not editable or caller's role is insufficient
+        "404":
+          description: Setting not found
 
   /transactions:
     get:
@@ -6210,3 +6258,49 @@ components:
         previewUrl:
           type: string
           description: Data URL usable to preview the file client-side before it is attached and sent with a message
+
+    # ── Module M20-Settings: Cabinet Payroll Rate Configuration ─────────────
+
+    PayrollSettingUpdate:
+      type: object
+      description: At least one of ratePercentage or ceilingAmount must be provided.
+      properties:
+        ratePercentage:
+          type: ["number", "null"]
+          description: New rate as a decimal fraction (e.g. 0.077 for 7.7%)
+        ceilingAmount:
+          type: ["integer", "null"]
+          description: New FCFA ceiling (e.g. 3500000)
+
+    PayrollSetting:
+      type: object
+      required: [id, firmId, category, ruleName, ruleKey, isEditable, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        category:
+          type: string
+          description: Display group (CNPS | ITS | FDFP | TRANSPORT)
+        ruleName:
+          type: string
+          description: French display label (e.g. "Part patronale — Régime de retraite")
+        ruleKey:
+          type: string
+          description: Stable machine key consumed by the payroll engine (e.g. "cnps_employer_retraite_rate")
+        ratePercentage:
+          type: ["number", "null"]
+          description: Rate as a decimal fraction (e.g. 0.077 = 7.7%). Null for ceiling-only rows.
+        ceilingAmount:
+          type: ["integer", "null"]
+          description: FCFA ceiling (e.g. 3375000 for CNPS plafond). Null for pure-rate rows.
+        isEditable:
+          type: boolean
+          description: Whether the cabinet may edit this row via the UI
+        updatedById:
+          type: ["integer", "null"]
+        updatedByName:
+          type: ["string", "null"]
+          description: Full name of the last accountant who modified this setting
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+

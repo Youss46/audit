@@ -892,6 +892,54 @@ export const GetFirmPendingCountsResponse = zod.object({
 
 
 /**
+ * @summary List all payroll tax & social contribution rate settings for the authenticated cabinet firm (M20-Settings). Lazy-seeds statutory defaults on first call. Read access for all cabinet roles.
+ */
+export const ListPayrollSettingsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "category": zod.string().describe('Display group (CNPS | ITS | FDFP | TRANSPORT)'),
+  "ruleName": zod.string().describe('French display label (e.g. \"Part patronale — Régime de retraite\")'),
+  "ruleKey": zod.string().describe('Stable machine key consumed by the payroll engine (e.g. \"cnps_employer_retraite_rate\")'),
+  "ratePercentage": zod.number().nullish().describe('Rate as a decimal fraction (e.g. 0.077 = 7.7%). Null for ceiling-only rows.'),
+  "ceilingAmount": zod.number().nullish().describe('FCFA ceiling (e.g. 3375000 for CNPS plafond). Null for pure-rate rows.'),
+  "isEditable": zod.boolean().describe('Whether the cabinet may edit this row via the UI'),
+  "updatedById": zod.number().nullish(),
+  "updatedByName": zod.string().nullish().describe('Full name of the last accountant who modified this setting'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListPayrollSettingsResponse = zod.array(ListPayrollSettingsResponseItem)
+
+
+/**
+ * @summary Update a payroll rate percentage or ceiling amount (M20-Settings). Restricted to expert_comptable and collaborateur; returns 403 for any other role or for non-editable rows.
+ */
+export const UpdatePayrollSettingParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdatePayrollSettingBody = zod.object({
+  "ratePercentage": zod.number().nullish().describe('New rate as a decimal fraction (e.g. 0.077 for 7.7%)'),
+  "ceilingAmount": zod.number().nullish().describe('New FCFA ceiling (e.g. 3500000)')
+}).describe('At least one of ratePercentage or ceilingAmount must be provided.')
+
+export const UpdatePayrollSettingResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "category": zod.string().describe('Display group (CNPS | ITS | FDFP | TRANSPORT)'),
+  "ruleName": zod.string().describe('French display label (e.g. \"Part patronale — Régime de retraite\")'),
+  "ruleKey": zod.string().describe('Stable machine key consumed by the payroll engine (e.g. \"cnps_employer_retraite_rate\")'),
+  "ratePercentage": zod.number().nullish().describe('Rate as a decimal fraction (e.g. 0.077 = 7.7%). Null for ceiling-only rows.'),
+  "ceilingAmount": zod.number().nullish().describe('FCFA ceiling (e.g. 3375000 for CNPS plafond). Null for pure-rate rows.'),
+  "isEditable": zod.boolean().describe('Whether the cabinet may edit this row via the UI'),
+  "updatedById": zod.number().nullish(),
+  "updatedByName": zod.string().nullish().describe('Full name of the last accountant who modified this setting'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
  * @summary List journal entries (module P3/M3). Espace PME accounts only ever see their own client's entries.
  */
 export const ListTransactionsQueryParams = zod.object({

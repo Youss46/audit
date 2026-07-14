@@ -2121,6 +2121,54 @@ export interface ChatUploadResponse {
   previewUrl: string;
 }
 
+/**
+ * At least one of ratePercentage or ceilingAmount must be provided.
+ */
+export interface PayrollSettingUpdate {
+  /**
+     * New rate as a decimal fraction (e.g. 0.077 for 7.7%)
+     * @nullable
+     */
+  ratePercentage?: number | null;
+  /**
+     * New FCFA ceiling (e.g. 3500000)
+     * @nullable
+     */
+  ceilingAmount?: number | null;
+}
+
+export interface PayrollSetting {
+  id: number;
+  firmId: number;
+  /** Display group (CNPS | ITS | FDFP | TRANSPORT) */
+  category: string;
+  /** French display label (e.g. "Part patronale — Régime de retraite") */
+  ruleName: string;
+  /** Stable machine key consumed by the payroll engine (e.g. "cnps_employer_retraite_rate") */
+  ruleKey: string;
+  /**
+     * Rate as a decimal fraction (e.g. 0.077 = 7.7%). Null for ceiling-only rows.
+     * @nullable
+     */
+  ratePercentage?: number | null;
+  /**
+     * FCFA ceiling (e.g. 3375000 for CNPS plafond). Null for pure-rate rows.
+     * @nullable
+     */
+  ceilingAmount?: number | null;
+  /** Whether the cabinet may edit this row via the UI */
+  isEditable: boolean;
+  /** @nullable */
+  updatedById?: number | null;
+  /**
+     * Full name of the last accountant who modified this setting
+     * @nullable
+     */
+  updatedByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;

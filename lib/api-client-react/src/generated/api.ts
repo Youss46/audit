@@ -133,6 +133,8 @@ import type {
   MissionUpdate,
   NewGeneratedDocumentInput,
   NotificationItem,
+  PayrollSetting,
+  PayrollSettingUpdate,
   Payslip,
   PendingCounts,
   PilotageDashboardResult,
@@ -2831,6 +2833,155 @@ export function useGetFirmPendingCounts<TData = Awaited<ReturnType<typeof getFir
 
 
 
+
+export const getListPayrollSettingsUrl = () => {
+
+
+
+
+  return `/api/cabinet/payroll-settings`
+}
+
+/**
+ * @summary List all payroll tax & social contribution rate settings for the authenticated cabinet firm (M20-Settings). Lazy-seeds statutory defaults on first call. Read access for all cabinet roles.
+ */
+export const listPayrollSettings = async ( options?: RequestInit): Promise<PayrollSetting[]> => {
+
+  return customFetch<PayrollSetting[]>(getListPayrollSettingsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPayrollSettingsQueryKey = () => {
+    return [
+    `/api/cabinet/payroll-settings`
+    ] as const;
+    }
+
+
+export const getListPayrollSettingsQueryOptions = <TData = Awaited<ReturnType<typeof listPayrollSettings>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayrollSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPayrollSettingsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPayrollSettings>>> = ({ signal }) => listPayrollSettings({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPayrollSettings>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPayrollSettingsQueryResult = NonNullable<Awaited<ReturnType<typeof listPayrollSettings>>>
+export type ListPayrollSettingsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all payroll tax & social contribution rate settings for the authenticated cabinet firm (M20-Settings). Lazy-seeds statutory defaults on first call. Read access for all cabinet roles.
+ */
+
+export function useListPayrollSettings<TData = Awaited<ReturnType<typeof listPayrollSettings>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPayrollSettings>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPayrollSettingsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdatePayrollSettingUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet/payroll-settings/${id}`
+}
+
+/**
+ * @summary Update a payroll rate percentage or ceiling amount (M20-Settings). Restricted to expert_comptable and collaborateur; returns 403 for any other role or for non-editable rows.
+ */
+export const updatePayrollSetting = async (id: number,
+    payrollSettingUpdate: PayrollSettingUpdate, options?: RequestInit): Promise<PayrollSetting> => {
+
+  return customFetch<PayrollSetting>(getUpdatePayrollSettingUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(payrollSettingUpdate)
+  }
+);}
+
+
+
+
+
+export const getUpdatePayrollSettingMutationOptions = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePayrollSetting>>, TError,{id: number;data: BodyType<PayrollSettingUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePayrollSetting>>, TError,{id: number;data: BodyType<PayrollSettingUpdate>}, TContext> => {
+
+const mutationKey = ['updatePayrollSetting'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePayrollSetting>>, {id: number;data: BodyType<PayrollSettingUpdate>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePayrollSetting(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePayrollSettingMutationResult = NonNullable<Awaited<ReturnType<typeof updatePayrollSetting>>>
+    export type UpdatePayrollSettingMutationBody = BodyType<PayrollSettingUpdate>
+    export type UpdatePayrollSettingMutationError = ErrorType<void>
+
+    /**
+ * @summary Update a payroll rate percentage or ceiling amount (M20-Settings). Restricted to expert_comptable and collaborateur; returns 403 for any other role or for non-editable rows.
+ */
+export const useUpdatePayrollSetting = <TError = ErrorType<void>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePayrollSetting>>, TError,{id: number;data: BodyType<PayrollSettingUpdate>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePayrollSetting>>,
+        TError,
+        {id: number;data: BodyType<PayrollSettingUpdate>},
+        TContext
+      > => {
+      return useMutation(getUpdatePayrollSettingMutationOptions(options));
+    }
 
 export const getListTransactionsUrl = (params?: ListTransactionsParams,) => {
   const normalizedParams = new URLSearchParams();

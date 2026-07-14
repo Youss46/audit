@@ -14,6 +14,7 @@
     "seed:dsf-mapping-rules": "tsx src/seed-dsf-mapping-rules.ts",
     "seed:roles": "tsx src/seed-roles.ts",
     "seed:report-document-templates": "tsx src/seed-report-document-templates.ts",
+    "seed:payroll-settings": "tsx src/seed-payroll-settings.ts",
     "enforce:audit-immutability": "tsx src/enforce-audit-immutability.ts"
   },
   "dependencies": {
