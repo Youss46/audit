@@ -61,6 +61,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(location)
 
+  // Bug fix: the sidebar's scroll position used to reset to the top on
+  // every navigation (React re-renders the nav list on each route change),
+  // burying the active link below the fold and forcing the user to
+  // rescroll to see where they are. Re-scroll the active link into view
+  // whenever the route (or the query-string tab, e.g. "Comptabilité"'s
+  // Dépenses/Recettes sub-views) changes, or when the mobile sidebar opens.
+  // The active link is identified the same way it's already styled --
+  // it's the one link carrying the "bg-primary" active class -- so this
+  // needs no extra state threaded through every nav item.
+  const desktopNavScrollRef = React.useRef<HTMLDivElement>(null)
+  const mobileNavScrollRef = React.useRef<HTMLDivElement>(null)
+  React.useEffect(() => {
+    for (const container of [desktopNavScrollRef.current, mobileNavScrollRef.current]) {
+      if (!container) continue
+      const activeLink = container.querySelector<HTMLElement>("a.bg-primary")
+      activeLink?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    }
+  }, [location, search, isMobileMenuOpen])
+
   // Module M32: firm-wide "à valider" counters, live behind the global
   // "Révision Dépenses" / "Révision Recettes" nav badges below. Cabinet
   // staff only -- an Espace PME account never sees these links. The
@@ -562,7 +581,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </div>
               AUDIT
             </div>
-            <div className="flex-1 overflow-y-auto py-2">
+            <div className="flex-1 overflow-y-auto py-2" ref={mobileNavScrollRef}>
               <NavItems />
             </div>
             <UserMenu />
@@ -606,7 +625,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </AlertDialogContent>
           </AlertDialog>
         </div>
-        <div className="flex-1 overflow-y-auto py-2">
+        <div className="flex-1 overflow-y-auto py-2" ref={desktopNavScrollRef}>
           <NavItems />
         </div>
         <UserMenu />
