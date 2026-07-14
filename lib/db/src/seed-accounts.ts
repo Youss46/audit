@@ -38,7 +38,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
 
   // Classe 5 - Comptes de trésorerie
   { accountNumber: "52", name: "Banques", accountClass: 5 },
-  { accountNumber: "57", name: "Caisse", accountClass: 5 },
+  { accountNumber: "571", name: "Caisse", accountClass: 5 },
   { accountNumber: "58", name: "Virements de fonds", accountClass: 5 },
 
   // Classe 6 - Comptes de charges

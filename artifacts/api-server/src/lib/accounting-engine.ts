@@ -6,11 +6,11 @@ import type { PaymentMethod, PaymentType, TransactionType } from "@workspace/db"
 // approve rather than re-key every operation from scratch.
 
 // The treasury ("trésorerie") leg of every entry depends only on the
-// payment method: cash movements hit account 57 (Caisse), everything else
+// payment method: cash movements hit account 571 (Caisse), everything else
 // (mobile money, cheque, bank transfer) is treated as a bank movement on
 // account 52 (Banques).
 const PAYMENT_METHOD_ACCOUNTS: Record<PaymentMethod, string> = {
-  especes: "57",
+  especes: "571",
   mobile_money: "52",
   cheque: "52",
   virement: "52",
