@@ -369,9 +369,9 @@ export default function Immobilisations() {
           {/* ---------------------------------------------------------------- */}
           {/* Page header                                                      */}
           {/* ---------------------------------------------------------------- */}
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <Layers className="h-5 w-5 text-primary" />
               </div>
               <div>
@@ -383,7 +383,7 @@ export default function Immobilisations() {
             </div>
             <Button
               onClick={() => { setAddForm(EMPTY_FORM); setAddError(null); setAccountPickerMode("catalogue"); setShowAddModal(true) }}
-              className="shrink-0"
+              className="w-full sm:w-auto shrink-0"
             >
               <Plus className="h-4 w-4 mr-2" />
               Ajouter une immobilisation
