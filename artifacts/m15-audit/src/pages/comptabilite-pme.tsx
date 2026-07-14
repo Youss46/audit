@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import {
   useListTransactions,
   getListTransactionsQueryKey,
@@ -8,6 +8,7 @@ import {
   useSettleTransaction,
   useListClientDocuments,
   getListClientDocumentsQueryKey,
+  useUploadClientDocument,
   useListCashRegisters,
   getListCashRegistersQueryKey,
   useCreateCashRegister,
@@ -18,7 +19,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
-import { formatDate } from "@/lib/utils"
+import { cn, formatDate } from "@/lib/utils"
 import {
   getTransactionStatusColor,
   getTransactionStatusLabel,
@@ -26,7 +27,10 @@ import {
   getPaymentTypeLabel,
   formatFcfa,
 } from "@/lib/status"
-import { Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign } from "lucide-react"
+import {
+  Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign,
+  Upload, Camera, X, CheckCircle2, AlertCircle, Loader2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -93,6 +97,13 @@ export default function ComptabilitePme() {
   const [settlePaymentMethod, setSettlePaymentMethod] = useState<PaymentMethod | "">("")
   const [settleCashRegisterId, setSettleCashRegisterId] = useState<string>("")
   const [newRegisterName, setNewRegisterName] = useState("")
+  // Attachment state
+  const [attachmentError, setAttachmentError] = useState<string | null>(null)
+  const [isUploadingAttachment, setIsUploadingAttachment] = useState(false)
+  // File name of a freshly-uploaded attachment (not yet in the documents list)
+  const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
+  const attachmentFileInputRef = useRef<HTMLInputElement>(null)
+  const attachmentCameraInputRef = useRef<HTMLInputElement>(null)
 
   const { data: transactions, isLoading } = useListTransactions(
     { clientId },
@@ -109,6 +120,27 @@ export default function ComptabilitePme() {
     { clientId },
     { query: { enabled: !!clientId, queryKey: getListCashRegistersQueryKey({ clientId }) } },
   )
+
+  const uploadAttachmentMutation = useUploadClientDocument({
+    mutation: {
+      onSuccess: (doc) => {
+        setForm((f) => ({ ...f, documentId: String(doc.id) }))
+        setUploadedFileName(doc.fileName)
+        setAttachmentError(null)
+        setIsUploadingAttachment(false)
+        queryClient.invalidateQueries({ queryKey: getListClientDocumentsQueryKey(clientId) })
+      },
+      onError: (error) => {
+        setIsUploadingAttachment(false)
+        toast({
+          title: "Erreur de téléchargement",
+          description: (error as { data?: { error?: string } }).data?.error ||
+            "Impossible de télécharger le fichier. Vérifiez que le format est PDF, PNG ou JPEG.",
+          variant: "destructive",
+        })
+      },
+    },
+  })
 
   const createRegisterMutation = useCreateCashRegister({
     mutation: {
@@ -171,7 +203,29 @@ export default function ComptabilitePme() {
 
   const openForm = (type: TransactionType) => {
     setForm(emptyForm(type))
+    setAttachmentError(null)
+    setUploadedFileName(null)
+    setIsUploadingAttachment(false)
     setIsFormOpen(true)
+  }
+
+  /** Read a file as base64 then POST it to the document store. */
+  const handleAttachmentFile = (file: File) => {
+    setIsUploadingAttachment(true)
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(",")[1]
+      uploadAttachmentMutation.mutate({
+        id: clientId,
+        data: {
+          fileName: file.name,
+          mimeType: file.type,
+          fileData: base64,
+          category: "Procédure de Visa",
+        },
+      })
+    }
+    reader.readAsDataURL(file)
   }
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -181,6 +235,13 @@ export default function ComptabilitePme() {
     if (form.paymentType === "cash" && !form.paymentMethod) return
     if (form.paymentType === "credit" && !form.dueDate) return
     if (form.paymentType === "cash" && form.paymentMethod === "especes" && !form.cashRegisterId) return
+    // Attachment is mandatory for every dépense.
+    if (form.type === "depense" && !form.documentId) {
+      setAttachmentError(
+        "La pièce justificative (facture, reçu ou ticket) est obligatoire pour soumettre une dépense au cabinet.",
+      )
+      return
+    }
     createMutation.mutate({
       data: {
         clientId,
@@ -454,7 +515,10 @@ export default function ComptabilitePme() {
               <Button
                 type="button"
                 variant={form.type === "recette" ? "default" : "outline"}
-                onClick={() => setForm((f) => ({ ...f, type: "recette", category: "" }))}
+                onClick={() => {
+                  setForm((f) => ({ ...f, type: "recette", category: "" }))
+                  setAttachmentError(null)
+                }}
                 data-testid="button-form-type-recette"
               >
                 <TrendingUp className="mr-2 h-4 w-4" />
@@ -463,7 +527,10 @@ export default function ComptabilitePme() {
               <Button
                 type="button"
                 variant={form.type === "depense" ? "default" : "outline"}
-                onClick={() => setForm((f) => ({ ...f, type: "depense", category: "" }))}
+                onClick={() => {
+                  setForm((f) => ({ ...f, type: "depense", category: "" }))
+                  setAttachmentError(null)
+                }}
                 data-testid="button-form-type-depense"
               >
                 <TrendingDown className="mr-2 h-4 w-4" />
@@ -628,27 +695,151 @@ export default function ComptabilitePme() {
               </div>
             )}
 
+            {/* ── Pièce justificative ── */}
             <div className="space-y-2">
-              <Label htmlFor="document">Pièce jointe (optionnel)</Label>
-              <Select
-                value={form.documentId}
-                onValueChange={(v) => setForm((f) => ({ ...f, documentId: v }))}
-              >
-                <SelectTrigger id="document" data-testid="select-document">
-                  <SelectValue placeholder="Aucune pièce jointe" />
-                </SelectTrigger>
-                <SelectContent>
-                  {(documents ?? []).map((d) => (
-                    <SelectItem key={d.id} value={String(d.id)}>
-                      <Paperclip className="mr-1.5 h-3.5 w-3.5 inline" />
-                      {d.fileName}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Pour ajouter un nouveau reçu, déposez-le d'abord depuis l'onglet Documents.
-              </p>
+              <div className="flex items-center gap-2">
+                <Label>Pièce justificative</Label>
+                {form.type === "depense" ? (
+                  <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
+                    Obligatoire pour les dépenses
+                  </span>
+                ) : (
+                  <span className="text-xs text-muted-foreground">(Optionnel)</span>
+                )}
+              </div>
+
+              {/* ── Attached file display ── */}
+              {form.documentId ? (
+                <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2.5 dark:border-green-800 dark:bg-green-950/30">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-green-600 dark:text-green-400" />
+                  <span className="flex-1 truncate text-sm font-medium">
+                    {uploadedFileName ??
+                      (documents ?? []).find((d) => String(d.id) === form.documentId)?.fileName ??
+                      "Document sélectionné"}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label="Retirer la pièce jointe"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, documentId: "" }))
+                      setUploadedFileName(null)
+                    }}
+                    className="ml-auto shrink-0 text-muted-foreground transition-colors hover:text-destructive"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : isUploadingAttachment ? (
+                /* ── Upload in progress ── */
+                <div className="flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-muted-foreground/30 px-3 py-6 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Téléchargement en cours…
+                </div>
+              ) : (
+                /* ── Empty drop zone ── */
+                <div
+                  className={cn(
+                    "rounded-md border-2 border-dashed px-3 py-5 transition-colors",
+                    attachmentError
+                      ? "border-destructive bg-destructive/5"
+                      : "border-muted-foreground/25 hover:border-muted-foreground/40",
+                  )}
+                >
+                  <div className="flex flex-col items-center gap-3 text-center">
+                    <Upload className="h-6 w-6 text-muted-foreground/50" />
+                    <p className="text-xs text-muted-foreground">
+                      Prendre en photo / Télécharger la pièce
+                      <br />
+                      <span className="text-[11px] opacity-70">PDF, PNG ou JPEG — max 10 Mo</span>
+                    </p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => attachmentCameraInputRef.current?.click()}
+                        data-testid="button-attachment-camera"
+                      >
+                        <Camera className="mr-1.5 h-3.5 w-3.5" />
+                        Prendre en photo
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => attachmentFileInputRef.current?.click()}
+                        data-testid="button-attachment-file"
+                      >
+                        <Upload className="mr-1.5 h-3.5 w-3.5" />
+                        Choisir un fichier
+                      </Button>
+                    </div>
+                  </div>
+                  {/* Camera capture — opens native camera on mobile */}
+                  <input
+                    ref={attachmentCameraInputRef}
+                    type="file"
+                    accept="image/*"
+                    // eslint-disable-next-line react/no-unknown-property
+                    {...{ capture: "environment" }}
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleAttachmentFile(file)
+                      e.target.value = ""
+                    }}
+                  />
+                  {/* Standard file picker */}
+                  <input
+                    ref={attachmentFileInputRef}
+                    type="file"
+                    accept="application/pdf,image/png,image/jpeg"
+                    className="sr-only"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) handleAttachmentFile(file)
+                      e.target.value = ""
+                    }}
+                  />
+                </div>
+              )}
+
+              {/* ── Inline error message ── */}
+              {attachmentError && (
+                <div className="flex items-start gap-1.5 text-destructive" role="alert">
+                  <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <p className="text-xs">{attachmentError}</p>
+                </div>
+              )}
+
+              {/* ── Pick from already-uploaded docs ── */}
+              {!form.documentId && !isUploadingAttachment && (documents ?? []).length > 0 && (
+                <div className="space-y-1 pt-1">
+                  <p className="text-xs text-muted-foreground">
+                    Ou sélectionner un document déjà déposé :
+                  </p>
+                  <Select
+                    value={form.documentId}
+                    onValueChange={(v) => {
+                      setForm((f) => ({ ...f, documentId: v }))
+                      setUploadedFileName(null)
+                      setAttachmentError(null)
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs" data-testid="select-document">
+                      <SelectValue placeholder="Sélectionner un document existant…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {(documents ?? []).map((d) => (
+                        <SelectItem key={d.id} value={String(d.id)}>
+                          <Paperclip className="mr-1.5 inline h-3.5 w-3.5" />
+                          {d.fileName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
 
             <DialogFooter>

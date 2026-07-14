@@ -161,6 +161,16 @@ async function createTransactionEntry(
     );
   }
 
+  // A dépense (expense/purchase) must always carry a supporting document
+  // (invoice, receipt, or ticket). Reject early so the error surfaces
+  // before any DB work is done.
+  if (body.type === "depense" && body.documentId == null) {
+    throw new HttpError(
+      400,
+      "La soumission d'une dépense requiert obligatoirement une pièce justificative.",
+    );
+  }
+
   if (body.documentId != null) {
     const doc = await db.query.documentsTable.findFirst({
       where: and(
