@@ -108,7 +108,7 @@ const SYSCOHADA_CLASS2_ACCOUNTS: SyscohadaAccount[] = [
   // Classe 22 — Terrains
   // Terrains nus : non amortissables (durée de vie illimitée)
   { number: "221000", label: "Terrains nus",                     isAmortizable: false, usefulLife: null, type: null },
-  { number: "222000", label: "Terrains aménagés",                usefulLife: 30, type: "LINEAIRE" },
+  { number: "222000", label: "Terrains aménagés",                isAmortizable: false, usefulLife: null, type: null },
   // Classe 23 — Bâtiments, installations
   { number: "231000", label: "Bâtiments administratifs",         usefulLife: 20, type: "LINEAIRE" },
   { number: "232000", label: "Bâtiments industriels",            usefulLife: 20, type: "LINEAIRE" },
