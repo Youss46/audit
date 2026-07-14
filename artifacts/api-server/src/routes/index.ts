@@ -21,6 +21,7 @@ import dsfRouter from "./dsf";
 import reportDocumentsRouter from "./report-documents";
 import collaborationRouter from "./collaboration";
 import scoringRouter from "./scoring";
+import invoicingRouter from "./invoicing";
 
 const router: IRouter = Router();
 
@@ -46,5 +47,6 @@ router.use(dsfRouter);
 router.use(reportDocumentsRouter);
 router.use(collaborationRouter);
 router.use(scoringRouter);
+router.use(invoicingRouter);
 
 export default router;

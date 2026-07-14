@@ -34,6 +34,7 @@ import Rentabilite from '@/pages/rentabilite';
 import Dsf from '@/pages/dsf';
 import ComptabiliteRevision from '@/pages/comptabilite-revision';
 import Scoring from '@/pages/scoring';
+import Facturation from '@/pages/facturation';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -56,6 +57,7 @@ function Router() {
         <Route path="/mes-operations" component={ComptabilitePme} />
         <Route path="/caisse" component={CaisseExpress} />
         <Route path="/pilotage" component={Pilotage} />
+        <Route path="/facturation" component={Facturation} />
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/saisie" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/journaux" component={ComptabiliteJournaux} />

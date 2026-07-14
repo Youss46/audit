@@ -19,6 +19,7 @@ import {
   Layers,
   Landmark,
   BarChart3,
+  Receipt,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getRoleLabel } from "@/lib/status"
@@ -72,6 +73,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // must never reach the cabinet-facing screens (dashboard, client list,
   // team, audit log) even if they navigate there directly by URL.
   const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/cabinet/client", "/cabinet/compliance"]
+  const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -90,7 +92,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       !isLoading &&
       user &&
       user.role !== "client_pme" &&
-      (location.startsWith("/mes-operations") || location.startsWith("/caisse") || location.startsWith("/pilotage"))
+      CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))
     ) {
       setLocation("/dashboard")
     }
@@ -124,7 +126,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (user.role === "client_pme" && isCabinetOnlyRoute) {
     return <div className="min-h-screen bg-background" />
   }
-  if (user.role !== "client_pme" && (location.startsWith("/mes-operations") || location.startsWith("/caisse") || location.startsWith("/pilotage"))) {
+  if (user.role !== "client_pme" && CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))) {
     return <div className="min-h-screen bg-background" />
   }
   if (user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
@@ -173,6 +175,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )} data-testid="link-pilotage">
             <Gauge className="h-5 w-5" />
             Pilotage
+          </Link>
+
+          <Link href="/facturation" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/facturation")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-facturation">
+            <Receipt className="h-5 w-5" />
+            Mon Facturier
           </Link>
         </>
       ) : (

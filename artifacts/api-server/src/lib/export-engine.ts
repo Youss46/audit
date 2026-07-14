@@ -1437,3 +1437,219 @@ export async function generateScoringExecutiveSummaryPdf(
 
   return renderPdf(docDef);
 }
+
+// ---------------------------------------------------------------------------
+// Module M28 — Invoice PDF Generator
+// ---------------------------------------------------------------------------
+
+export interface InvoiceItemForPdf {
+  designation: string;
+  quantity: number;
+  unitPrice: number;
+  vatRate: number;
+  totalItemHt: number;
+}
+
+export interface InvoiceForPdf {
+  invoiceNumber: string;
+  invoiceDate: Date | string;
+  dueDate?: Date | string | null;
+  /** Seller: the PME client's business name */
+  sellerName: string;
+  sellerAddress?: string | null;
+  sellerRccm?: string | null;
+  /** Buyer: the PME's customer */
+  customerName: string;
+  customerEmail?: string | null;
+  customerAddress?: string | null;
+  subtotalHt: number;
+  vatRate: number;
+  vatAmount: number;
+  totalTtc: number;
+  notes?: string | null;
+  items: InvoiceItemForPdf[];
+  /** Footer attribution (e.g. "M15-AUDIT — Cabinet XYZ") */
+  footerFirmName: string;
+}
+
+/** Render a professional French invoice as a PDF buffer. */
+export async function generateInvoicePdf(inv: InvoiceForPdf): Promise<Buffer> {
+  const fmt = (n: number) =>
+    new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(n);
+
+  const fmtDate = (d: Date | string) =>
+    new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });
+
+  // ── Items table body ──────────────────────────────────────────────────
+  const itemRows: PdfCell[][] = [
+    [
+      headerCell("Désignation", "left"),
+      headerCell("Qté", "center"),
+      headerCell("Prix unitaire HT", "right"),
+      headerCell("TVA (%)", "center"),
+      headerCell("Montant HT", "right"),
+    ],
+    ...inv.items.map((item) => [
+      { text: item.designation, style: "cell", alignment: "left" },
+      { text: String(item.quantity), style: "mono", alignment: "center" },
+      { text: fmt(item.unitPrice), style: "mono", alignment: "right" },
+      { text: `${item.vatRate} %`, style: "mono", alignment: "center" },
+      { text: fmt(item.totalItemHt), style: "mono", alignment: "right" },
+    ] as PdfCell[]),
+  ];
+
+  // ── Totals block ──────────────────────────────────────────────────────
+  const totalsBody: PdfCell[][] = [
+    [
+      { text: "Sous-total HT", style: "cell", alignment: "right", border: [false, false, false, false] },
+      { text: `${fmt(inv.subtotalHt)} FCFA`, style: "mono", alignment: "right", border: [false, false, false, false] },
+    ],
+    [
+      { text: `TVA (${inv.vatRate} %)`, style: "cell", alignment: "right", border: [false, false, false, false] },
+      { text: `${fmt(inv.vatAmount)} FCFA`, style: "mono", alignment: "right", border: [false, false, false, false] },
+    ],
+    [
+      { text: "TOTAL TTC", bold: true, fontSize: 10, color: THEME.primary, alignment: "right", border: [false, true, false, false], borderColor: [THEME.border, THEME.border, THEME.border, THEME.border] },
+      { text: `${fmt(inv.totalTtc)} FCFA`, bold: true, fontSize: 10, color: THEME.primary, alignment: "right", border: [false, true, false, false], borderColor: [THEME.border, THEME.border, THEME.border, THEME.border] },
+    ],
+  ];
+
+  const docDef = {
+    pageSize: "A4",
+    pageMargins: [40, 50, 40, 60],
+    defaultStyle: { font: "Helvetica", fontSize: 9 },
+    styles: {
+      ...BASE_STYLES,
+      invoiceTitle: { fontSize: 20, bold: true, color: THEME.primary },
+      invoiceNum:   { fontSize: 11, color: THEME.accent },
+      sectionLabel: { fontSize: 8, bold: true, color: "#888", marginBottom: 2 },
+      blockText:    { fontSize: 9, color: THEME.text, lineHeight: 1.4 },
+    },
+    footer: (currentPage: number, pageCount: number) => ({
+      text: `Facture générée via ${inv.footerFirmName} — Document conforme aux obligations légales — Page ${currentPage}/${pageCount}`,
+      style: "footer",
+      margin: [40, 10],
+    }),
+    content: [
+      // ── Page header: seller left, invoice title right ──────────────
+      {
+        columns: [
+          {
+            stack: [
+              { text: inv.sellerName, style: "firmName" },
+              inv.sellerAddress
+                ? { text: inv.sellerAddress, style: "blockText", marginTop: 3 }
+                : {},
+              inv.sellerRccm
+                ? { text: `RCCM : ${inv.sellerRccm}`, style: "devise", marginTop: 2 }
+                : {},
+            ],
+            width: "*",
+          },
+          {
+            stack: [
+              { text: "FACTURE", style: "invoiceTitle" },
+              { text: inv.invoiceNumber, style: "invoiceNum", marginTop: 4 },
+            ],
+            width: "auto",
+            alignment: "right",
+          },
+        ],
+        marginBottom: 4,
+      },
+      // ── Horizontal rule ───────────────────────────────────────────
+      {
+        canvas: [
+          { type: "line", x1: 0, y1: 2, x2: 515, y2: 2, lineWidth: 2, lineColor: THEME.primary },
+          { type: "line", x1: 0, y1: 6, x2: 515, y2: 6, lineWidth: 0.5, lineColor: THEME.accent },
+        ],
+        margin: [0, 0, 0, 16],
+      },
+      // ── Date / Due date / Buyer block ─────────────────────────────
+      {
+        columns: [
+          {
+            stack: [
+              { text: "FACTURÉ À", style: "sectionLabel" },
+              { text: inv.customerName, bold: true, fontSize: 10, color: THEME.text },
+              inv.customerAddress
+                ? { text: inv.customerAddress, style: "blockText", marginTop: 2 }
+                : {},
+              inv.customerEmail
+                ? { text: inv.customerEmail, style: "devise", marginTop: 2 }
+                : {},
+            ],
+            width: "*",
+          },
+          {
+            stack: [
+              {
+                columns: [
+                  { text: "Date de facturation :", style: "sectionLabel", width: "auto" },
+                  { text: `  ${fmtDate(inv.invoiceDate)}`, style: "blockText", width: "*", alignment: "right" },
+                ],
+              },
+              inv.dueDate
+                ? {
+                    columns: [
+                      { text: "Date d'échéance :", style: "sectionLabel", width: "auto", marginTop: 3 },
+                      { text: `  ${fmtDate(inv.dueDate)}`, style: "blockText", width: "*", alignment: "right", marginTop: 3 },
+                    ],
+                  }
+                : {},
+            ],
+            width: 220,
+            alignment: "right",
+          },
+        ],
+        marginBottom: 20,
+      },
+      // ── Items table ───────────────────────────────────────────────
+      {
+        table: {
+          headerRows: 1,
+          widths: ["*", 35, 90, 50, 80],
+          body: itemRows,
+        },
+        layout: tableLayout(),
+        marginBottom: 12,
+      },
+      // ── Totals block ──────────────────────────────────────────────
+      {
+        columns: [
+          { text: "", width: "*" },
+          {
+            table: {
+              widths: [120, 100],
+              body: totalsBody,
+            },
+            layout: "noBorders",
+            width: "auto",
+          },
+        ],
+        marginBottom: 16,
+      },
+      // ── Notes ─────────────────────────────────────────────────────
+      ...(inv.notes
+        ? [
+            { text: "Notes et conditions", style: "sectionTitle" },
+            { text: inv.notes, style: "blockText" },
+          ]
+        : []),
+      // ── Legal footer block ────────────────────────────────────────
+      {
+        text: "Tout règlement doit être effectué à la date d'échéance indiquée. Les parties reconnaissent que la présente facture constitue un document comptable officiel soumis aux dispositions du droit OHADA et du SYSCOHADA révisé.",
+        style: "footer",
+        margin: [0, 30, 0, 0],
+        fontSize: 7.5,
+        italics: true,
+        color: "#999",
+      },
+    ],
+  };
+
+  return renderPdf(docDef);
+}

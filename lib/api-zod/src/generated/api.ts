@@ -3363,3 +3363,404 @@ export const MarkNotificationReadResponse = zod.object({
 export const MarkAllNotificationsReadResponse = zod.void()
 
 
+/**
+ * @summary List invoices for a client (M28)
+ */
+export const ListInvoicesQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']).optional()
+})
+
+export const ListInvoicesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListInvoicesResponse = zod.array(ListInvoicesResponseItem)
+
+
+/**
+ * @summary Create a new draft invoice (BROUILLON) — M28
+ */
+
+
+
+export const createInvoiceBodyItemsItemUnitPriceMin = 0;
+
+export const createInvoiceBodyItemsItemVatRateMin = 0;
+
+
+
+
+export const CreateInvoiceBody = zod.object({
+  "clientId": zod.number(),
+  "customerName": zod.string().min(1),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "vatRate": zod.number().optional(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "notes": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "designation": zod.string().min(1),
+  "quantity": zod.number().min(1),
+  "unitPrice": zod.number().min(createInvoiceBodyItemsItemUnitPriceMin),
+  "vatRate": zod.number().min(createInvoiceBodyItemsItemVatRateMin).optional()
+})).min(1)
+})
+
+export const CreateInvoiceResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Get invoice with its line items (M28)
+ */
+export const GetInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetInvoiceResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Update a draft invoice — BROUILLON only (M28)
+ */
+export const UpdateInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const updateInvoiceBodyItemsItemUnitPriceMin = 0;
+
+export const updateInvoiceBodyItemsItemVatRateMin = 0;
+
+
+
+
+export const UpdateInvoiceBody = zod.object({
+  "clientId": zod.number(),
+  "customerName": zod.string().min(1),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "vatRate": zod.number().optional(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "notes": zod.string().nullish(),
+  "items": zod.array(zod.object({
+  "designation": zod.string().min(1),
+  "quantity": zod.number().min(1),
+  "unitPrice": zod.number().min(updateInvoiceBodyItemsItemUnitPriceMin),
+  "vatRate": zod.number().min(updateInvoiceBodyItemsItemVatRateMin).optional()
+})).min(1)
+})
+
+export const UpdateInvoiceResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Validate invoice — assigns invoice number, generates PDF, posts 411/706/443 accounting entry (M28)
+ */
+export const ValidateInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ValidateInvoiceResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Mark a validated invoice as paid (PAYE) — M28
+ */
+export const MarkInvoicePaidParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const MarkInvoicePaidResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Cancel a draft invoice (BROUILLON only — validated invoices require a credit note) — M28
+ */
+export const CancelInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const CancelInvoiceResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Fetch the generated PDF for a validated invoice (base64) — M28
+ */
+export const DownloadInvoicePdfParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DownloadInvoicePdfResponse = zod.object({
+  "invoiceId": zod.number(),
+  "invoiceNumber": zod.string(),
+  "fileName": zod.string(),
+  "mimeType": zod.string(),
+  "fileData": zod.string().describe('Base64-encoded PDF content')
+})
+
+
+/**
+ * @summary Generate a structured credit note (avoir) reversing a validated invoice — M28
+ */
+export const CreateCreditNoteParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const CreateCreditNoteBody = zod.object({
+  "reason": zod.string().min(1)
+})
+
+export const CreateCreditNoteResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "customerName": zod.string(),
+  "customerEmail": zod.string().nullish(),
+  "customerAddress": zod.string().nullish(),
+  "subtotalHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "totalTtc": zod.number(),
+  "invoiceDate": zod.coerce.date(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "notes": zod.string().nullish(),
+  "pdfDocumentId": zod.number().nullish(),
+  "postedTransactionId": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "items": zod.array(zod.object({
+  "id": zod.number(),
+  "invoiceId": zod.number(),
+  "designation": zod.string(),
+  "quantity": zod.number(),
+  "unitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "totalItemHt": zod.number()
+}))
+}))
+
+

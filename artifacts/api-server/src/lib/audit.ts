@@ -68,6 +68,12 @@ export const AuditAction = {
   // Module M26 (Révision Collaborative & Chat Contextuel).
   COLLABORATION_COMMENT_CREATE: "COLLABORATION_COMMENT_CREATE",
   COLLABORATION_THREAD_RESOLVE: "COLLABORATION_THREAD_RESOLVE",
+  // Module M28 (Facturier Client & Auto-Génération de Pièces).
+  INVOICE_CREATE: "INVOICE_CREATE",
+  INVOICE_VALIDATE: "INVOICE_VALIDATE",
+  INVOICE_MARK_PAID: "INVOICE_MARK_PAID",
+  INVOICE_CANCEL: "INVOICE_CANCEL",
+  CREDIT_NOTE_CREATE: "CREDIT_NOTE_CREATE",
 } as const;
 
 export type AuditActionType = (typeof AuditAction)[keyof typeof AuditAction];

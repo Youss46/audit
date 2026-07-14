@@ -18,6 +18,7 @@ import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable }
 import { documentTemplatesTable, generatedDocumentsTable } from "./report-documents";
 import { collaborationThreadsTable, contextualCommentsTable, notificationsTable } from "./collaboration";
 import { financialScoringResultsTable, businessValuationsTable } from "./scoring";
+import { invoicesTable, invoiceItemsTable } from "./invoicing";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -327,5 +328,24 @@ export const businessValuationsRelations = relations(businessValuationsTable, ({
   client: one(clientsTable, {
     fields: [businessValuationsTable.clientId],
     references: [clientsTable.id],
+  }),
+}));
+
+// Module M28 (Facturier Client & Auto-Génération de Pièces).
+export const invoicesRelations = relations(invoicesTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [invoicesTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [invoicesTable.clientId], references: [clientsTable.id] }),
+  createdBy: one(usersTable, { fields: [invoicesTable.createdById], references: [usersTable.id] }),
+  pdfDocument: one(documentsTable, {
+    fields: [invoicesTable.pdfDocumentId],
+    references: [documentsTable.id],
+  }),
+  items: many(invoiceItemsTable),
+}));
+
+export const invoiceItemsRelations = relations(invoiceItemsTable, ({ one }) => ({
+  invoice: one(invoicesTable, {
+    fields: [invoiceItemsTable.invoiceId],
+    references: [invoicesTable.id],
   }),
 }));

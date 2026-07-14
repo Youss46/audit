@@ -41,6 +41,8 @@ tags:
   - name: cabinet-analytics
   - name: analytical
     description: Cabinet internal operations (M22) - collaborator timesheets, cost/billing rates, client forfait contracts, and per-client profitability reporting
+  - name: invoicing
+    description: Module M28 — Facturier Client & Auto-Génération de Pièces — structured invoice registry, chronological numbering (FAC-YYYY-XXXX), PDF receipt generation, and automatic SYSCOHADA 411/706/443 ledger posting
 paths:
   /healthz:
     get:
@@ -2992,6 +2994,189 @@ paths:
         "204":
           description: All notifications marked read
 
+  # Module M28 — Facturier Client & Auto-Génération de Pièces
+  # -------------------------------------------------------------------------
+  /invoices:
+    get:
+      operationId: listInvoices
+      tags: [invoicing]
+      summary: List invoices for a client (M28)
+      parameters:
+        - name: clientId
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/InvoiceStatus"
+      responses:
+        "200":
+          description: Invoice list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Invoice"
+    post:
+      operationId: createInvoice
+      tags: [invoicing]
+      summary: Create a new draft invoice (BROUILLON) — M28
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "201":
+          description: Invoice created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+  /invoices/{id}:
+    get:
+      operationId: getInvoice
+      tags: [invoicing]
+      summary: Get invoice with its line items (M28)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Invoice detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+    put:
+      operationId: updateInvoice
+      tags: [invoicing]
+      summary: Update a draft invoice — BROUILLON only (M28)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InvoiceInput"
+      responses:
+        "200":
+          description: Updated invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+  /invoices/{id}/validate:
+    post:
+      operationId: validateInvoice
+      tags: [invoicing]
+      summary: Validate invoice — assigns invoice number, generates PDF, posts 411/706/443 accounting entry (M28)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Validated invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+  /invoices/{id}/mark-paid:
+    post:
+      operationId: markInvoicePaid
+      tags: [invoicing]
+      summary: Mark a validated invoice as paid (PAYE) — M28
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Invoice marked as paid
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+  /invoices/{id}/cancel:
+    post:
+      operationId: cancelInvoice
+      tags: [invoicing]
+      summary: Cancel a draft invoice (BROUILLON only — validated invoices require a credit note) — M28
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Cancelled invoice
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+  /invoices/{id}/pdf:
+    get:
+      operationId: downloadInvoicePdf
+      tags: [invoicing]
+      summary: Fetch the generated PDF for a validated invoice (base64) — M28
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: PDF data (base64-encoded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoicePdfResponse"
+
+  /invoices/{id}/credit-note:
+    post:
+      operationId: createCreditNote
+      tags: [invoicing]
+      summary: Generate a structured credit note (avoir) reversing a validated invoice — M28
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreditNoteInput"
+      responses:
+        "201":
+          description: Credit note created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceDetail"
+
+    # -------------------------------------------------------------------------
+    # Module M28 — Facturier Client & Auto-Génération de Pièces
+    # -------------------------------------------------------------------------
+
+
 components:
   schemas:
     HealthStatus:
@@ -5242,3 +5427,106 @@ components:
         isRead: { type: boolean }
         linkToRoute: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+
+  # -------------------------------------------------------------------------
+
+    InvoiceStatus:
+      type: string
+      enum: [BROUILLON, VALIDE, PAYE, ANNULE]
+
+    InvoiceItem:
+      type: object
+      required: [id, invoiceId, designation, quantity, unitPrice, vatRate, totalItemHt]
+      properties:
+        id: { type: integer }
+        invoiceId: { type: integer }
+        designation: { type: string }
+        quantity: { type: integer }
+        unitPrice: { type: integer }
+        vatRate: { type: integer }
+        totalItemHt: { type: integer }
+
+    InvoiceItemInput:
+      type: object
+      required: [designation, quantity, unitPrice]
+      properties:
+        designation: { type: string, minLength: 1 }
+        quantity: { type: integer, minimum: 1 }
+        unitPrice: { type: integer, minimum: 0 }
+        vatRate: { type: integer, minimum: 0 }
+
+    Invoice:
+      type: object
+      required:
+        [id, firmId, clientId, customerName, subtotalHt, vatRate, vatAmount, totalTtc,
+         invoiceDate, status, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        customerName: { type: string }
+        customerEmail: { type: ["string", "null"] }
+        customerAddress: { type: ["string", "null"] }
+        subtotalHt: { type: integer }
+        vatRate: { type: integer }
+        vatAmount: { type: integer }
+        totalTtc: { type: integer }
+        invoiceDate: { type: string, format: date-time }
+        dueDate: { type: ["string", "null"], format: date-time }
+        status:
+          $ref: "#/components/schemas/InvoiceStatus"
+        notes: { type: ["string", "null"] }
+        pdfDocumentId: { type: ["integer", "null"] }
+        postedTransactionId: { type: ["integer", "null"] }
+        createdByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    InvoiceDetail:
+      allOf:
+        - $ref: "#/components/schemas/Invoice"
+        - type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items:
+                $ref: "#/components/schemas/InvoiceItem"
+
+    InvoiceInput:
+      type: object
+      required: [clientId, customerName, invoiceDate, items]
+      properties:
+        clientId: { type: integer }
+        customerName: { type: string, minLength: 1 }
+        customerEmail: { type: ["string", "null"] }
+        customerAddress: { type: ["string", "null"] }
+        vatRate: { type: integer }
+        invoiceDate: { type: string, format: date-time }
+        dueDate: { type: ["string", "null"], format: date-time }
+        notes: { type: ["string", "null"] }
+        items:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/InvoiceItemInput"
+
+    InvoicePdfResponse:
+      type: object
+      required: [invoiceId, invoiceNumber, fileName, mimeType, fileData]
+      properties:
+        invoiceId: { type: integer }
+        invoiceNumber: { type: string }
+        fileName: { type: string }
+        mimeType: { type: string }
+        fileData:
+          type: string
+          description: Base64-encoded PDF content
+
+    CreditNoteInput:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 1 }

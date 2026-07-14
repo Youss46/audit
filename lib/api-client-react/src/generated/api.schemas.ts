@@ -1825,6 +1825,106 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
+
+
+export const InvoiceStatus = {
+  BROUILLON: 'BROUILLON',
+  VALIDE: 'VALIDE',
+  PAYE: 'PAYE',
+  ANNULE: 'ANNULE',
+} as const;
+
+export interface InvoiceItem {
+  id: number;
+  invoiceId: number;
+  designation: string;
+  quantity: number;
+  unitPrice: number;
+  vatRate: number;
+  totalItemHt: number;
+}
+
+export interface InvoiceItemInput {
+  /** @minLength 1 */
+  designation: string;
+  /** @minimum 1 */
+  quantity: number;
+  /** @minimum 0 */
+  unitPrice: number;
+  /** @minimum 0 */
+  vatRate?: number;
+}
+
+export interface Invoice {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  clientName?: string | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  customerName: string;
+  /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
+  customerAddress?: string | null;
+  subtotalHt: number;
+  vatRate: number;
+  vatAmount: number;
+  totalTtc: number;
+  invoiceDate: string;
+  /** @nullable */
+  dueDate?: string | null;
+  status: InvoiceStatus;
+  /** @nullable */
+  notes?: string | null;
+  /** @nullable */
+  pdfDocumentId?: number | null;
+  /** @nullable */
+  postedTransactionId?: number | null;
+  /** @nullable */
+  createdByName?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type InvoiceDetail = Invoice & {
+  items: InvoiceItem[];
+};
+
+export interface InvoiceInput {
+  clientId: number;
+  /** @minLength 1 */
+  customerName: string;
+  /** @nullable */
+  customerEmail?: string | null;
+  /** @nullable */
+  customerAddress?: string | null;
+  vatRate?: number;
+  invoiceDate: string;
+  /** @nullable */
+  dueDate?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  /** @minItems 1 */
+  items: InvoiceItemInput[];
+}
+
+export interface InvoicePdfResponse {
+  invoiceId: number;
+  invoiceNumber: string;
+  fileName: string;
+  mimeType: string;
+  /** Base64-encoded PDF content */
+  fileData: string;
+}
+
+export interface CreditNoteInput {
+  /** @minLength 1 */
+  reason: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1966,5 +2066,10 @@ year?: number;
 export type ListThreadsParams = {
 clientId?: number;
 unresolvedOnly?: boolean;
+};
+
+export type ListInvoicesParams = {
+clientId?: number;
+status?: InvoiceStatus;
 };
 
