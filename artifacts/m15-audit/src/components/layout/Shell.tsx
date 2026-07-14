@@ -471,7 +471,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   )
 
   return (
-    <div className="flex min-h-screen bg-background text-foreground flex-col md:flex-row">
+    <div className="flex h-screen bg-background text-foreground flex-col md:flex-row overflow-hidden">
       {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between h-16 px-4 border-b bg-card">
         <div className="flex items-center gap-2 font-bold text-lg tracking-tight text-primary">
