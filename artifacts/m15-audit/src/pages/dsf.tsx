@@ -269,23 +269,35 @@ export default function Dsf() {
     }
   }
 
-  if (!clientId) {
-    return (
-      <div className="p-8">
-        <p className="text-muted-foreground">Client introuvable.</p>
-      </div>
-    )
-  }
-
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b bg-card px-6 py-3">
-        <Link href="/cabinet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Retour au cabinet
-        </Link>
-      </div>
+      {clientId && (
+        <div className="border-b bg-card px-6 py-3">
+          <Link href="/cabinet" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" /> Retour au cabinet
+          </Link>
+        </div>
+      )}
 
       <ClientAccountingNav activeTab="dsf" />
+
+      {!clientId && (
+        <div className="mx-auto max-w-6xl p-6">
+          <Card className="shadow-sm">
+            <CardContent className="p-16 flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+              <FileSpreadsheet className="h-10 w-10 opacity-20" />
+              <div>
+                <p className="font-medium">Sélectionnez un client</p>
+                <p className="text-sm mt-1">
+                  Choisissez un client dans le menu ci-dessus pour générer sa Liasse Fiscale (DSF SYSCOHADA).
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {clientId && (
 
       <div className="mx-auto max-w-6xl space-y-6 p-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
@@ -382,6 +394,7 @@ export default function Dsf() {
           </>
         )}
       </div>
+      )}
     </div>
   )
 }

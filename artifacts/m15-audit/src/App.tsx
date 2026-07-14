@@ -72,6 +72,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/immobilisations" component={Immobilisations} />
         <Route path="/financements" component={Financements} />
         <Route path="/cabinet/client/:clientId/finance" component={Financements} />
+        <Route path="/dsf" component={Dsf} />
         <Route path="/cabinet/client/:clientId/paie" component={Paie} />
         <Route path="/cabinet/client/:clientId/cloture" component={ClotureAnnuelle} />
         <Route path="/cabinet/client/:clientId/teledeclaration" component={Teledeclaration} />
