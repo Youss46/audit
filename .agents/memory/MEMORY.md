@@ -23,3 +23,4 @@
 - [M28 Invoicing & PDF receipt design](m28-invoicing-design.md) — serial PKs, HttpError is local per-route, CLIENT_PME_PREFIXES constant for Shell guards, generateInvoicePdf exported from export-engine.
 - [M29 RBAC & staff management design](m29-rbac-staff-design.md) — no separate Staff_Users table; requirePermission only restricts client_staff; staff mgmt gated by literal role not a permission flag.
 - [M31 internal chat design](m31-chat-design.md) — multiplex chat:* events onto the existing single /api/ws hub (no new gateway); "staff" = !isPortalRole(role), no separate Staff_Users table.
+- [Re-import bootstrap checklist](reimport-bootstrap-checklist.md) — after a GitHub re-import, DB is empty and workflows aren't registered yet; run seeds, not just `drizzle-kit push`.
