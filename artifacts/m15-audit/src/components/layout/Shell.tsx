@@ -245,7 +245,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
 
-          {hasPermission(user, "caisse.view") && (
+          {hasPermission(user, "caisse.view") && user?.roleCode !== 'POMPISTE' && (
             <Link href="/caisse" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/caisse")
@@ -269,7 +269,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
 
-          {hasPermission(user, "facturation.view") && (
+          {hasPermission(user, "facturation.view") && user?.roleCode !== 'POMPISTE' && (
             <Link href="/facturation" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/facturation")
