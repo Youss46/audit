@@ -1,6 +1,6 @@
 import * as React from "react"
 import { useAuth } from "@/hooks/use-auth"
-import { Link, useLocation } from "wouter"
+import { Link, useLocation, useSearch } from "wouter"
 import { 
   Building2, 
   Users, 
@@ -56,6 +56,8 @@ const PUBLIC_ROUTES = ["/login", "/register", "/force-password-change"]
 export function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()
   const [location, setLocation] = useLocation()
+  const search = useSearch()
+  const typeParam = new URLSearchParams(search).get("type")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(location)
 
@@ -312,7 +314,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           <Link href="/comptabilite" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/comptabilite")
+            location.startsWith("/comptabilite") && !typeParam
               ? "bg-primary text-primary-foreground"
               : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )} data-testid="link-comptabilite-cabinet">
@@ -323,7 +325,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {/* Module M32: quick-access "à valider" queues with live counts */}
           <Link href="/comptabilite?type=depense" className={cn(
             "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/comptabilite") && location.includes("type=depense")
+            location.startsWith("/comptabilite") && typeParam === "depense"
               ? "bg-primary text-primary-foreground"
               : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )} data-testid="link-revision-depenses">
@@ -340,7 +342,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
           <Link href="/comptabilite?type=recette" className={cn(
             "flex items-center justify-between gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-            location.startsWith("/comptabilite") && location.includes("type=recette")
+            location.startsWith("/comptabilite") && typeParam === "recette"
               ? "bg-primary text-primary-foreground"
               : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           )} data-testid="link-revision-recettes">
