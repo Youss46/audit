@@ -611,26 +611,28 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex items-center gap-1">
           <HelpButton />
           <NotificationBell />
-        <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-          <SheetTrigger asChild>
-            <Button variant="ghost" size="icon" className="-mr-2">
-              <Menu className="h-5 w-5" />
-              <span className="sr-only">Menu</span>
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-sidebar-border text-sidebar-foreground flex flex-col">
-            <div className="h-16 flex items-center px-6 font-bold text-xl tracking-tight text-primary-foreground border-b border-sidebar-border">
-              <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-mono mr-2 text-sm">
-                M15
+        {user?.roleCode !== 'POMPISTE' && (
+          <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon" className="-mr-2">
+                <Menu className="h-5 w-5" />
+                <span className="sr-only">Menu</span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-sidebar-border text-sidebar-foreground flex flex-col">
+              <div className="h-16 flex items-center px-6 font-bold text-xl tracking-tight text-primary-foreground border-b border-sidebar-border">
+                <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-mono mr-2 text-sm">
+                  M15
+                </div>
+                AUDIT
               </div>
-              AUDIT
-            </div>
-            <div className="flex-1 overflow-y-auto py-2" ref={mobileNavScrollRef}>
-              <NavItems />
-            </div>
-            <UserMenu />
-          </SheetContent>
-        </Sheet>
+              <div className="flex-1 overflow-y-auto py-2" ref={mobileNavScrollRef}>
+                <NavItems />
+              </div>
+              <UserMenu />
+            </SheetContent>
+          </Sheet>
+        )}
         </div>
       </header>
 

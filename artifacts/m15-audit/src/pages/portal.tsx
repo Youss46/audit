@@ -15,8 +15,9 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime } from "@/lib/utils"
 import { getSystemDescription } from "@/lib/visa-engine"
-import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet } from "lucide-react"
+import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet, LogOut } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
@@ -71,7 +72,7 @@ const PORTAL_CATEGORY = "Procédure de Visa"
 // lets the client hand off tax/financial documents to the firm, which
 // automatically starts the visa procedure (module M4) on the active mission.
 export default function ClientPortal() {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const { toast } = useToast()
   const clientId = user?.clientId ?? 0
 
@@ -393,6 +394,44 @@ export default function ClientPortal() {
             </CardContent>
           </Card>
         </>
+      )}
+
+      {user?.roleCode === 'POMPISTE' && (
+        <div className="pt-4 pb-2">
+          <div className="border-t border-border pt-4">
+            <div className="flex items-center justify-between px-1 py-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{user.fullName}</p>
+                <p className="text-xs text-muted-foreground">Pompiste</p>
+              </div>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+                    title="Se déconnecter"
+                    data-testid="button-pompiste-logout"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Se déconnecter ?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Vous devrez vous reconnecter avec votre identifiant et votre mot de passe pour accéder à nouveau à votre espace.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Annuler</AlertDialogCancel>
+                    <AlertDialogAction onClick={logout}>Se déconnecter</AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+            </div>
+          </div>
+        </div>
       )}
 
       {clientId && openThread && (
