@@ -92,8 +92,10 @@ const YEAR_OPTIONS = Array.from({ length: 10 }, (_, i) => CURRENT_YEAR - i)
 interface SyscohadaAccount {
   number: string
   label: string
-  usefulLife: number
-  type: "LINEAIRE" | "DEGRESSIF"
+  /** false = not depreciable under SYSCOHADA (land, goodwill…); absent/true = depreciable */
+  isAmortizable?: boolean
+  usefulLife: number | null
+  type: "LINEAIRE" | "DEGRESSIF" | null
 }
 
 const SYSCOHADA_CLASS2_ACCOUNTS: SyscohadaAccount[] = [
@@ -101,9 +103,11 @@ const SYSCOHADA_CLASS2_ACCOUNTS: SyscohadaAccount[] = [
   { number: "211000", label: "Frais de développement",           usefulLife: 5,  type: "LINEAIRE" },
   { number: "212000", label: "Brevets et licences",              usefulLife: 10, type: "LINEAIRE" },
   { number: "213000", label: "Logiciels informatiques",          usefulLife: 3,  type: "LINEAIRE" },
-  { number: "215000", label: "Fonds commercial",                 usefulLife: 10, type: "LINEAIRE" },
+  // Fonds commercial : non amortissable SYSCOHADA → tests de dépréciation annuels
+  { number: "215000", label: "Fonds commercial",                 isAmortizable: false, usefulLife: null, type: null },
   // Classe 22 — Terrains
-  { number: "221000", label: "Terrains nus",                     usefulLife: 50, type: "LINEAIRE" },
+  // Terrains nus : non amortissables (durée de vie illimitée)
+  { number: "221000", label: "Terrains nus",                     isAmortizable: false, usefulLife: null, type: null },
   { number: "222000", label: "Terrains aménagés",                usefulLife: 30, type: "LINEAIRE" },
   // Classe 23 — Bâtiments, installations
   { number: "231000", label: "Bâtiments administratifs",         usefulLife: 20, type: "LINEAIRE" },
@@ -294,13 +298,24 @@ export default function Immobilisations() {
     }
     const preset = ACCOUNT_LOOKUP.get(accountNumber)
     if (preset) {
-      setAddForm((f) => ({
-        ...f,
-        accountNumber: preset.number,
-        label: f.label || preset.label,
-        depreciationType: preset.type,
-        usefulLifeYears: String(preset.usefulLife),
-      }))
+      if (preset.isAmortizable === false) {
+        // Non-amortizable: clear depreciation fields, they'll be hidden in the form
+        setAddForm((f) => ({
+          ...f,
+          accountNumber: preset.number,
+          label: f.label || preset.label,
+          depreciationType: "LINEAIRE",
+          usefulLifeYears: "",
+        }))
+      } else {
+        setAddForm((f) => ({
+          ...f,
+          accountNumber: preset.number,
+          label: f.label || preset.label,
+          depreciationType: preset.type as "LINEAIRE" | "DEGRESSIF",
+          usefulLifeYears: String(preset.usefulLife),
+        }))
+      }
     }
   }
 
@@ -312,10 +327,18 @@ export default function Immobilisations() {
     if (!addForm.acquisitionDate) { setAddError("La date d'acquisition est requise."); return }
     const cost = parseInt(addForm.acquisitionCost, 10)
     if (!cost || cost <= 0) { setAddError("La valeur d'origine doit être un entier positif."); return }
-    const years = parseInt(addForm.usefulLifeYears, 10)
-    if (!years || years < 1) { setAddError("La durée de vie doit être d'au moins 1 an."); return }
     const salvage = parseInt(addForm.salvageValue, 10) || 0
     if (salvage >= cost) { setAddError("La valeur résiduelle doit être inférieure à la valeur d'origine."); return }
+
+    // Non-amortizable assets don't need useful-life validation
+    const selectedPreset = ACCOUNT_LOOKUP.get(addForm.accountNumber.trim())
+    const isNonAmortizable = selectedPreset?.isAmortizable === false
+
+    let years = 0
+    if (!isNonAmortizable) {
+      years = parseInt(addForm.usefulLifeYears, 10)
+      if (!years || years < 1) { setAddError("La durée de vie doit être d'au moins 1 an."); return }
+    }
 
     createMutation.mutate({
       data: {
@@ -325,7 +348,7 @@ export default function Immobilisations() {
         acquisitionDate: new Date(addForm.acquisitionDate).toISOString(),
         acquisitionCost: cost,
         depreciationType: addForm.depreciationType,
-        usefulLifeYears: years,
+        usefulLifeYears: isNonAmortizable ? 0 : years,
         salvageValue: salvage,
       },
     })
@@ -762,7 +785,9 @@ export default function Immobilisations() {
                           <span className="font-mono text-xs mr-2 text-muted-foreground">{acct.number}</span>
                           {acct.label}
                           <span className="ml-2 text-xs text-muted-foreground">
-                            ({acct.usefulLife}&nbsp;ans — {acct.type === "LINEAIRE" ? "Lin." : "Dég."})
+                            {acct.isAmortizable === false
+                              ? "(non amortissable)"
+                              : `(${acct.usefulLife}\u00a0ans\u00a0\u2014\u00a0${acct.type === "LINEAIRE" ? "Lin." : "Dég."})`}
                           </span>
                         </SelectItem>
                       ))}
@@ -809,41 +834,59 @@ export default function Immobilisations() {
               />
             </div>
 
-            {/* ---- Depreciation type + useful life ---- */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="depreciationType">
-                  Type d'amortissement <span className="text-destructive">*</span>
-                </Label>
-                <Select
-                  value={addForm.depreciationType}
-                  onValueChange={(v) =>
-                    setAddForm((f) => ({ ...f, depreciationType: v as "LINEAIRE" | "DEGRESSIF" }))
-                  }
-                >
-                  <SelectTrigger id="depreciationType">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="LINEAIRE">Linéaire</SelectItem>
-                    <SelectItem value="DEGRESSIF">Dégressif (SYSCOHADA)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="usefulLifeYears">
-                  Durée de vie (années) <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="usefulLifeYears"
-                  type="number"
-                  min={1}
-                  max={50}
-                  value={addForm.usefulLifeYears}
-                  onChange={(e) => setAddForm((f) => ({ ...f, usefulLifeYears: e.target.value }))}
-                />
-              </div>
-            </div>
+            {/* ---- Depreciation type + useful life (hidden for non-amortizable assets) ---- */}
+            {(() => {
+              const _preset = ACCOUNT_LOOKUP.get(addForm.accountNumber)
+              const _nonAmort = _preset?.isAmortizable === false
+              if (_nonAmort) {
+                return (
+                  <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800/40 dark:bg-amber-950/30 dark:text-amber-300">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
+                    <p>
+                      Ce type d'actif (Terrain nu, Fonds commercial) n'est pas amortissable selon
+                      les normes SYSCOHADA. Il fera l'objet de <strong>tests de dépréciation
+                      annuels</strong>.
+                    </p>
+                  </div>
+                )
+              }
+              return (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="depreciationType">
+                      Type d'amortissement <span className="text-destructive">*</span>
+                    </Label>
+                    <Select
+                      value={addForm.depreciationType}
+                      onValueChange={(v) =>
+                        setAddForm((f) => ({ ...f, depreciationType: v as "LINEAIRE" | "DEGRESSIF" }))
+                      }
+                    >
+                      <SelectTrigger id="depreciationType">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="LINEAIRE">Linéaire</SelectItem>
+                        <SelectItem value="DEGRESSIF">Dégressif (SYSCOHADA)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="usefulLifeYears">
+                      Durée de vie (années) <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="usefulLifeYears"
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={addForm.usefulLifeYears}
+                      onChange={(e) => setAddForm((f) => ({ ...f, usefulLifeYears: e.target.value }))}
+                    />
+                  </div>
+                </div>
+              )
+            })()}
 
             {/* ---- Cost + acquisition date ---- */}
             <div className="grid grid-cols-2 gap-4">
