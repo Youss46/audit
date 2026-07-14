@@ -5,14 +5,32 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
-import type { PaymentMethod } from './paymentMethod';
 
 export interface PumpShiftValidateInput {
   /** @minimum 1 */
   unitPrice: number;
-  paymentMethod: PaymentMethod;
   /**
-     * Required when paymentMethod is "especes" -- the cash physically counted for this shift.
+     * FCFA collected in cash (Espèces). Maps to the pompiste's personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.
+     * @minimum 0
+     */
+  cashAmount?: number;
+  /**
+     * FCFA collected via Wave. Maps to account 552200.
+     * @minimum 0
+     */
+  waveAmount?: number;
+  /**
+     * FCFA collected via Orange Money. Maps to account 552100.
+     * @minimum 0
+     */
+  orangeMoneyAmount?: number;
+  /**
+     * FCFA collected via MTN MoMo. Maps to account 552300.
+     * @minimum 0
+     */
+  mtnMomoAmount?: number;
+  /**
+     * Required when cashAmount > 0 -- the cash physically counted for this shift (used to compute the écart de caisse against the cashAmount).
      * @nullable
      */
   declaredPhysicalAmount?: number | null;

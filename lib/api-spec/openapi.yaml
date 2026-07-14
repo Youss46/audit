@@ -1463,6 +1463,43 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /mobile-money/transfers:
+    post:
+      operationId: createMobileMoneyTransfer
+      tags: [station-service]
+      summary: "Module P7 Mobile Money (Cabinet): records a 'Virement Mobile Money → Banque' withdrawal. Automatically books the net amount to 52 (Banques), the operator fee to 631700 (Frais sur instruments monétaires électroniques), and credits the provider's Classe 55 account (552100 Orange Money / 552200 Wave / 552300 MTN MoMo / 552400 Moov Money). Cabinet access only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileMoneyVirementInput"
+      responses:
+        "201":
+          description: Transfer booked as a draft SYSCOHADA entry pending cabinet review
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileMoneyVirementResult"
+        "400":
+          description: Invalid input, e.g. feeAmount ≥ totalAmount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Restricted to cabinet staff; portal roles cannot call this endpoint
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/balance:
     get:
       operationId: getBalanceDesComptes
@@ -4726,6 +4763,18 @@ components:
           description: unitPrice x volumeLiters, rounded to the nearest FCFA.
         declaredPhysicalAmount: { type: ["integer", "null"] }
         discrepancyAmount: { type: ["integer", "null"] }
+        cashAmount:
+          type: ["integer", "null"]
+          description: "FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade."
+        waveAmount:
+          type: ["integer", "null"]
+          description: "FCFA collected via Wave (552200)."
+        orangeMoneyAmount:
+          type: ["integer", "null"]
+          description: "FCFA collected via Orange Money (552100)."
+        mtnMomoAmount:
+          type: ["integer", "null"]
+          description: "FCFA collected via MTN MoMo (552300)."
         transactionId: { type: ["integer", "null"] }
         discrepancyTransactionId: { type: ["integer", "null"] }
         openedByName: { type: ["string", "null"] }
@@ -4749,15 +4798,33 @@ components:
 
     PumpShiftValidateInput:
       type: object
-      required: [unitPrice, paymentMethod]
+      required: [unitPrice]
       properties:
         unitPrice:
           type: integer
           minimum: 1
-        paymentMethod:
-          $ref: "#/components/schemas/PaymentMethod"
+        cashAmount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: "FCFA collected in cash (Espèces). Maps to the pompiste's personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount."
+        waveAmount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: "FCFA collected via Wave. Maps to account 552200."
+        orangeMoneyAmount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: "FCFA collected via Orange Money. Maps to account 552100."
+        mtnMomoAmount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: "FCFA collected via MTN MoMo. Maps to account 552300."
         declaredPhysicalAmount:
-          description: Required when paymentMethod is "especes" -- the cash physically counted for this shift.
+          description: "Required when cashAmount > 0 -- the cash physically counted for this shift (used to compute the écart de caisse against the cashAmount)."
           type: ["integer", "null"]
 
     PumpShiftValidateResult:
@@ -6565,3 +6632,36 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time }
 
+
+    MobileMoneyProvider:
+      type: string
+      enum: [wave, orange_money, mtn_momo, moov_money]
+
+    MobileMoneyVirementInput:
+      type: object
+      required: [clientId, provider, totalAmount, feeAmount, date]
+      properties:
+        clientId: { type: integer }
+        provider:
+          $ref: "#/components/schemas/MobileMoneyProvider"
+        totalAmount:
+          type: integer
+          minimum: 1
+          description: "Gross amount withdrawn from the Mobile Money account (FCFA)."
+        feeAmount:
+          type: integer
+          minimum: 0
+          description: "Operator withdrawal/transfer fee (FCFA). Must be strictly less than totalAmount. Books to 631700. May be zero."
+        date:
+          type: string
+          format: date-time
+        note:
+          type: ["string", "null"]
+          description: "Optional free-text memo (e.g. 'Retrait Wave agence Cocody')."
+
+    MobileMoneyVirementResult:
+      type: object
+      required: [transaction]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/TransactionDetail"

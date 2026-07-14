@@ -47,10 +47,19 @@ export const pumpShiftsTable = pgTable("pump_shifts", {
   status: text("status").notNull().$type<PumpShiftStatus>().default("OPEN"),
   // Filled in at validation ("Ventes de carburant").
   unitPrice: integer("unit_price"),
+  // Legacy single-method field kept for records created before the split-payment
+  // upgrade. Null for new multi-provider shifts; derived on read as needed.
   paymentMethod: text("payment_method").$type<PaymentMethod>(),
   expectedAmount: integer("expected_amount"),
   declaredPhysicalAmount: integer("declared_physical_amount"),
   discrepancyAmount: integer("discrepancy_amount"),
+  // Module P7 split-payment breakdown (Mobile Money + Espèces).
+  // Each field is the FCFA amount collected via that channel for this shift.
+  // Their sum must equal expectedAmount. Null when not used (zero-value channel).
+  cashAmount: integer("cash_amount"),
+  waveAmount: integer("wave_amount"),
+  orangeMoneyAmount: integer("orange_money_amount"),
+  mtnMomoAmount: integer("mtn_momo_amount"),
   transactionId: integer("transaction_id").references(() => transactionsTable.id, {
     onDelete: "set null",
   }),

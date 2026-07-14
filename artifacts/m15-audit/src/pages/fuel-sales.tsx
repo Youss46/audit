@@ -6,29 +6,19 @@ import {
   useGetPumpShift,
   getGetPumpShiftQueryKey,
   useValidatePumpShift,
-  PaymentMethod,
   type PumpShiftValidateResult,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
-import { getPaymentMethodLabel, formatFcfa } from "@/lib/status"
+import { formatFcfa } from "@/lib/status"
 import { formatDateTime } from "@/lib/utils"
-import { ArrowLeft, Fuel, CheckCircle2, Gauge } from "lucide-react"
+import { ArrowLeft, Fuel, CheckCircle2, Gauge, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-
-const PAYMENT_METHODS: PaymentMethod[] = ["especes", "mobile_money", "cheque", "virement"]
 
 // Module P7: default local pump price ("Ex : 875 FCFA pour le Super en Côte
 // d'Ivoire") -- a starting point the pompiste can still override before
@@ -125,7 +115,11 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
   })
 
   const [unitPrice, setUnitPrice] = useState("")
-  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("")
+  // Split-payment breakdown state (all in FCFA)
+  const [cashAmount, setCashAmount] = useState("")
+  const [waveAmount, setWaveAmount] = useState("")
+  const [orangeMoneyAmount, setOrangeMoneyAmount] = useState("")
+  const [mtnMomoAmount, setMtnMomoAmount] = useState("")
   const [declaredAmount, setDeclaredAmount] = useState("")
   const [result, setResult] = useState<PumpShiftValidateResult | null>(null)
 
@@ -151,6 +145,7 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
     },
   })
 
+  // Theoretical sale amount from pump readings × unit price.
   const expectedAmount = useMemo(() => {
     if (!shift) return null
     const price = parseInt(unitPrice, 10)
@@ -158,23 +153,40 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
     return Math.round(shift.volumeLiters * price)
   }, [shift, unitPrice])
 
+  // Running total of all payment channels.
+  const totalPayments = useMemo(() => {
+    const cash = parseInt(cashAmount, 10) || 0
+    const wave = parseInt(waveAmount, 10) || 0
+    const orange = parseInt(orangeMoneyAmount, 10) || 0
+    const mtn = parseInt(mtnMomoAmount, 10) || 0
+    return cash + wave + orange + mtn
+  }, [cashAmount, waveAmount, orangeMoneyAmount, mtnMomoAmount])
+
+  const cashValue = parseInt(cashAmount, 10) || 0
+  const hasCash = cashValue > 0
+  const paymentMatchesExpected = expectedAmount != null && totalPayments === expectedAmount
+
+  // Écart de caisse: declared physical cash vs. the expected cash portion.
   const discrepancy = useMemo(() => {
-    if (paymentMethod !== "especes" || expectedAmount == null) return null
+    if (!hasCash || expectedAmount == null) return null
     const declared = parseInt(declaredAmount, 10)
     if (isNaN(declared)) return null
-    return declared - expectedAmount
-  }, [paymentMethod, expectedAmount, declaredAmount])
+    return declared - cashValue
+  }, [hasCash, expectedAmount, declaredAmount, cashValue])
 
   function handleValidate() {
-    if (!shift || expectedAmount == null || !paymentMethod) return
-    if (paymentMethod === "especes" && !declaredAmount) return
+    if (!shift || expectedAmount == null || !paymentMatchesExpected) return
+    if (hasCash && !declaredAmount) return
     validateMutation.mutate({
       id: shift.id,
       data: {
         unitPrice: parseInt(unitPrice, 10),
-        paymentMethod,
-        declaredPhysicalAmount: paymentMethod === "especes" ? parseInt(declaredAmount, 10) : null,
-      },
+        cashAmount: parseInt(cashAmount, 10) || 0,
+        waveAmount: parseInt(waveAmount, 10) || 0,
+        orangeMoneyAmount: parseInt(orangeMoneyAmount, 10) || 0,
+        mtnMomoAmount: parseInt(mtnMomoAmount, 10) || 0,
+        declaredPhysicalAmount: hasCash ? parseInt(declaredAmount, 10) : null,
+      } as any, // shape aligned with PumpShiftValidateInput after codegen
     })
   }
 
@@ -185,12 +197,15 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
     return <div className="max-w-lg mx-auto p-4 text-sm text-destructive">Relevé introuvable.</div>
   }
 
+  const isDisabled = shift.status !== "OPEN"
   const canValidate =
-    !!paymentMethod &&
+    paymentMatchesExpected &&
     !!unitPrice &&
-    (paymentMethod !== "especes" || !!declaredAmount) &&
+    (!hasCash || !!declaredAmount) &&
     !validateMutation.isPending &&
-    shift.status === "OPEN"
+    !isDisabled
+
+  const amountGap = expectedAmount != null ? totalPayments - expectedAmount : null
 
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
@@ -212,6 +227,7 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {/* Volume and unit price */}
           <div className="space-y-2">
             <Label htmlFor="volume">Volume vendu (L)</Label>
             <Input id="volume" value={`${shift.volumeLiters} L`} readOnly disabled className="bg-muted" data-testid="input-volume" />
@@ -223,44 +239,84 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
               id="unitPrice"
               value={unitPrice}
               onChange={(e) => setUnitPrice(e.target.value)}
-              disabled={shift.status !== "OPEN"}
+              disabled={isDisabled}
               data-testid="input-unit-price"
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="paymentMethod">Mode de paiement</Label>
-            <Select
-              value={paymentMethod}
-              onValueChange={(v) => setPaymentMethod(v as PaymentMethod)}
-              disabled={shift.status !== "OPEN"}
-            >
-              <SelectTrigger id="paymentMethod" data-testid="select-payment-method">
-                <SelectValue placeholder="Sélectionner un mode..." />
-              </SelectTrigger>
-              <SelectContent>
-                {PAYMENT_METHODS.map((m) => (
-                  <SelectItem key={m} value={m}>
-                    {getPaymentMethodLabel(m)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          {/* ── Répartition des paiements ── */}
+          <div className="space-y-1 pt-1">
+            <p className="text-sm font-semibold">Répartition des paiements (FCFA)</p>
+            <p className="text-xs text-muted-foreground">
+              Saisissez les montants perçus par canal. La somme doit être égale au montant attendu.
+            </p>
           </div>
 
-          {paymentMethod === "especes" && (
+          <div className="space-y-2">
+            <Label htmlFor="cashAmount">Espèces</Label>
+            <AmountInput
+              id="cashAmount"
+              value={cashAmount}
+              onChange={(e) => setCashAmount(e.target.value)}
+              disabled={isDisabled}
+              placeholder="0"
+              data-testid="input-cash-amount"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="waveAmount">Paiement Wave</Label>
+            <AmountInput
+              id="waveAmount"
+              value={waveAmount}
+              onChange={(e) => setWaveAmount(e.target.value)}
+              disabled={isDisabled}
+              placeholder="0"
+              data-testid="input-wave-amount"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="orangeMoneyAmount">Paiement Orange Money</Label>
+            <AmountInput
+              id="orangeMoneyAmount"
+              value={orangeMoneyAmount}
+              onChange={(e) => setOrangeMoneyAmount(e.target.value)}
+              disabled={isDisabled}
+              placeholder="0"
+              data-testid="input-orange-money-amount"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mtnMomoAmount">Paiement MTN MoMo</Label>
+            <AmountInput
+              id="mtnMomoAmount"
+              value={mtnMomoAmount}
+              onChange={(e) => setMtnMomoAmount(e.target.value)}
+              disabled={isDisabled}
+              placeholder="0"
+              data-testid="input-mtn-momo-amount"
+            />
+          </div>
+
+          {/* Physical cash count — only when espèces portion > 0 */}
+          {hasCash && !isDisabled && (
             <div className="space-y-2">
-              <Label htmlFor="declaredAmount">Montant physiquement compté en caisse (FCFA)</Label>
+              <Label htmlFor="declaredAmount">
+                Montant physiquement compté en caisse — Espèces (FCFA)
+              </Label>
               <AmountInput
                 id="declaredAmount"
                 value={declaredAmount}
                 onChange={(e) => setDeclaredAmount(e.target.value)}
-                disabled={shift.status !== "OPEN"}
+                disabled={isDisabled}
                 data-testid="input-declared-amount"
               />
             </div>
           )}
 
+          {/* Summary panel */}
           <div className="rounded-md border bg-amber-50/60 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800 p-3 space-y-1.5">
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Montant attendu</span>
@@ -268,11 +324,40 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
                 {expectedAmount != null ? formatFcfa(expectedAmount) : "—"}
               </span>
             </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-muted-foreground">Total saisi</span>
+              <span
+                className={`font-semibold ${
+                  paymentMatchesExpected
+                    ? "text-green-700 dark:text-green-400"
+                    : totalPayments > 0
+                      ? "text-amber-600 dark:text-amber-400"
+                      : ""
+                }`}
+                data-testid="text-total-payments"
+              >
+                {totalPayments > 0 ? formatFcfa(totalPayments) : "—"}
+              </span>
+            </div>
+            {amountGap != null && amountGap !== 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 pt-0.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  {amountGap > 0 ? `Excédent de ${formatFcfa(amountGap)}` : `Manquant de ${formatFcfa(-amountGap)}`}
+                </span>
+              </div>
+            )}
             {discrepancy != null && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Écart de caisse</span>
+              <div className="flex items-center justify-between text-sm border-t pt-1.5 mt-0.5">
+                <span className="text-muted-foreground">Écart de caisse (Espèces)</span>
                 <span
-                  className={`font-semibold ${discrepancy === 0 ? "" : discrepancy > 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}
+                  className={`font-semibold ${
+                    discrepancy === 0
+                      ? ""
+                      : discrepancy > 0
+                        ? "text-green-700 dark:text-green-400"
+                        : "text-red-700 dark:text-red-400"
+                  }`}
                   data-testid="text-discrepancy"
                 >
                   {discrepancy > 0 ? "+" : ""}
@@ -282,7 +367,7 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
             )}
           </div>
 
-          {shift.status === "OPEN" ? (
+          {!isDisabled ? (
             <Button
               className="w-full bg-amber-600 hover:bg-amber-700 text-white"
               size="lg"
@@ -323,6 +408,9 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
             )}
             {result?.discrepancyTransaction && (
               <div className="text-sm space-y-1 pt-2 border-t">
+                <div className="font-medium text-amber-700 dark:text-amber-400">
+                  Écart de caisse
+                </div>
                 <div className="font-medium">{result.discrepancyTransaction.label}</div>
                 {result.discrepancyTransaction.journalLines.map((line) => (
                   <div key={line.id} className="flex items-center justify-between text-xs font-mono text-muted-foreground">

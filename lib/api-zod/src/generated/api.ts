@@ -1650,6 +1650,10 @@ export const ListPumpShiftsResponseItem = zod.object({
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
   "discrepancyAmount": zod.number().nullish(),
+  "cashAmount": zod.number().nullish().describe('FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.'),
+  "waveAmount": zod.number().nullish().describe('FCFA collected via Wave (552200).'),
+  "orangeMoneyAmount": zod.number().nullish().describe('FCFA collected via Orange Money (552100).'),
+  "mtnMomoAmount": zod.number().nullish().describe('FCFA collected via MTN MoMo (552300).'),
   "transactionId": zod.number().nullish(),
   "discrepancyTransactionId": zod.number().nullish(),
   "openedByName": zod.string().nullish(),
@@ -1690,6 +1694,10 @@ export const CreatePumpShiftResponse = zod.object({
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
   "discrepancyAmount": zod.number().nullish(),
+  "cashAmount": zod.number().nullish().describe('FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.'),
+  "waveAmount": zod.number().nullish().describe('FCFA collected via Wave (552200).'),
+  "orangeMoneyAmount": zod.number().nullish().describe('FCFA collected via Orange Money (552100).'),
+  "mtnMomoAmount": zod.number().nullish().describe('FCFA collected via MTN MoMo (552300).'),
   "transactionId": zod.number().nullish(),
   "discrepancyTransactionId": zod.number().nullish(),
   "openedByName": zod.string().nullish(),
@@ -1721,6 +1729,10 @@ export const GetPumpShiftResponse = zod.object({
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
   "discrepancyAmount": zod.number().nullish(),
+  "cashAmount": zod.number().nullish().describe('FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.'),
+  "waveAmount": zod.number().nullish().describe('FCFA collected via Wave (552200).'),
+  "orangeMoneyAmount": zod.number().nullish().describe('FCFA collected via Orange Money (552100).'),
+  "mtnMomoAmount": zod.number().nullish().describe('FCFA collected via MTN MoMo (552300).'),
   "transactionId": zod.number().nullish(),
   "discrepancyTransactionId": zod.number().nullish(),
   "openedByName": zod.string().nullish(),
@@ -1738,12 +1750,27 @@ export const ValidatePumpShiftParams = zod.object({
 })
 
 
+export const validatePumpShiftBodyCashAmountDefault = 0;
+export const validatePumpShiftBodyCashAmountMin = 0;
+
+export const validatePumpShiftBodyWaveAmountDefault = 0;
+export const validatePumpShiftBodyWaveAmountMin = 0;
+
+export const validatePumpShiftBodyOrangeMoneyAmountDefault = 0;
+export const validatePumpShiftBodyOrangeMoneyAmountMin = 0;
+
+export const validatePumpShiftBodyMtnMomoAmountDefault = 0;
+export const validatePumpShiftBodyMtnMomoAmountMin = 0;
+
 
 
 export const ValidatePumpShiftBody = zod.object({
   "unitPrice": zod.number().min(1),
-  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),
-  "declaredPhysicalAmount": zod.number().nullish().describe('Required when paymentMethod is \"especes\" -- the cash physically counted for this shift.')
+  "cashAmount": zod.number().min(validatePumpShiftBodyCashAmountMin).default(validatePumpShiftBodyCashAmountDefault).describe('FCFA collected in cash (Espèces). Maps to the pompiste\'s personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.'),
+  "waveAmount": zod.number().min(validatePumpShiftBodyWaveAmountMin).default(validatePumpShiftBodyWaveAmountDefault).describe('FCFA collected via Wave. Maps to account 552200.'),
+  "orangeMoneyAmount": zod.number().min(validatePumpShiftBodyOrangeMoneyAmountMin).default(validatePumpShiftBodyOrangeMoneyAmountDefault).describe('FCFA collected via Orange Money. Maps to account 552100.'),
+  "mtnMomoAmount": zod.number().min(validatePumpShiftBodyMtnMomoAmountMin).default(validatePumpShiftBodyMtnMomoAmountDefault).describe('FCFA collected via MTN MoMo. Maps to account 552300.'),
+  "declaredPhysicalAmount": zod.number().nullish().describe('Required when cashAmount > 0 -- the cash physically counted for this shift (used to compute the écart de caisse against the cashAmount).')
 })
 
 export const ValidatePumpShiftResponse = zod.object({
@@ -1762,6 +1789,10 @@ export const ValidatePumpShiftResponse = zod.object({
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
   "discrepancyAmount": zod.number().nullish(),
+  "cashAmount": zod.number().nullish().describe('FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.'),
+  "waveAmount": zod.number().nullish().describe('FCFA collected via Wave (552200).'),
+  "orangeMoneyAmount": zod.number().nullish().describe('FCFA collected via Orange Money (552100).'),
+  "mtnMomoAmount": zod.number().nullish().describe('FCFA collected via MTN MoMo (552300).'),
   "transactionId": zod.number().nullish(),
   "discrepancyTransactionId": zod.number().nullish(),
   "openedByName": zod.string().nullish(),
@@ -1849,6 +1880,67 @@ export const ValidatePumpShiftResponse = zod.object({
   "creditAmount": zod.number()
 }))
 })),zod.null()]).optional()
+})
+
+
+/**
+ * @summary Module P7 Mobile Money (Cabinet): records a 'Virement Mobile Money → Banque' withdrawal. Automatically books the net amount to 52 (Banques), the operator fee to 631700 (Frais sur instruments monétaires électroniques), and credits the provider's Classe 55 account (552100 Orange Money / 552200 Wave / 552300 MTN MoMo / 552400 Moov Money). Cabinet access only.
+ */
+
+export const createMobileMoneyTransferBodyFeeAmountMin = 0;
+
+
+
+export const CreateMobileMoneyTransferBody = zod.object({
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "totalAmount": zod.number().min(1).describe('Gross amount withdrawn from the Mobile Money account (FCFA).'),
+  "feeAmount": zod.number().min(createMobileMoneyTransferBodyFeeAmountMin).describe('Operator withdrawal\/transfer fee (FCFA). Must be strictly less than totalAmount. Books to 631700. May be zero.'),
+  "date": zod.coerce.date(),
+  "note": zod.string().nullish().describe('Optional free-text memo (e.g. \'Retrait Wave agence Cocody\').')
+})
+
+export const CreateMobileMoneyTransferResponse = zod.object({
+  "transaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))
 })
 
 

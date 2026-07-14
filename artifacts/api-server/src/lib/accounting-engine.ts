@@ -23,6 +23,23 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   virement: "Virement",
 };
 
+// Module P7 Mobile Money: per-provider Classe 55 SYSCOHADA accounts used
+// when a pompiste's fuel sale is collected via a specific mobile money
+// operator, and when the cabinet records a withdrawal/transfer to bank.
+export const MOBILE_MONEY_PROVIDER_ACCOUNTS: Record<string, string> = {
+  wave: "552200",
+  orange_money: "552100",
+  mtn_momo: "552300",
+  moov_money: "552400",
+};
+
+export const MOBILE_MONEY_PROVIDER_LABELS: Record<string, string> = {
+  wave: "Wave",
+  orange_money: "Orange Money",
+  mtn_momo: "MTN MoMo",
+  moov_money: "Moov Money",
+};
+
 // Third-party ("tiers") accounts used for credit (à crédit) operations,
 // strict SYSCOHADA accrual accounting: a recette is booked against 4111
 // (Clients) until settled, a dépense against 4011 (Fournisseurs).
@@ -131,6 +148,18 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
     type: "recette",
     counterpartAccount: "701",
     counterpartName: "Ventes de marchandises (carburant)",
+    hidden: true,
+  },
+
+  // Module P7 Mobile Money: system-generated only, booked when the cabinet
+  // records a Mobile Money → Banque withdrawal/transfer. The fee leg
+  // (631700) is always included in the same compound journal entry -- this
+  // category rule drives the main counter-part (52 Banques), not the fee.
+  frais_mobile_money: {
+    label: "Frais sur instruments monétaires électroniques",
+    type: "depense",
+    counterpartAccount: "631700",
+    counterpartName: "Frais sur instruments monétaires électroniques",
     hidden: true,
   },
 
@@ -257,6 +286,114 @@ export function computeJournalLines(input: {
       creditAmount: input.amount,
     },
   ];
+}
+
+// Module P7 Mobile Money: computes the multi-debit journal entry for a fuel
+// sale collected via a mix of Espèces and/or Mobile Money providers.
+// Instead of the standard 2-line entry, each active payment channel gets its
+// own debit leg so the per-provider Classe 55 / 571xx sub-ledgers stay
+// reconcilable. The single credit leg always lands on 701 (Ventes de
+// marchandises - carburant).
+//
+// Invariant: cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount
+//            must equal totalAmount (enforced by the caller before this runs).
+export function computeFuelSaleJournalLines(input: {
+  cashAmount: number;
+  waveAmount: number;
+  orangeMoneyAmount: number;
+  mtnMomoAmount: number;
+  totalAmount: number;
+  // The pompiste's personal sub-account (e.g. "571101") when they have a
+  // dedicated P6 cash drawer -- overrides the generic "571" for the cash leg.
+  cashRegisterAccountNumber?: string | null;
+  cashRegisterName?: string | null;
+}): ComputedJournalLine[] {
+  const lines: ComputedJournalLine[] = [];
+
+  if (input.cashAmount > 0) {
+    lines.push({
+      accountNumber: input.cashRegisterAccountNumber ?? "571",
+      label: input.cashRegisterName ?? "Caisse",
+      debitAmount: input.cashAmount,
+      creditAmount: 0,
+    });
+  }
+  if (input.waveAmount > 0) {
+    lines.push({
+      accountNumber: MOBILE_MONEY_PROVIDER_ACCOUNTS.wave,
+      label: MOBILE_MONEY_PROVIDER_LABELS.wave,
+      debitAmount: input.waveAmount,
+      creditAmount: 0,
+    });
+  }
+  if (input.orangeMoneyAmount > 0) {
+    lines.push({
+      accountNumber: MOBILE_MONEY_PROVIDER_ACCOUNTS.orange_money,
+      label: MOBILE_MONEY_PROVIDER_LABELS.orange_money,
+      debitAmount: input.orangeMoneyAmount,
+      creditAmount: 0,
+    });
+  }
+  if (input.mtnMomoAmount > 0) {
+    lines.push({
+      accountNumber: MOBILE_MONEY_PROVIDER_ACCOUNTS.mtn_momo,
+      label: MOBILE_MONEY_PROVIDER_LABELS.mtn_momo,
+      debitAmount: input.mtnMomoAmount,
+      creditAmount: 0,
+    });
+  }
+
+  // Credit leg: Ventes de marchandises (carburant).
+  lines.push({
+    accountNumber: "701",
+    label: "Ventes de marchandises (carburant)",
+    debitAmount: 0,
+    creditAmount: input.totalAmount,
+  });
+
+  return lines;
+}
+
+// Module P7 Mobile Money: computes the compound journal entry for a cabinet
+// "Virement Mobile Money vers Banque" operation.
+//   Dr 52       net amount (totalAmount - feeAmount)  → Banque
+//   Dr 631700   feeAmount                             → Frais Mobile Money
+//   Cr 552xxx   totalAmount                           → Mobile Money provider
+export function computeMobileMoneyVirementJournalLines(input: {
+  provider: string;
+  totalAmount: number;
+  feeAmount: number;
+}): ComputedJournalLine[] {
+  const netAmount = input.totalAmount - input.feeAmount;
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
+
+  const lines: ComputedJournalLine[] = [
+    {
+      accountNumber: "52",
+      label: "Banques",
+      debitAmount: netAmount,
+      creditAmount: 0,
+    },
+  ];
+
+  if (input.feeAmount > 0) {
+    lines.push({
+      accountNumber: "631700",
+      label: "Frais sur instruments monétaires électroniques",
+      debitAmount: input.feeAmount,
+      creditAmount: 0,
+    });
+  }
+
+  lines.push({
+    accountNumber: mmAccount,
+    label: mmLabel,
+    debitAmount: 0,
+    creditAmount: input.totalAmount,
+  });
+
+  return lines;
 }
 
 // Computes the second leg ("Step 2: Settlement") of a credit operation, once

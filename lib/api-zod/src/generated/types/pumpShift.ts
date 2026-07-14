@@ -33,6 +33,26 @@ export interface PumpShift {
   declaredPhysicalAmount?: number | null;
   /** @nullable */
   discrepancyAmount?: number | null;
+  /**
+     * FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.
+     * @nullable
+     */
+  cashAmount?: number | null;
+  /**
+     * FCFA collected via Wave (552200).
+     * @nullable
+     */
+  waveAmount?: number | null;
+  /**
+     * FCFA collected via Orange Money (552100).
+     * @nullable
+     */
+  orangeMoneyAmount?: number | null;
+  /**
+     * FCFA collected via MTN MoMo (552300).
+     * @nullable
+     */
+  mtnMomoAmount?: number | null;
   /** @nullable */
   transactionId?: number | null;
   /** @nullable */

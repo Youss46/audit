@@ -772,6 +772,26 @@ export interface PumpShift {
   declaredPhysicalAmount?: number | null;
   /** @nullable */
   discrepancyAmount?: number | null;
+  /**
+     * FCFA collected in cash (Espèces) for this shift. Null for shifts created before the split-payment upgrade.
+     * @nullable
+     */
+  cashAmount?: number | null;
+  /**
+     * FCFA collected via Wave (552200).
+     * @nullable
+     */
+  waveAmount?: number | null;
+  /**
+     * FCFA collected via Orange Money (552100).
+     * @nullable
+     */
+  orangeMoneyAmount?: number | null;
+  /**
+     * FCFA collected via MTN MoMo (552300).
+     * @nullable
+     */
+  mtnMomoAmount?: number | null;
   /** @nullable */
   transactionId?: number | null;
   /** @nullable */
@@ -797,9 +817,28 @@ export interface PumpShiftCreateInput {
 export interface PumpShiftValidateInput {
   /** @minimum 1 */
   unitPrice: number;
-  paymentMethod: PaymentMethod;
   /**
-     * Required when paymentMethod is "especes" -- the cash physically counted for this shift.
+     * FCFA collected in cash (Espèces). Maps to the pompiste's personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.
+     * @minimum 0
+     */
+  cashAmount?: number;
+  /**
+     * FCFA collected via Wave. Maps to account 552200.
+     * @minimum 0
+     */
+  waveAmount?: number;
+  /**
+     * FCFA collected via Orange Money. Maps to account 552100.
+     * @minimum 0
+     */
+  orangeMoneyAmount?: number;
+  /**
+     * FCFA collected via MTN MoMo. Maps to account 552300.
+     * @minimum 0
+     */
+  mtnMomoAmount?: number;
+  /**
+     * Required when cashAmount > 0 -- the cash physically counted for this shift (used to compute the écart de caisse against the cashAmount).
      * @nullable
      */
   declaredPhysicalAmount?: number | null;
@@ -2277,6 +2316,41 @@ export interface PayrollSetting {
   updatedByName?: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type MobileMoneyProvider = typeof MobileMoneyProvider[keyof typeof MobileMoneyProvider];
+
+
+export const MobileMoneyProvider = {
+  wave: 'wave',
+  orange_money: 'orange_money',
+  mtn_momo: 'mtn_momo',
+  moov_money: 'moov_money',
+} as const;
+
+export interface MobileMoneyVirementInput {
+  clientId: number;
+  provider: MobileMoneyProvider;
+  /**
+     * Gross amount withdrawn from the Mobile Money account (FCFA).
+     * @minimum 1
+     */
+  totalAmount: number;
+  /**
+     * Operator withdrawal/transfer fee (FCFA). Must be strictly less than totalAmount. Books to 631700. May be zero.
+     * @minimum 0
+     */
+  feeAmount: number;
+  date: string;
+  /**
+     * Optional free-text memo (e.g. 'Retrait Wave agence Cocody').
+     * @nullable
+     */
+  note?: string | null;
+}
+
+export interface MobileMoneyVirementResult {
+  transaction: TransactionDetail;
 }
 
 export type ListAuditLogsParams = {

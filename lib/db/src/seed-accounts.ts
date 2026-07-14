@@ -45,9 +45,19 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   // always posted to a pompiste's own sub-account, never to this one.
   { accountNumber: "571100", name: "Caisse Pompistes (compte collectif)", accountClass: 5 },
   { accountNumber: "58", name: "Virements de fonds", accountClass: 5 },
+  // Classe 55 - Instruments de monnaie électronique (Mobile Money).
+  // Added automatically for clients with a STATION_SERVICE profile.
+  // 552100 Orange Money, 552200 Wave, 552300 MTN MoMo, 552400 Moov Money.
+  { accountNumber: "552", name: "Instruments de monnaie électronique", accountClass: 5 },
+  { accountNumber: "552100", name: "Orange Money", accountClass: 5 },
+  { accountNumber: "552200", name: "Wave", accountClass: 5 },
+  { accountNumber: "552300", name: "MTN MoMo", accountClass: 5 },
+  { accountNumber: "552400", name: "Moov Money", accountClass: 5 },
 
   // Classe 6 - Comptes de charges
   { accountNumber: "601", name: "Achats de marchandises", accountClass: 6 },
+  // Module P7 Mobile Money: frais de retrait / virement vers banque.
+  { accountNumber: "631700", name: "Frais sur instruments monétaires électroniques", accountClass: 6 },
   { accountNumber: "6051", name: "Fournitures non stockables - Carburant", accountClass: 6 },
   { accountNumber: "6052", name: "Fournitures non stockables - Eau, électricité", accountClass: 6 },
   { accountNumber: "6054", name: "Fournitures de bureau", accountClass: 6 },

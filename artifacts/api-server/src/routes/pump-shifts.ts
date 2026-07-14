@@ -9,6 +9,7 @@ import {
   journalLinesTable,
   isPortalRole,
   type PumpShift,
+  type PaymentMethod,
 } from "@workspace/db";
 import { broadcastPendingCounts } from "../lib/pending-counts";
 import {
@@ -26,8 +27,10 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireOwnClient, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
-import { computeJournalLines } from "../lib/accounting-engine";
-import { createTransactionEntry, HttpError, withJournalLines } from "./accounting";
+import { computeJournalLines, computeFuelSaleJournalLines } from "../lib/accounting-engine";
+import { HttpError, withJournalLines } from "./accounting";
+import { isPeriodLocked } from "../lib/closing-engine";
+
 
 // Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant):
 // gives the "Relevé d'index de pompe" and "Ventes de carburant" Espace PME
@@ -57,6 +60,10 @@ function serializePumpShift(
     expectedAmount: shift.expectedAmount ?? null,
     declaredPhysicalAmount: shift.declaredPhysicalAmount ?? null,
     discrepancyAmount: shift.discrepancyAmount ?? null,
+    cashAmount: shift.cashAmount ?? null,
+    waveAmount: shift.waveAmount ?? null,
+    orangeMoneyAmount: shift.orangeMoneyAmount ?? null,
+    mtnMomoAmount: shift.mtnMomoAmount ?? null,
     transactionId: shift.transactionId ?? null,
     discrepancyTransactionId: shift.discrepancyTransactionId ?? null,
     openedByName: extra.openedByName ?? null,
@@ -288,11 +295,13 @@ async function bookDiscrepancy(input: {
   return tx;
 }
 
-// "Valider le Shift": computes the theoretical sale value from the sold
-// volume, posts it as a SYSCOHADA sale entry through the same
-// createTransactionEntry() helper as every other P3/P5 entry, then -- for
-// espèces settlements -- compares the declared physical cash to that
-// theoretical value and books any gap as a separate écart.
+// "Valider le Shift" (Ventes de carburant): computes the theoretical sale
+// value from the sold volume, then books it as a multi-leg SYSCOHADA entry
+// -- one debit per active payment channel (Espèces → 5711xx, Wave → 552200,
+// Orange Money → 552100, MTN MoMo → 552300) and one credit to 701 (Ventes
+// de marchandises carburant). For the espèces portion, compares the declared
+// physical cash to the cash breakdown amount and books any écart as a
+// separate reviewable transaction -- same pattern as the P5 daily closure.
 router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), async (req, res) => {
   const { id } = ValidatePumpShiftParams.parse(req.params);
   const body = ValidatePumpShiftBody.parse(req.body);
@@ -303,44 +312,135 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     res.status(409).json({ error: "Ce shift a déjà été validé." });
     return;
   }
-  if (body.paymentMethod === "especes" && body.declaredPhysicalAmount == null) {
-    res.status(400).json({
-      error: "Le montant physiquement compté en caisse est requis pour un règlement en espèces.",
-    });
-    return;
-  }
 
   const volumeLiters = Math.round((shift.indexEnd - shift.indexStart) * 100) / 100;
   const expectedAmount = Math.round(volumeLiters * body.unitPrice);
   const fuelLabel = shift.fuelType === "super" ? "Super" : "Gasoil";
 
-  let saleResult: Awaited<ReturnType<typeof createTransactionEntry>>;
-  try {
-    saleResult = await createTransactionEntry(req, {
+  // Payment breakdown (default to 0 for each channel).
+  const cashAmount = body.cashAmount ?? 0;
+  const waveAmount = body.waveAmount ?? 0;
+  const orangeMoneyAmount = body.orangeMoneyAmount ?? 0;
+  const mtnMomoAmount = body.mtnMomoAmount ?? 0;
+  const totalPayments = cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount;
+
+  if (totalPayments !== expectedAmount) {
+    res.status(400).json({
+      error: `La somme des paiements (${totalPayments} FCFA) ne correspond pas au montant attendu (${expectedAmount} FCFA). Vérifiez la répartition.`,
+    });
+    return;
+  }
+
+  if (cashAmount > 0 && body.declaredPhysicalAmount == null) {
+    res.status(400).json({
+      error: "Le montant physiquement compté en caisse est requis lorsqu'une partie du règlement est en espèces.",
+    });
+    return;
+  }
+
+  // Block entries for a locked fiscal year.
+  const txYear = new Date().getFullYear();
+  if (await isPeriodLocked(req.user!.firmId, shift.clientId, txYear)) {
+    res.status(403).json({
+      error: `L'exercice ${txYear} est définitivement clôturé. Aucune écriture ne peut y être ajoutée.`,
+    });
+    return;
+  }
+
+  // Resolve the cash register for the espèces portion (Module P6).
+  // A pompiste with their own dedicated drawer always posts to that
+  // sub-account; otherwise fall back to the shift's pre-assigned register.
+  let cashRegisterId: number | null = cashAmount > 0 ? (shift.cashRegisterId ?? null) : null;
+  let cashRegisterAccountNumber: string | null = null;
+  let cashRegisterName: string | null = null;
+
+  if (cashAmount > 0) {
+    const ownedRegister = isPortalRole(req.user!.role)
+      ? await db.query.cashRegistersTable.findFirst({
+          where: eq(cashRegistersTable.ownerUserId, req.user!.id),
+        })
+      : null;
+
+    if (ownedRegister) {
+      cashRegisterId = ownedRegister.id;
+      cashRegisterAccountNumber = ownedRegister.syscohadaAccount ?? null;
+      cashRegisterName = ownedRegister.name;
+    } else if (cashRegisterId) {
+      const register = await db.query.cashRegistersTable.findFirst({
+        where: and(
+          eq(cashRegistersTable.id, cashRegisterId),
+          eq(cashRegistersTable.clientId, shift.clientId),
+        ),
+      });
+      if (register) {
+        cashRegisterAccountNumber = register.syscohadaAccount ?? null;
+        cashRegisterName = register.name;
+      }
+    }
+  }
+
+  // Derive a summary paymentMethod for the transaction record (informational
+  // only -- the journal lines are the real accounting truth).
+  const hasCash = cashAmount > 0;
+  const hasMM = waveAmount > 0 || orangeMoneyAmount > 0 || mtnMomoAmount > 0;
+  const txPaymentMethod: PaymentMethod | null =
+    hasCash && !hasMM ? "especes" : hasMM && !hasCash ? "mobile_money" : null;
+
+  // Multi-leg journal entry: one debit per active payment channel + one credit to 701.
+  const journalLines = computeFuelSaleJournalLines({
+    cashAmount,
+    waveAmount,
+    orangeMoneyAmount,
+    mtnMomoAmount,
+    totalAmount: expectedAmount,
+    cashRegisterAccountNumber,
+    cashRegisterName,
+  });
+
+  const txLabel = `Vente de carburant - ${fuelLabel} (${shift.pumpLabel}) : ${volumeLiters} L`;
+
+  const [saleTx] = await db
+    .insert(transactionsTable)
+    .values({
+      firmId: req.user!.firmId,
       clientId: shift.clientId,
       date: new Date(),
-      label: `Vente de carburant - ${fuelLabel} (${shift.pumpLabel}) : ${volumeLiters} L`,
+      label: txLabel,
       amount: expectedAmount,
       type: "recette",
       category: "vente_carburant",
       paymentType: "cash",
-      paymentMethod: body.paymentMethod,
-      documentId: null,
-      dueDate: null,
-      cashRegisterId: shift.cashRegisterId ?? undefined,
-    });
-  } catch (err) {
-    if (err instanceof HttpError) {
-      res.status(err.status).json({ error: err.message });
-      return;
-    }
-    throw err;
+      paymentMethod: txPaymentMethod,
+      cashRegisterId: cashAmount > 0 ? cashRegisterId : null,
+      status: "a_valider",
+      source: isPortalRole(req.user!.role) ? "pme_entry" : "manual_cabinet",
+      createdById: req.user!.id,
+    })
+    .returning();
+
+  await db.insert(journalLinesTable).values(
+    journalLines.map((line) => ({
+      transactionId: saleTx.id,
+      accountNumber: line.accountNumber,
+      label: line.label,
+      debitAmount: line.debitAmount,
+      creditAmount: line.creditAmount,
+    })),
+  );
+
+  // Apply the cash portion to the register's live balance.
+  if (cashAmount > 0 && cashRegisterId) {
+    await db
+      .update(cashRegistersTable)
+      .set({ currentBalance: sql`${cashRegistersTable.currentBalance} + ${cashAmount}` })
+      .where(eq(cashRegistersTable.id, cashRegisterId));
   }
 
-  const cashRegisterId = saleResult.tx.cashRegisterId ?? shift.cashRegisterId ?? null;
+  // Écart de caisse: declared physical cash vs. the cash breakdown amount.
+  // Only applicable when there is an espèces portion.
   const discrepancyAmount =
-    body.paymentMethod === "especes" && body.declaredPhysicalAmount != null
-      ? body.declaredPhysicalAmount - expectedAmount
+    cashAmount > 0 && body.declaredPhysicalAmount != null
+      ? body.declaredPhysicalAmount - cashAmount
       : null;
 
   let discrepancyTx: Awaited<ReturnType<typeof bookDiscrepancy>> | null = null;
@@ -349,8 +449,8 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
       firmId: req.user!.firmId,
       clientId: shift.clientId,
       cashRegisterId,
-      cashRegisterAccountNumber: saleResult.cashRegisterAccountNumber,
-      cashRegisterName: saleResult.cashRegisterName,
+      cashRegisterAccountNumber,
+      cashRegisterName,
       pumpLabel: shift.pumpLabel,
       discrepancyAmount,
       createdById: req.user!.id,
@@ -366,13 +466,17 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     .set({
       status: "VALIDATED",
       unitPrice: body.unitPrice,
-      paymentMethod: body.paymentMethod,
+      paymentMethod: txPaymentMethod,
       expectedAmount,
+      cashAmount,
+      waveAmount,
+      orangeMoneyAmount,
+      mtnMomoAmount,
       declaredPhysicalAmount: body.declaredPhysicalAmount ?? null,
       discrepancyAmount,
-      transactionId: saleResult.tx.id,
+      transactionId: saleTx.id,
       discrepancyTransactionId: discrepancyTx?.id ?? null,
-      cashRegisterId,
+      cashRegisterId: cashAmount > 0 ? cashRegisterId : shift.cashRegisterId,
       validatedById: req.user!.id,
       validatedAt: new Date(),
     })
@@ -387,17 +491,17 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     action: AuditAction.TRANSACTION_CREATE,
     entityType: "pump_shift",
     entityId: id,
-    details: `Validation du shift "${shift.pumpLabel}" (${fuelLabel}) : ${volumeLiters} L × ${body.unitPrice} FCFA = ${expectedAmount} FCFA`,
+    details: `Validation shift "${shift.pumpLabel}" (${fuelLabel}) : ${volumeLiters} L × ${body.unitPrice} FCFA = ${expectedAmount} FCFA | Espèces: ${cashAmount} | Wave: ${waveAmount} | Orange Money: ${orangeMoneyAmount} | MTN MoMo: ${mtnMomoAmount}`,
     ipAddress: req.ip,
   });
 
   await broadcastPendingCounts(req.user!.firmId, shift.clientId);
 
-  const saleTransaction = await withJournalLines(saleResult.tx, {
-    clientName: saleResult.client.name,
+  const saleTransaction = await withJournalLines(saleTx, {
+    clientName: shift.client?.name,
     createdByName: req.user!.fullName,
-    cashRegisterName: saleResult.cashRegisterName,
-    cashRegisterAccountNumber: saleResult.cashRegisterAccountNumber,
+    cashRegisterName,
+    cashRegisterAccountNumber,
   });
   const discrepancyTransaction = discrepancyTx ? await withJournalLines(discrepancyTx) : null;
 

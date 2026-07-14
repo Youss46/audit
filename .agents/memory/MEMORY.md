@@ -29,3 +29,4 @@
 - [Unscoped router.use(requireRole) blocks unrelated routes](unscoped-router-middleware-collision.md) — a sub-router's blanket role-gate `.use()` with no path can 403 requests meant for a different, later-mounted router.
 - [Pompiste = Caisse (P6) design](pompiste-caisse-p6-design.md) — extends P5 cash registers with owner/sub-account fields; treasuryAccountOverride needed so ledger posts to the personal sub-account, not generic 571.
 - [P7 pump-shift design](p7-pump-shift-design.md) — one pump_shifts row per shift lifecycle; reuse createTransactionEntry; écart booking must pass treasuryAccountOverride or it silently posts to generic 571.
+- [Mobile Money pump-shift split-payment design](mobile-money-pump-shift-design.md) — split-payment fuel sales bypass createTransactionEntry; computeFuelSaleJournalLines + direct insert; discrepancy against cashAmount only; /mobile-money/transfers for Cabinet virements.

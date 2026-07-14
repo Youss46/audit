@@ -134,6 +134,8 @@ import type {
   MissionDetail,
   MissionInput,
   MissionUpdate,
+  MobileMoneyVirementInput,
+  MobileMoneyVirementResult,
   NewGeneratedDocumentInput,
   NotificationItem,
   PayrollSetting,
@@ -4426,6 +4428,77 @@ export const useValidatePumpShift = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getValidatePumpShiftMutationOptions(options));
+    }
+
+export const getCreateMobileMoneyTransferUrl = () => {
+
+
+
+
+  return `/api/mobile-money/transfers`
+}
+
+/**
+ * @summary Module P7 Mobile Money (Cabinet): records a 'Virement Mobile Money → Banque' withdrawal. Automatically books the net amount to 52 (Banques), the operator fee to 631700 (Frais sur instruments monétaires électroniques), and credits the provider's Classe 55 account (552100 Orange Money / 552200 Wave / 552300 MTN MoMo / 552400 Moov Money). Cabinet access only.
+ */
+export const createMobileMoneyTransfer = async (mobileMoneyVirementInput: MobileMoneyVirementInput, options?: RequestInit): Promise<MobileMoneyVirementResult> => {
+
+  return customFetch<MobileMoneyVirementResult>(getCreateMobileMoneyTransferUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(mobileMoneyVirementInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMobileMoneyTransferMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyTransfer>>, TError,{data: BodyType<MobileMoneyVirementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyTransfer>>, TError,{data: BodyType<MobileMoneyVirementInput>}, TContext> => {
+
+const mutationKey = ['createMobileMoneyTransfer'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMobileMoneyTransfer>>, {data: BodyType<MobileMoneyVirementInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMobileMoneyTransfer(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMobileMoneyTransferMutationResult = NonNullable<Awaited<ReturnType<typeof createMobileMoneyTransfer>>>
+    export type CreateMobileMoneyTransferMutationBody = BodyType<MobileMoneyVirementInput>
+    export type CreateMobileMoneyTransferMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Module P7 Mobile Money (Cabinet): records a 'Virement Mobile Money → Banque' withdrawal. Automatically books the net amount to 52 (Banques), the operator fee to 631700 (Frais sur instruments monétaires électroniques), and credits the provider's Classe 55 account (552100 Orange Money / 552200 Wave / 552300 MTN MoMo / 552400 Moov Money). Cabinet access only.
+ */
+export const useCreateMobileMoneyTransfer = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyTransfer>>, TError,{data: BodyType<MobileMoneyVirementInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMobileMoneyTransfer>>,
+        TError,
+        {data: BodyType<MobileMoneyVirementInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMobileMoneyTransferMutationOptions(options));
     }
 
 export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {
