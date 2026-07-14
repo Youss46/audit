@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
 import { UserCog } from "lucide-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
+import { HelpButton } from "@/components/support/HelpSupportPanel"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -410,6 +411,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           AUDIT
         </div>
         <div className="flex items-center gap-1">
+          <HelpButton />
           <NotificationBell />
         <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
           <SheetTrigger asChild>
@@ -457,6 +459,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            <HelpButton />
             <NotificationBell />
             <span className="text-sm font-medium text-foreground" data-testid="text-topbar-username">
               {user?.fullName}
