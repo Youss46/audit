@@ -274,19 +274,21 @@ export default function Teledeclaration() {
   // -------------------------------------------------------------------------
   if (!clientId) {
     return (
-      <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
-        <Lock className="h-12 w-12 text-muted-foreground/40" />
-        <h2 className="text-xl font-semibold">Télédéclaration TVA</h2>
-        <p className="text-muted-foreground max-w-sm">
-          Sélectionnez un client depuis le Registre des Clients pour accéder au formulaire
-          D-201/VA.
-        </p>
-        <Button asChild variant="outline" className="mt-2">
-          <Link href="/clients">
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Voir les clients
-          </Link>
-        </Button>
+      <div className="space-y-6">
+        <ClientAccountingNav activeTab="teledeclaration" />
+        <div className="mx-auto max-w-6xl p-6">
+          <Card className="shadow-sm">
+            <CardContent className="p-16 flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+              <Receipt className="h-10 w-10 opacity-20" />
+              <div>
+                <p className="font-medium">Sélectionnez un client</p>
+                <p className="text-sm mt-1">
+                  Choisissez un client dans le menu ci-dessus pour accéder au formulaire Télédéclaration TVA (D-201/VA).
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }

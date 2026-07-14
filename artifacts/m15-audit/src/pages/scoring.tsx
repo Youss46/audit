@@ -238,8 +238,21 @@ export default function Scoring() {
 
   if (!clientId) {
     return (
-      <div className="p-8">
-        <p className="text-muted-foreground">Client introuvable.</p>
+      <div className="min-h-screen bg-background">
+        <ClientAccountingNav activeTab="scoring" />
+        <div className="mx-auto max-w-6xl p-6">
+          <Card className="shadow-sm">
+            <CardContent className="p-16 flex flex-col items-center justify-center gap-4 text-center text-muted-foreground">
+              <Gauge className="h-10 w-10 opacity-20" />
+              <div>
+                <p className="font-medium">Sélectionnez un client</p>
+                <p className="text-sm mt-1">
+                  Choisissez un client dans le menu ci-dessus pour accéder au Scoring &amp; Évaluation.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
