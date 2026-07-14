@@ -97,7 +97,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // own dedicated portal and must never reach the cabinet-facing screens
   // (dashboard, client list, team, audit log) even if they navigate there
   // directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication"]
   const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/client/settings"]
   React.useEffect(() => {
     if (
@@ -390,6 +390,26 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )} data-testid="link-dsf">
             <FileSpreadsheet className="h-5 w-5" />
             Déclaration DSF
+          </Link>
+
+          <Link href="/paie" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            (location.startsWith("/paie") || (location.startsWith("/cabinet/client") && location.includes("/paie")))
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-paie">
+            <Banknote className="h-5 w-5" />
+            Gestion de la Paie
+          </Link>
+
+          <Link href="/teledeclaration" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            (location.startsWith("/teledeclaration") || (location.startsWith("/cabinet/client") && location.includes("/teledeclaration")))
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-teledeclaration">
+            <Receipt className="h-5 w-5" />
+            Télédéclaration TVA
           </Link>
 
           {/* ── Pilotage ────────────────────────────────────── */}
