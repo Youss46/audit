@@ -223,17 +223,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
     <nav className="space-y-1 mt-6 px-3" data-testid="nav-menu">
       {isPortalRole(user?.role) ? (
         <>
-          {hasPermission(user, "dashboard.view") && (
-            <Link href="/portal" className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
-              location === "/portal"
-                ? "bg-primary text-primary-foreground"
-                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-            )} data-testid="link-portal">
-              <Building2 className="h-5 w-5" />
-              {user?.roleCode === 'POMPISTE' ? 'Espace Pompiste' : 'Espace PME'}
-            </Link>
-          )}
+          <Link href="/portal" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location === "/portal"
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-portal">
+            <Building2 className="h-5 w-5" />
+            {user?.roleCode === 'POMPISTE' ? 'Espace Pompiste' : 'Espace PME'}
+          </Link>
 
           {hasPermission(user, "operations.view") && (
             <Link href="/mes-operations" className={cn(
