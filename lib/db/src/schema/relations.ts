@@ -123,7 +123,7 @@ export const journalLinesRelations = relations(journalLinesTable, ({ one }) => (
   }),
 }));
 
-// Module P5 (Caisse Terrain).
+// Module P5 (Caisse Terrain) / P6 (Un Pompiste = Une Caisse).
 export const cashRegistersRelations = relations(cashRegistersTable, ({ one, many }) => ({
   client: one(clientsTable, {
     fields: [cashRegistersTable.clientId],
@@ -131,6 +131,10 @@ export const cashRegistersRelations = relations(cashRegistersTable, ({ one, many
   }),
   closures: many(dailyClosuresTable),
   transactions: many(transactionsTable),
+  ownerUser: one(usersTable, {
+    fields: [cashRegistersTable.ownerUserId],
+    references: [usersTable.id],
+  }),
 }));
 
 export const dailyClosuresRelations = relations(dailyClosuresTable, ({ one }) => ({

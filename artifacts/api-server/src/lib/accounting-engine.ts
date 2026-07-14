@@ -175,6 +175,11 @@ export function computeJournalLines(input: {
   paymentType: PaymentType;
   paymentMethod?: PaymentMethod | null;
   amount: number;
+  // Module P6 (Un Pompiste = Une Caisse): when the caller posts through a
+  // dedicated per-pompiste cash drawer, the "espèces" leg must land on that
+  // register's own SYSCOHADA sub-account (e.g. "571101") instead of the
+  // generic "571" -- overrides PAYMENT_METHOD_ACCOUNTS.especes only.
+  treasuryAccountOverride?: { accountNumber: string; label: string };
 }): ComputedJournalLine[] {
   const rule = CATEGORY_RULES[input.category];
   if (!rule) {
@@ -197,8 +202,13 @@ export function computeJournalLines(input: {
         "Le mode de règlement est requis pour une opération au comptant.",
       );
     }
-    treasuryOrThirdPartyAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
-    treasuryOrThirdPartyLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+    if (input.paymentMethod === "especes" && input.treasuryAccountOverride) {
+      treasuryOrThirdPartyAccount = input.treasuryAccountOverride.accountNumber;
+      treasuryOrThirdPartyLabel = input.treasuryAccountOverride.label;
+    } else {
+      treasuryOrThirdPartyAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
+      treasuryOrThirdPartyLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+    }
   } else {
     const thirdParty = THIRD_PARTY_ACCOUNTS[input.type];
     treasuryOrThirdPartyAccount = thirdParty.accountNumber;

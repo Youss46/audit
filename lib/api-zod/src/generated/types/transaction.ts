@@ -45,6 +45,11 @@ export interface Transaction {
   cashRegisterId?: number | null;
   /** @nullable */
   cashRegisterName?: string | null;
+  /**
+     * Module P6 (Un Pompiste = Une Caisse) - the register's personal SYSCOHADA sub-account (e.g. "571101"), so the cabinet reconciliation view can show it next to the pompiste's name.
+     * @nullable
+     */
+  cashRegisterAccountNumber?: string | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */

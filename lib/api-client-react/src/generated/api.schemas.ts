@@ -166,6 +166,11 @@ export interface StaffUser {
   roleLabel?: string | null;
   createdAt: string;
   /**
+     * Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.
+     * @nullable
+     */
+  associatedCashAccountNumber?: string | null;
+  /**
      * Module M33 - only ever populated in the response of POST /staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.
      * @nullable
      */
@@ -553,6 +558,11 @@ export interface Transaction {
   cashRegisterId?: number | null;
   /** @nullable */
   cashRegisterName?: string | null;
+  /**
+     * Module P6 (Un Pompiste = Une Caisse) - the register's personal SYSCOHADA sub-account (e.g. "571101"), so the cabinet reconciliation view can show it next to the pompiste's name.
+     * @nullable
+     */
+  cashRegisterAccountNumber?: string | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */
@@ -644,6 +654,19 @@ export interface CashRegister {
   /** @nullable */
   clientName?: string | null;
   currentBalance: number;
+  /**
+     * Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. "571101"), set only for a per-pompiste drawer. Null for a general/shared register.
+     * @nullable
+     */
+  syscohadaAccount?: string | null;
+  isActive: boolean;
+  /**
+     * Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general/shared register.
+     * @nullable
+     */
+  ownerUserId?: number | null;
+  /** @nullable */
+  ownerUserName?: string | null;
   createdAt: string;
 }
 

@@ -39,6 +39,11 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   // Classe 5 - Comptes de trésorerie
   { accountNumber: "52", name: "Banques", accountClass: 5 },
   { accountNumber: "571", name: "Caisse", accountClass: 5 },
+  // Module P6 (Un Pompiste = Une Caisse): master/collective account for a
+  // STATION_SERVICE client's per-pompiste sub-accounts (571101, 571102...).
+  // Purely a chart-of-accounts placeholder -- actual cash movements are
+  // always posted to a pompiste's own sub-account, never to this one.
+  { accountNumber: "571100", name: "Caisse Pompistes (compte collectif)", accountClass: 5 },
   { accountNumber: "58", name: "Virements de fonds", accountClass: 5 },
 
   // Classe 6 - Comptes de charges

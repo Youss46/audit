@@ -64,6 +64,7 @@ function serializeTransaction(
     createdByName?: string | null;
     validatedByName?: string | null;
     cashRegisterName?: string | null;
+    cashRegisterAccountNumber?: string | null;
   } = {},
 ) {
   return {
@@ -89,6 +90,11 @@ function serializeTransaction(
     parentTransactionId: tx.parentTransactionId ?? null,
     cashRegisterId: tx.cashRegisterId ?? null,
     cashRegisterName: extra.cashRegisterName ?? null,
+    // Module P6 (Un Pompiste = Une Caisse): the register's personal
+    // SYSCOHADA sub-account (e.g. "571101"), so the cabinet's
+    // reconciliation view can show it next to the pompiste's name without
+    // an extra lookup.
+    cashRegisterAccountNumber: extra.cashRegisterAccountNumber ?? null,
     createdByName: extra.createdByName ?? null,
     validatedByName: extra.validatedByName ?? null,
     validatedAt: tx.validatedAt ?? null,
@@ -198,19 +204,40 @@ async function createTransactionEntry(
   // accurate.
   let cashRegisterId: number | null = null;
   let cashRegisterName: string | null = null;
+  let cashRegisterAccountNumber: string | null = null;
   if (body.paymentType === "cash" && body.paymentMethod === "especes") {
-    if (!body.cashRegisterId) {
-      throw new HttpError(400, "La caisse est requise pour un règlement en espèces.");
-    }
-    const register = await db.query.cashRegistersTable.findFirst({
-      where: and(
-        eq(cashRegistersTable.id, body.cashRegisterId),
-        eq(cashRegistersTable.clientId, body.clientId),
-      ),
+    // Module P6 (Un Pompiste = Une Caisse): a staff member who owns a
+    // dedicated cash drawer must always post to that specific SYSCOHADA
+    // sub-account -- this overrides whatever register the client sent,
+    // so the isolation holds even if the frontend ever let it slip
+    // through. A user with no owned register (the PME owner, cabinet
+    // staff, or an AGENT_TERRAIN sharing a general register) keeps the
+    // previous manual-selection behavior.
+    const ownedRegister = await db.query.cashRegistersTable.findFirst({
+      where: eq(cashRegistersTable.ownerUserId, req.user!.id),
     });
-    if (!register) throw new HttpError(404, "Caisse introuvable pour ce client.");
-    cashRegisterId = register.id;
-    cashRegisterName = register.name;
+    if (ownedRegister) {
+      if (ownedRegister.clientId !== body.clientId) {
+        throw new HttpError(403, "Cette caisse n'appartient pas à ce dossier client.");
+      }
+      cashRegisterId = ownedRegister.id;
+      cashRegisterName = ownedRegister.name;
+      cashRegisterAccountNumber = ownedRegister.syscohadaAccount ?? null;
+    } else {
+      if (!body.cashRegisterId) {
+        throw new HttpError(400, "La caisse est requise pour un règlement en espèces.");
+      }
+      const register = await db.query.cashRegistersTable.findFirst({
+        where: and(
+          eq(cashRegistersTable.id, body.cashRegisterId),
+          eq(cashRegistersTable.clientId, body.clientId),
+        ),
+      });
+      if (!register) throw new HttpError(404, "Caisse introuvable pour ce client.");
+      cashRegisterId = register.id;
+      cashRegisterName = register.name;
+      cashRegisterAccountNumber = register.syscohadaAccount ?? null;
+    }
   }
 
   let journalLines: ReturnType<typeof computeJournalLines>;
@@ -221,6 +248,11 @@ async function createTransactionEntry(
       paymentType: body.paymentType,
       paymentMethod: body.paymentMethod,
       amount: body.amount,
+      // Module P6: a pompiste's cash sale must land on their own SYSCOHADA
+      // sub-account, never the generic "571".
+      treasuryAccountOverride: cashRegisterAccountNumber
+        ? { accountNumber: cashRegisterAccountNumber, label: cashRegisterName ?? "Caisse" }
+        : undefined,
     });
   } catch (err) {
     if (err instanceof AccountingEngineError) throw new HttpError(400, err.message);
@@ -325,7 +357,7 @@ async function createTransactionEntry(
     });
   }
 
-  return { tx, client, cashRegisterName };
+  return { tx, client, cashRegisterName, cashRegisterAccountNumber };
 }
 
 // Module P3: the plain-language category menu the PME picks from, scoped to
@@ -376,6 +408,7 @@ router.get("/transactions", requirePermission("operations.view", "caisse.view"),
           createdByName: t.createdBy?.fullName,
           validatedByName: t.validatedBy?.fullName,
           cashRegisterName: t.cashRegister?.name,
+          cashRegisterAccountNumber: t.cashRegister?.syscohadaAccount,
         }),
         journalLines: t.journalLines,
       })),
@@ -391,7 +424,7 @@ router.post("/transactions", requirePermission("operations.create", "caisse.crea
   const body = CreateTransactionBody.parse(req.body);
 
   try {
-    const { tx, client, cashRegisterName } = await createTransactionEntry(req, body);
+    const { tx, client, cashRegisterName, cashRegisterAccountNumber } = await createTransactionEntry(req, body);
     res
       .status(201)
       .json(
@@ -400,6 +433,7 @@ router.post("/transactions", requirePermission("operations.create", "caisse.crea
             clientName: client.name,
             createdByName: req.user!.fullName,
             cashRegisterName,
+            cashRegisterAccountNumber,
           }),
         ),
       );
@@ -424,7 +458,7 @@ router.post("/transactions/batch", requirePermission("operations.create", "caiss
 
   for (let index = 0; index < body.entries.length; index++) {
     try {
-      const { tx, client, cashRegisterName } = await createTransactionEntry(
+      const { tx, client, cashRegisterName, cashRegisterAccountNumber } = await createTransactionEntry(
         req,
         body.entries[index],
       );
@@ -433,6 +467,7 @@ router.post("/transactions/batch", requirePermission("operations.create", "caiss
           clientName: client.name,
           createdByName: req.user!.fullName,
           cashRegisterName,
+          cashRegisterAccountNumber,
         }),
       );
     } catch (err) {
@@ -481,6 +516,7 @@ router.get("/transactions/:id", requirePermission("operations.view", "caisse.vie
         createdByName: tx.createdBy?.fullName,
         validatedByName: tx.validatedBy?.fullName,
         cashRegisterName: tx.cashRegister?.name,
+        cashRegisterAccountNumber: tx.cashRegister?.syscohadaAccount,
       }),
     ),
   );

@@ -13,5 +13,18 @@ export interface CashRegister {
   /** @nullable */
   clientName?: string | null;
   currentBalance: number;
+  /**
+     * Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. "571101"), set only for a per-pompiste drawer. Null for a general/shared register.
+     * @nullable
+     */
+  syscohadaAccount?: string | null;
+  isActive: boolean;
+  /**
+     * Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general/shared register.
+     * @nullable
+     */
+  ownerUserId?: number | null;
+  /** @nullable */
+  ownerUserName?: string | null;
   createdAt: Date;
 }

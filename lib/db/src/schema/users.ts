@@ -83,6 +83,14 @@ export const usersTable = pgTable(
     // the account's first login. Cleared (set to null) the moment
     // requiresPasswordChange flips to false -- never retained after that.
     temporaryPasswordPlain: text("temporary_password_plain"),
+    // Module P6 (Un Pompiste = Une Caisse): denormalized copy of the
+    // personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when
+    // this account is created as a POMPISTE for a STATION_SERVICE client.
+    // The authoritative link is cashRegistersTable.ownerUserId -- this
+    // column only exists so the account number can be displayed (staff
+    // list, payslip-style summaries) without an extra join. Null for every
+    // other account.
+    associatedCashAccountNumber: text("associated_cash_account_number"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),

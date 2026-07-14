@@ -3857,6 +3857,9 @@ components:
         roleCode: { type: ["string", "null"] }
         roleLabel: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
+        associatedCashAccountNumber:
+          type: ["string", "null"]
+          description: Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.
         temporaryPassword:
           type: ["string", "null"]
           description: Module M33 - only ever populated in the response of POST /staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.
@@ -4306,6 +4309,9 @@ components:
         parentTransactionId: { type: ["integer", "null"] }
         cashRegisterId: { type: ["integer", "null"] }
         cashRegisterName: { type: ["string", "null"] }
+        cashRegisterAccountNumber:
+          type: ["string", "null"]
+          description: Module P6 (Un Pompiste = Une Caisse) - the register's personal SYSCOHADA sub-account (e.g. "571101"), so the cabinet reconciliation view can show it next to the pompiste's name.
         createdByName: { type: ["string", "null"] }
         validatedByName: { type: ["string", "null"] }
         validatedAt: { type: ["string", "null"], format: date-time }
@@ -4435,13 +4441,21 @@ components:
 
     CashRegister:
       type: object
-      required: [id, name, clientId, currentBalance, createdAt]
+      required: [id, name, clientId, currentBalance, isActive, createdAt]
       properties:
         id: { type: integer }
         name: { type: string }
         clientId: { type: integer }
         clientName: { type: ["string", "null"] }
         currentBalance: { type: integer }
+        syscohadaAccount:
+          type: ["string", "null"]
+          description: Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. "571101"), set only for a per-pompiste drawer. Null for a general/shared register.
+        isActive: { type: boolean }
+        ownerUserId:
+          type: ["integer", "null"]
+          description: Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general/shared register.
+        ownerUserName: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
 
     CashRegisterInput:

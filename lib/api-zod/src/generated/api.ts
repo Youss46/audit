@@ -279,6 +279,7 @@ export const ListStaffResponseItem = zod.object({
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
+  "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 export const ListStaffResponse = zod.array(ListStaffResponseItem)
@@ -308,6 +309,7 @@ export const CreateStaffResponse = zod.object({
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
+  "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 
@@ -338,6 +340,7 @@ export const UpdateStaffResponse = zod.object({
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
   "createdAt": zod.coerce.date(),
+  "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
 })
 
@@ -970,6 +973,7 @@ export const ListTransactionsResponseItem = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1034,6 +1038,7 @@ export const CreateTransactionResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1082,6 +1087,7 @@ export const GetTransactionResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1130,6 +1136,7 @@ export const ApproveTransactionResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1192,6 +1199,7 @@ export const RejectTransactionResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1245,6 +1253,7 @@ export const SettleTransactionResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1304,6 +1313,7 @@ export const UpdateTransactionJournalLinesResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1371,6 +1381,7 @@ export const BatchCreateTransactionsResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1407,6 +1418,10 @@ export const ListCashRegistersResponseItem = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "currentBalance": zod.number(),
+  "syscohadaAccount": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. \"571101\"), set only for a per-pompiste drawer. Null for a general\/shared register.'),
+  "isActive": zod.boolean(),
+  "ownerUserId": zod.number().nullish().describe('Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general\/shared register.'),
+  "ownerUserName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 export const ListCashRegistersResponse = zod.array(ListCashRegistersResponseItem)
@@ -1429,6 +1444,10 @@ export const CreateCashRegisterResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "currentBalance": zod.number(),
+  "syscohadaAccount": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. \"571101\"), set only for a per-pompiste drawer. Null for a general\/shared register.'),
+  "isActive": zod.boolean(),
+  "ownerUserId": zod.number().nullish().describe('Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general\/shared register.'),
+  "ownerUserName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -1446,6 +1465,10 @@ export const GetCashRegisterResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "currentBalance": zod.number(),
+  "syscohadaAccount": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. \"571101\"), set only for a per-pompiste drawer. Null for a general\/shared register.'),
+  "isActive": zod.boolean(),
+  "ownerUserId": zod.number().nullish().describe('Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general\/shared register.'),
+  "ownerUserName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
 
@@ -1541,6 +1564,10 @@ export const CloseDailyClosureResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "currentBalance": zod.number(),
+  "syscohadaAccount": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - personal SYSCOHADA sub-account (e.g. \"571101\"), set only for a per-pompiste drawer. Null for a general\/shared register.'),
+  "isActive": zod.boolean(),
+  "ownerUserId": zod.number().nullish().describe('Module P6 - the one staff member (POMPISTE) this register is dedicated to. Null for a general\/shared register.'),
+  "ownerUserName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 }),
   "summaryTransaction": zod.union([zod.object({
@@ -1566,6 +1593,7 @@ export const CloseDailyClosureResponse = zod.object({
   "parentTransactionId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),

@@ -13,6 +13,7 @@ import {
   Copy,
   KeyRound,
   Fuel,
+  Wallet,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -54,6 +55,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   Select,
   SelectContent,
@@ -135,6 +137,12 @@ export default function ClientStaff() {
       },
     },
   })
+
+  // Module P6 (Un Pompiste = Une Caisse): looked up by code (not label) so
+  // the warning banner below is driven by the stable role identifier,
+  // matching the same POMPISTE/STATION_SERVICE check the backend applies.
+  const selectedRole = roles?.find((r) => String(r.id) === roleId)
+  const showPompisteCashDrawerNotice = isStationService && selectedRole?.code === "POMPISTE"
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault()
@@ -230,9 +238,21 @@ export default function ClientStaff() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge variant="outline" className="border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
-                        {member.roleLabel ?? "—"}
-                      </Badge>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge variant="outline" className="border-transparent bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300">
+                          {member.roleLabel ?? "—"}
+                        </Badge>
+                        {member.associatedCashAccountNumber && (
+                          <Badge
+                            variant="outline"
+                            className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 font-mono gap-1"
+                            data-testid={`badge-cash-account-${member.id}`}
+                          >
+                            <Wallet className="h-3 w-3" />
+                            {member.associatedCashAccountNumber}
+                          </Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -314,10 +334,21 @@ export default function ClientStaff() {
               </Select>
               {roleId && (
                 <p className="text-xs text-muted-foreground">
-                  {roles?.find((r) => String(r.id) === roleId)?.description}
+                  {selectedRole?.description}
                 </p>
               )}
             </div>
+            {showPompisteCashDrawerNotice && (
+              <Alert data-testid="alert-pompiste-cash-drawer">
+                <Wallet className="h-4 w-4" />
+                <AlertTitle>Règle Station-Service</AlertTitle>
+                <AlertDescription>
+                  Ce Pompiste recevra automatiquement sa propre caisse, reliée à un sous-compte
+                  SYSCOHADA personnel (571101, 571102...). Ses ventes en espèces seront
+                  comptabilisées exclusivement sur ce sous-compte, jamais sur la caisse générale.
+                </AlertDescription>
+              </Alert>
+            )}
             <DialogFooter className="pt-4">
               <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} disabled={createMutation.isPending}>
                 Annuler

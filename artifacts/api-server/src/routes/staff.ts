@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, usersTable, rolesTable, clientsTable } from "@workspace/db";
+import { and, eq, like } from "drizzle-orm";
+import {
+  db,
+  usersTable,
+  rolesTable,
+  clientsTable,
+  cashRegistersTable,
+  accountsTable,
+  STATION_SERVICE_CASH_SUB_ACCOUNT_PREFIX,
+} from "@workspace/db";
 import {
   ListRolesResponse,
   ListStaffResponse,
@@ -14,6 +22,29 @@ import {
 import { generateTemporaryPassword, hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+
+// Module P6 (Un Pompiste = Une Caisse): picks the next free SYSCOHADA
+// sub-account for a STATION_SERVICE client's per-pompiste cash drawer --
+// "571101", "571102", etc. Scans ALL registers ever created for this
+// client (not just active ones) so a disabled/removed pompiste's number is
+// never reused, which would otherwise corrupt that account's historical
+// ledger trail.
+async function allocateStationServiceCashAccount(clientId: number): Promise<string> {
+  const existing = await db.query.cashRegistersTable.findMany({
+    where: and(
+      eq(cashRegistersTable.clientId, clientId),
+      like(cashRegistersTable.syscohadaAccount, `${STATION_SERVICE_CASH_SUB_ACCOUNT_PREFIX}%`),
+    ),
+    columns: { syscohadaAccount: true },
+  });
+  const usedSuffixes = existing
+    .map((r) => r.syscohadaAccount)
+    .filter((acc): acc is string => !!acc)
+    .map((acc) => parseInt(acc.slice(STATION_SERVICE_CASH_SUB_ACCOUNT_PREFIX.length), 10))
+    .filter((n) => !Number.isNaN(n));
+  const next = usedSuffixes.length > 0 ? Math.max(...usedSuffixes) + 1 : 1;
+  return `${STATION_SERVICE_CASH_SUB_ACCOUNT_PREFIX}${String(next).padStart(2, "0")}`;
+}
 
 // Module M29 (RBAC & Gestion du Personnel PME): the company owner
 // ("client_pme" account) manages its own staff ("client_staff") accounts
@@ -40,6 +71,9 @@ function serializeStaff(
     roleCode: role?.code ?? null,
     roleLabel: role?.label ?? null,
     createdAt: user.createdAt,
+    // Module P6: null unless this account is a POMPISTE with a dedicated
+    // cash drawer (see allocateStationServiceCashAccount below).
+    associatedCashAccountNumber: user.associatedCashAccountNumber ?? null,
     // Module M33: only populated right after creation, below -- never on
     // list/update/delete.
     temporaryPassword: temporaryPassword ?? null,
@@ -124,21 +158,70 @@ router.post("/staff", requireRole("client_pme"), async (req, res) => {
   // and /auth/reset-first-password).
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await hashPassword(temporaryPassword);
-  const [user] = await db
-    .insert(usersTable)
-    .values({
-      firmId: req.user!.firmId,
+
+  // Module P6 (Un Pompiste = Une Caisse): a POMPISTE hired for a
+  // STATION_SERVICE client automatically gets their own cash drawer, wired
+  // to a personal SYSCOHADA sub-account -- never the shared 571 account.
+  // Everything below runs in one transaction so a failure partway through
+  // (e.g. the account-number race) never leaves an orphaned user with no
+  // register, or vice versa.
+  const client = await db.query.clientsTable.findFirst({
+    where: eq(clientsTable.id, req.user!.clientId!),
+    columns: { sector: true },
+  });
+  const needsCashDrawer = client?.sector === "STATION_SERVICE" && role.code === "POMPISTE";
+
+  const { user, cashAccountNumber } = await db.transaction(async (tx) => {
+    const [insertedUser] = await tx
+      .insert(usersTable)
+      .values({
+        firmId: req.user!.firmId,
+        clientId: req.user!.clientId!,
+        roleId: role.id,
+        email: body.email,
+        passwordHash,
+        fullName: body.fullName,
+        role: "client_staff",
+        status: "active",
+        requiresPasswordChange: true,
+        temporaryPasswordPlain: temporaryPassword,
+      })
+      .returning();
+
+    if (!needsCashDrawer) {
+      return { user: insertedUser, cashAccountNumber: null as string | null };
+    }
+
+    const accountNumber = await allocateStationServiceCashAccount(req.user!.clientId!);
+
+    await tx.insert(cashRegistersTable).values({
+      name: `Caisse ${insertedUser.fullName}`,
       clientId: req.user!.clientId!,
-      roleId: role.id,
-      email: body.email,
-      passwordHash,
-      fullName: body.fullName,
-      role: "client_staff",
-      status: "active",
-      requiresPasswordChange: true,
-      temporaryPasswordPlain: temporaryPassword,
-    })
-    .returning();
+      syscohadaAccount: accountNumber,
+      isActive: true,
+      ownerUserId: insertedUser.id,
+    });
+
+    // Sync into the (shared/global) chart of accounts so the number shows
+    // up in ledger reports even before any transaction posts to it.
+    // onConflictDoNothing: the global accountsTable is not per-tenant, so
+    // if another client's pompiste ever produced the same numeric suffix
+    // (shouldn't happen -- numbering is per-client -- but the table has no
+    // per-client scoping to enforce that), we must never overwrite an
+    // existing label with this employee's name.
+    await tx
+      .insert(accountsTable)
+      .values({ accountNumber, name: `Caisse ${insertedUser.fullName}`, accountClass: 5 })
+      .onConflictDoNothing();
+
+    const [withCashAccount] = await tx
+      .update(usersTable)
+      .set({ associatedCashAccountNumber: accountNumber })
+      .where(eq(usersTable.id, insertedUser.id))
+      .returning();
+
+    return { user: withCashAccount, cashAccountNumber: accountNumber };
+  });
 
   await logAudit({
     firmId: req.user!.firmId,
@@ -151,6 +234,19 @@ router.post("/staff", requireRole("client_pme"), async (req, res) => {
     details: `Ajout du collaborateur ${user.fullName} (${role.label})`,
     ipAddress: req.ip,
   });
+
+  if (cashAccountNumber) {
+    await logAudit({
+      firmId: req.user!.firmId,
+      userId: req.user!.id,
+      userName: req.user!.fullName,
+      userRole: req.user!.role,
+      action: AuditAction.CASH_REGISTER_CREATE,
+      entityType: "cash_register",
+      details: `Caisse dédiée créée pour ${user.fullName} (compte ${cashAccountNumber})`,
+      ipAddress: req.ip,
+    });
+  }
 
   res
     .status(201)

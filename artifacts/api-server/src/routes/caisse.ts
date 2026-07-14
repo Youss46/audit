@@ -35,7 +35,7 @@ router.use(requireAuth);
 
 function serializeCashRegister(
   register: typeof cashRegistersTable.$inferSelect,
-  extra: { clientName?: string | null } = {},
+  extra: { clientName?: string | null; ownerUserName?: string | null } = {},
 ) {
   return {
     id: register.id,
@@ -43,6 +43,11 @@ function serializeCashRegister(
     clientId: register.clientId,
     clientName: extra.clientName ?? null,
     currentBalance: register.currentBalance,
+    // Module P6 (Un Pompiste = Une Caisse).
+    syscohadaAccount: register.syscohadaAccount ?? null,
+    isActive: register.isActive,
+    ownerUserId: register.ownerUserId ?? null,
+    ownerUserName: extra.ownerUserName ?? null,
     createdAt: register.createdAt,
   };
 }
@@ -82,13 +87,26 @@ async function loadRegisterForRequest(
 ) {
   const register = await db.query.cashRegistersTable.findFirst({
     where: eq(cashRegistersTable.id, id),
-    with: { client: true },
+    with: { client: true, ownerUser: true },
   });
   if (!register || register.client?.firmId !== req.user!.firmId) {
     res.status(404).json({ error: "Caisse introuvable." });
     return null;
   }
   if (!requireOwnClient(req, res, register.clientId)) return null;
+  // Module P6: a staff member who owns a dedicated cash drawer (POMPISTE)
+  // may only ever operate on their own register -- never a colleague's,
+  // even within the same PME dossier.
+  if (isPortalRole(req.user!.role)) {
+    const ownedRegister = await db.query.cashRegistersTable.findFirst({
+      where: eq(cashRegistersTable.ownerUserId, req.user!.id),
+      columns: { id: true },
+    });
+    if (ownedRegister && ownedRegister.id !== register.id) {
+      res.status(403).json({ error: "Vous ne pouvez accéder qu'à votre propre caisse." });
+      return null;
+    }
+  }
   return register;
 }
 
@@ -108,15 +126,25 @@ router.get("/cash-registers", requirePermission("caisse.view", "operations.view"
 
   const registers = await db.query.cashRegistersTable.findMany({
     where: effectiveClientId ? eq(cashRegistersTable.clientId, effectiveClientId) : undefined,
-    with: { client: true },
+    with: { client: true, ownerUser: true },
     orderBy: (t, { asc }) => [asc(t.createdAt)],
   });
 
+  let visible = registers.filter((r) => r.client?.firmId === req.user!.firmId);
+  // Module P6: a staff member with a dedicated cash drawer only ever sees
+  // their own register here -- never a colleague's, even for the same PME.
+  // The PME owner ("client_pme") has no owned register, so this never
+  // restricts them; they keep seeing every register for reconciliation.
+  if (isPortalRole(req.user!.role)) {
+    const ownRegister = visible.find((r) => r.ownerUserId === req.user!.id);
+    if (ownRegister) visible = [ownRegister];
+  }
+
   res.json(
     ListCashRegistersResponse.parse(
-      registers
-        .filter((r) => r.client?.firmId === req.user!.firmId)
-        .map((r) => serializeCashRegister(r, { clientName: r.client?.name })),
+      visible.map((r) =>
+        serializeCashRegister(r, { clientName: r.client?.name, ownerUserName: r.ownerUser?.fullName }),
+      ),
     ),
   );
 });
@@ -161,7 +189,12 @@ router.get("/cash-registers/:id", requirePermission("caisse.view", "operations.v
   if (!register) return;
 
   res.json(
-    GetCashRegisterResponse.parse(serializeCashRegister(register, { clientName: register.client?.name })),
+    GetCashRegisterResponse.parse(
+      serializeCashRegister(register, {
+        clientName: register.client?.name,
+        ownerUserName: register.ownerUser?.fullName,
+      }),
+    ),
   );
 });
 

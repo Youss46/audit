@@ -649,6 +649,12 @@ export default function ComptabiliteCabinet() {
                       )}
                       <p>Origine : {getTransactionSourceLabel(t.source)}</p>
                       <p>Saisi par : {t.createdByName ?? "—"}</p>
+                      {t.cashRegisterName && (
+                        <p>
+                          Caisse : {t.cashRegisterName}
+                          {t.cashRegisterAccountNumber ? ` (compte ${t.cashRegisterAccountNumber})` : ""}
+                        </p>
+                      )}
                     </div>
                     {t.documentId ? (
                       <div className="flex items-center gap-1.5 text-sm text-primary pt-1">
