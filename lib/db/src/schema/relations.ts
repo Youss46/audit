@@ -17,6 +17,7 @@ import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } fr
 import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable } from "./analytical";
 import { documentTemplatesTable, generatedDocumentsTable } from "./report-documents";
 import { collaborationThreadsTable, contextualCommentsTable, notificationsTable } from "./collaboration";
+import { financialScoringResultsTable, businessValuationsTable } from "./scoring";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -310,4 +311,21 @@ export const contextualCommentsRelations = relations(contextualCommentsTable, ({
 export const notificationsRelations = relations(notificationsTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [notificationsTable.firmId], references: [firmsTable.id] }),
   recipient: one(usersTable, { fields: [notificationsTable.recipientId], references: [usersTable.id] }),
+}));
+
+// Module M27 (Scoring Financier & Évaluation d'Entreprise).
+export const financialScoringResultsRelations = relations(financialScoringResultsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [financialScoringResultsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, {
+    fields: [financialScoringResultsTable.clientId],
+    references: [clientsTable.id],
+  }),
+}));
+
+export const businessValuationsRelations = relations(businessValuationsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [businessValuationsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, {
+    fields: [businessValuationsTable.clientId],
+    references: [clientsTable.id],
+  }),
 }));

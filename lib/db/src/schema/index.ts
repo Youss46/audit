@@ -17,4 +17,5 @@ export * from "./analytical";
 export * from "./dsf";
 export * from "./report-documents";
 export * from "./collaboration";
+export * from "./scoring";
 export * from "./relations";
