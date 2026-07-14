@@ -15,6 +15,7 @@ import { employeesTable, payslipsTable } from "./payroll";
 import { vatDeclarationsTable } from "./vat";
 import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } from "./cabinet-ops";
 import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable } from "./analytical";
+import { documentTemplatesTable, generatedDocumentsTable } from "./report-documents";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -274,4 +275,12 @@ export const journalLinesAnalyticalRelations = relations(journalLinesTable, ({ m
     fields: [journalLinesTable.transactionId],
     references: [transactionsTable.id],
   }),
+}));
+
+// Module M25 (Générateur de Synthèses & Documents Juridiques).
+export const generatedDocumentsRelations = relations(generatedDocumentsTable, ({ one }) => ({
+  client: one(clientsTable, { fields: [generatedDocumentsTable.clientId], references: [clientsTable.id] }),
+  firm: one(firmsTable, { fields: [generatedDocumentsTable.firmId], references: [firmsTable.id] }),
+  template: one(documentTemplatesTable, { fields: [generatedDocumentsTable.templateId], references: [documentTemplatesTable.id] }),
+  createdBy: one(usersTable, { fields: [generatedDocumentsTable.createdByUserId], references: [usersTable.id] }),
 }));

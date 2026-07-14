@@ -31,6 +31,7 @@ import Paie from '@/pages/paie';
 import ClotureAnnuelle from '@/pages/cloture-annuelle';
 import Teledeclaration from '@/pages/teledeclaration';
 import Rentabilite from '@/pages/rentabilite';
+import Dsf from '@/pages/dsf';
 import NotFound from '@/pages/not-found';
 
 const queryClient = new QueryClient();
@@ -67,6 +68,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/teledeclaration" component={Teledeclaration} />
         <Route path="/cabinet/client/:clientId/pilotage" component={Pilotage} />
         <Route path="/cabinet/client/:clientId/analytique" component={Analytique} />
+        <Route path="/cabinet/client/:clientId/dsf" component={Dsf} />
         <Route path="/cabinet/interne/rentabilite" component={Rentabilite} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />

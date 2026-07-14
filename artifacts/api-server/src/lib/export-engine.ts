@@ -9,6 +9,7 @@
 import { createRequire } from "node:module";
 import ExcelJS from "exceljs";
 import type { BalanceRow, BilanResult, CompteResultatResult } from "./reporting-engine";
+import type { DsfResult } from "./dsf-engine";
 
 // ---------------------------------------------------------------------------
 // Shared helpers
@@ -929,4 +930,342 @@ export async function generateFinancialStatementsExcel(
   });
 
   return wb.xlsx.writeBuffer() as unknown as Promise<Buffer>;
+}
+
+// ---------------------------------------------------------------------------
+// Module M24 — DSF / Liasse Fiscale SYSCOHADA Révisé (multi-sheet export)
+// ---------------------------------------------------------------------------
+
+function styleHeaderRow(ws: ExcelJS.Worksheet, row: number, cols: number[], titles: string[]): void {
+  const r = ws.getRow(row);
+  cols.forEach((c, i) => {
+    r.getCell(c).value = titles[i];
+    r.getCell(c).font = { bold: true, size: 9, color: { argb: "FFFFFFFF" } };
+    r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1E3A5F" } };
+    r.getCell(c).alignment = { horizontal: i === 0 ? "left" : "right", vertical: "middle" };
+  });
+}
+
+function docHeader(ws: ExcelJS.Worksheet, clientName: string, subtitle: string): void {
+  ws.getCell("A1").value = clientName;
+  ws.getCell("A1").font = { bold: true, size: 14, color: { argb: "FF1E3A5F" } };
+  ws.getCell("A2").value = subtitle;
+  ws.getCell("A2").font = { size: 11, color: { argb: "FF2E6DA4" } };
+  ws.getCell("A3").value = "Devise : Francs CFA (XOF)";
+  ws.getCell("A3").font = { size: 9, italic: true, color: { argb: "FF555555" } };
+}
+
+/**
+ * Generates the DSF (Déclaration Statistique et Fiscale / Liasse Fiscale
+ * SYSCOHADA Révisé) as a 3-sheet Excel workbook — Bilan (Actif/Passif),
+ * Compte de Résultat, and Tableau des Flux de Trésorerie — following the
+ * DGI's official line codes and column layout (Brut/Amortissements/Net for
+ * the Bilan Actif).
+ */
+export async function generateDsfExcel(
+  clientName: string,
+  year: number,
+  dsf: DsfResult,
+): Promise<Buffer> {
+  const wb = new ExcelJS.Workbook();
+  wb.creator = "M15-AUDIT";
+  wb.created = new Date();
+  const NUM_FMT = "#,##0";
+
+  // ---- Sheet 1: Bilan (Actif left, Passif right) ----
+  const wsBilan = wb.addWorksheet("Bilan");
+  wsBilan.getColumn(1).width = 6;
+  wsBilan.getColumn(2).width = 38;
+  wsBilan.getColumn(3).width = 16;
+  wsBilan.getColumn(4).width = 16;
+  wsBilan.getColumn(5).width = 16;
+  wsBilan.getColumn(6).width = 4;
+  wsBilan.getColumn(7).width = 6;
+  wsBilan.getColumn(8).width = 38;
+  wsBilan.getColumn(9).width = 18;
+
+  docHeader(wsBilan, clientName, `Bilan — Liasse Fiscale — Exercice ${year} — SYSCOHADA RÉVISÉ`);
+
+  styleHeaderRow(wsBilan, 5, [1, 2, 3, 4, 5], ["Réf.", "ACTIF", "Brut", "Amort.", "Net"]);
+  let actifRow = 6;
+  for (const l of dsf.bilanActif) {
+    const r = wsBilan.getRow(actifRow);
+    if (l.isSectionHeader) {
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+    } else {
+      r.getCell(1).value = l.lineCode;
+      r.getCell(1).font = { name: "Courier New", size: 8 };
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: l.isSubtotal, size: 9 };
+      r.getCell(3).value = l.brut;
+      r.getCell(4).value = l.amortissements;
+      r.getCell(5).value = l.netN;
+      [3, 4, 5].forEach((c) => {
+        r.getCell(c).numFmt = NUM_FMT;
+        r.getCell(c).font = { bold: l.isSubtotal, name: "Courier New", size: 9 };
+        r.getCell(c).alignment = { horizontal: "right" };
+      });
+      if (l.isSubtotal) {
+        [1, 2, 3, 4, 5].forEach((c) => {
+          r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+          r.getCell(c).border = { top: { style: "thin" } };
+        });
+      }
+    }
+    actifRow++;
+  }
+  wsBilan.getCell(`B${actifRow + 1}`).value = "TOTAL ACTIF";
+  wsBilan.getCell(`B${actifRow + 1}`).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+  wsBilan.getCell(`E${actifRow + 1}`).value = dsf.totalBilanActif;
+  wsBilan.getCell(`E${actifRow + 1}`).numFmt = NUM_FMT;
+  wsBilan.getCell(`E${actifRow + 1}`).font = { bold: true, size: 10 };
+  wsBilan.getCell(`E${actifRow + 1}`).alignment = { horizontal: "right" };
+
+  styleHeaderRow(wsBilan, 5, [7, 8, 9], ["Réf.", "PASSIF", "Net"]);
+  let passifRow = 6;
+  for (const l of dsf.bilanPassif) {
+    const r = wsBilan.getRow(passifRow);
+    if (l.isSectionHeader) {
+      r.getCell(8).value = l.label;
+      r.getCell(8).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+    } else {
+      r.getCell(7).value = l.lineCode;
+      r.getCell(7).font = { name: "Courier New", size: 8 };
+      r.getCell(8).value = l.label;
+      r.getCell(8).font = { bold: l.isSubtotal, size: 9 };
+      r.getCell(9).value = l.montantN;
+      r.getCell(9).numFmt = NUM_FMT;
+      r.getCell(9).font = { bold: l.isSubtotal, name: "Courier New", size: 9 };
+      r.getCell(9).alignment = { horizontal: "right" };
+      if (l.isSubtotal) {
+        [7, 8, 9].forEach((c) => {
+          r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+          r.getCell(c).border = { top: { style: "thin" } };
+        });
+      }
+    }
+    passifRow++;
+  }
+  wsBilan.getCell(`H${passifRow + 1}`).value = "TOTAL PASSIF";
+  wsBilan.getCell(`H${passifRow + 1}`).font = { bold: true, size: 10, color: { argb: "FF1E3A5F" } };
+  wsBilan.getCell(`I${passifRow + 1}`).value = dsf.totalBilanPassif;
+  wsBilan.getCell(`I${passifRow + 1}`).numFmt = NUM_FMT;
+  wsBilan.getCell(`I${passifRow + 1}`).font = { bold: true, size: 10 };
+  wsBilan.getCell(`I${passifRow + 1}`).alignment = { horizontal: "right" };
+
+  const equilRow = Math.max(actifRow, passifRow) + 3;
+  wsBilan.getCell(`B${equilRow}`).value = dsf.bilanEquilibre
+    ? `✓ Bilan équilibré : ${fmtNum(dsf.totalBilanActif)} XOF`
+    : `⚠ Écart Actif/Passif : ${fmtNum(dsf.totalBilanActif)} vs ${fmtNum(dsf.totalBilanPassif)}`;
+  wsBilan.getCell(`B${equilRow}`).font = {
+    italic: true, size: 9,
+    color: { argb: dsf.bilanEquilibre ? "FF1a7a4a" : "FFc0392b" },
+  };
+
+  // ---- Sheet 2: Compte de Résultat (SIG cascade) ----
+  const wsCR = wb.addWorksheet("Compte de Résultat");
+  wsCR.getColumn(1).width = 6;
+  wsCR.getColumn(2).width = 45;
+  wsCR.getColumn(3).width = 18;
+  wsCR.getColumn(4).width = 18;
+  wsCR.getColumn(5).width = 18;
+
+  docHeader(wsCR, clientName, `Compte de Résultat — Exercice ${year} — SYSCOHADA RÉVISÉ (SIG)`);
+  styleHeaderRow(wsCR, 5, [1, 2, 3, 4, 5], ["Réf.", "Libellé", "Produits", "Charges", "Solde"]);
+  let crRow = 6;
+  for (const l of dsf.compteResultat) {
+    const r = wsCR.getRow(crRow);
+    if (l.isSectionHeader) {
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+    } else {
+      r.getCell(1).value = l.lineCode;
+      r.getCell(1).font = { name: "Courier New", size: 8 };
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: l.isIntermediate, size: 9 };
+      r.getCell(3).value = l.produits || null;
+      r.getCell(4).value = l.charges || null;
+      r.getCell(5).value = l.solde;
+      [3, 4, 5].forEach((c) => {
+        r.getCell(c).numFmt = NUM_FMT;
+        r.getCell(c).font = { bold: l.isIntermediate, name: "Courier New", size: 9 };
+        r.getCell(c).alignment = { horizontal: "right" };
+      });
+      if (l.isIntermediate) {
+        [1, 2, 3, 4, 5].forEach((c) => {
+          r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+          r.getCell(c).border = { top: { style: "thin" } };
+        });
+      }
+    }
+    crRow++;
+  }
+
+  // ---- Sheet 3: Tableau des Flux de Trésorerie (TFT) ----
+  const wsTft = wb.addWorksheet("TFT");
+  wsTft.getColumn(1).width = 8;
+  wsTft.getColumn(2).width = 55;
+  wsTft.getColumn(3).width = 20;
+
+  docHeader(wsTft, clientName, `Tableau des Flux de Trésorerie — Exercice ${year} — Méthode indirecte`);
+  styleHeaderRow(wsTft, 5, [1, 2, 3], ["Réf.", "Libellé", "Montant N"]);
+  let tftRow = 6;
+  for (const l of dsf.tft) {
+    const r = wsTft.getRow(tftRow);
+    if (l.isSectionHeader) {
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: true, size: 10, color: { argb: "FF2E6DA4" } };
+    } else {
+      r.getCell(1).value = l.lineCode;
+      r.getCell(1).font = { name: "Courier New", size: 8 };
+      r.getCell(2).value = l.label;
+      r.getCell(2).font = { bold: l.isSubtotal, size: 9 };
+      r.getCell(3).value = l.montantN;
+      r.getCell(3).numFmt = NUM_FMT;
+      r.getCell(3).font = { bold: l.isSubtotal, name: "Courier New", size: 9 };
+      r.getCell(3).alignment = { horizontal: "right" };
+      if (l.isSubtotal) {
+        [1, 2, 3].forEach((c) => {
+          r.getCell(c).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCE8F5" } };
+          r.getCell(c).border = { top: { style: "thin" } };
+        });
+      }
+    }
+    tftRow++;
+  }
+
+  return wb.xlsx.writeBuffer() as unknown as Promise<Buffer>;
+}
+
+// ---------------------------------------------------------------------------
+// Module M25 (Générateur de Synthèses & Documents Juridiques) — HTML → PDF
+// ---------------------------------------------------------------------------
+//
+// The in-app WYSIWYG editor (TipTap) produces clean, shallow semantic HTML
+// (h1-h3, p, strong/em, ul/ol/li, table, br). There is no headless browser
+// in this stack (see the module header comment above), so rather than pull
+// in a heavyweight HTML-to-PDF renderer, this is a small, purpose-built
+// converter from that specific HTML subset to a pdfmake content tree.
+// Any tag outside this subset has its markup stripped and its text content
+// kept, so a document never silently loses content -- worst case it loses
+// formatting, never text.
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'");
+}
+
+// Parses inline HTML (text possibly containing <strong>/<b>, <em>/<i>, <br>)
+// into a pdfmake "text" run array, tracking bold/italics via a small stack.
+function parseInlineRuns(html: string): Record<string, unknown>[] {
+  const runs: Record<string, unknown>[] = [];
+  const stack: { bold: boolean; italics: boolean }[] = [{ bold: false, italics: false }];
+  const tokenRe = /<br\s*\/?>|<(\/?)(strong|b|em|i)>|([^<]+)/gi;
+  let match: RegExpExecArray | null;
+  while ((match = tokenRe.exec(html)) !== null) {
+    const [full, closing, tag, plainText] = match;
+    if (full.startsWith("<br")) {
+      runs.push({ text: "\n" });
+      continue;
+    }
+    if (tag) {
+      const top = stack[stack.length - 1];
+      if (closing) {
+        if (stack.length > 1) stack.pop();
+      } else {
+        const isBold = tag === "strong" || tag === "b";
+        const isItalics = tag === "em" || tag === "i";
+        stack.push({ bold: isBold || top.bold, italics: isItalics || top.italics });
+      }
+      continue;
+    }
+    if (plainText) {
+      const top = stack[stack.length - 1];
+      const text = decodeHtmlEntities(plainText);
+      if (text.length === 0) continue;
+      runs.push({ text, bold: top.bold, italics: top.italics });
+    }
+  }
+  return runs.length > 0 ? runs : [{ text: "" }];
+}
+
+/** Converts a TipTap-produced HTML document into a pdfmake `content` array. */
+function htmlToPdfContent(html: string): Record<string, unknown>[] {
+  const content: Record<string, unknown>[] = [];
+  const blockRe = /<(h1|h2|h3|p|ul|ol|blockquote)[^>]*>([\s\S]*?)<\/\1>/gi;
+  let match: RegExpExecArray | null;
+  let matchedAny = false;
+
+  while ((match = blockRe.exec(html)) !== null) {
+    matchedAny = true;
+    const [, tag, inner] = match;
+    if (tag === "h1") {
+      content.push({ text: parseInlineRuns(inner), style: "docTitle", margin: [0, 0, 0, 10] });
+    } else if (tag === "h2") {
+      content.push({ text: parseInlineRuns(inner), style: "sectionHeading", margin: [0, 14, 0, 6] });
+    } else if (tag === "h3") {
+      content.push({ text: parseInlineRuns(inner), style: "subHeading", margin: [0, 10, 0, 4] });
+    } else if (tag === "blockquote") {
+      content.push({ text: parseInlineRuns(inner), italics: true, margin: [10, 4, 0, 4], color: THEME.accent });
+    } else if (tag === "ul" || tag === "ol") {
+      const items = Array.from(inner.matchAll(/<li[^>]*>([\s\S]*?)<\/li>/gi)).map((m) => ({
+        text: parseInlineRuns(m[1]),
+      }));
+      content.push(tag === "ul" ? { ul: items, margin: [0, 2, 0, 6] } : { ol: items, margin: [0, 2, 0, 6] });
+    } else {
+      // <p> (and anything else falling through)
+      content.push({ text: parseInlineRuns(inner), margin: [0, 0, 0, 8], lineHeight: 1.25 });
+    }
+  }
+
+  if (!matchedAny) {
+    // No recognized block tags at all — fall back to rendering the whole
+    // string as plain text rather than producing an empty PDF.
+    const plain = decodeHtmlEntities(html.replace(/<[^>]+>/g, " ")).trim();
+    content.push({ text: plain, margin: [0, 0, 0, 8] });
+  }
+
+  return content;
+}
+
+/**
+ * Renders a compiled/edited Module M25 document (rapport de gestion, lettre
+ * de commentaires, lettre de mission, synthèse de performance) to PDF from
+ * its current HTML.
+ */
+export function generateReportDocumentPdf(
+  title: string,
+  clientName: string,
+  year: number,
+  contentHtml: string,
+): Promise<Buffer> {
+  const docDef = {
+    pageSize: "A4",
+    pageMargins: [50, 60, 50, 60],
+    content: [
+      {
+        columns: [
+          { text: clientName, style: "docMeta" },
+          { text: `Exercice ${year}`, style: "docMeta", alignment: "right" },
+        ],
+        margin: [0, 0, 0, 20],
+      },
+      ...htmlToPdfContent(contentHtml),
+    ],
+    styles: {
+      docMeta: { fontSize: 9, color: "#666666" },
+      docTitle: { fontSize: 18, bold: true, color: THEME.primary },
+      sectionHeading: { fontSize: 13, bold: true, color: THEME.primary },
+      subHeading: { fontSize: 11, bold: true, color: THEME.accent },
+    },
+    defaultStyle: { font: "Helvetica", fontSize: 10, color: THEME.text },
+    info: { title },
+  };
+  return renderPdf(docDef);
 }

@@ -78,6 +78,7 @@ const TABS = [
   { slug: "teledeclaration",  label: "Télédéclaration TVA"  },
   { slug: "pilotage",         label: "Tableau de Bord"       },
   { slug: "analytique",       label: "Analytique"             },
+  { slug: "dsf",              label: "Liasse Fiscale (DSF)"  },
 ] as const
 
 /** Cabinet-specific tabs that live under /cabinet/client/:id/<slug> */
@@ -89,6 +90,7 @@ const CABINET_TABS = new Set<string>([
   "teledeclaration",
   "pilotage",
   "analytique",
+  "dsf",
 ])
 
 export type AccountingTabSlug = (typeof TABS)[number]["slug"]
@@ -105,7 +107,8 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
   const [, teledeclParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/teledeclaration")
   const [, pilotageParams]   = useRoute<{ clientId: string }>("/cabinet/client/:clientId/pilotage")
   const [, analytiqueParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/analytique")
-  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams
+  const [, dsfParams] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/dsf")
+  const params   = comptaParams ?? clotureParams ?? immobParams ?? financeParams ?? paieParams ?? teledeclParams ?? pilotageParams ?? analytiqueParams ?? dsfParams
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   // All clients for the selector dropdown.

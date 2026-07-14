@@ -2337,6 +2337,56 @@ export const GetVatAnnexResponse = zod.array(GetVatAnnexResponseItem)
 
 
 /**
+ * @summary Compute the full DSF / Liasse Fiscale SYSCOHADA Révisé (Bilan, Compte de Résultat, TFT) live from the validated ledger (M24)
+ */
+export const GetDsfParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const GetDsfResponse = zod.object({
+  "bilanActif": zod.array(zod.object({
+  "lineCode": zod.string(),
+  "label": zod.string(),
+  "isSubtotal": zod.boolean(),
+  "isSectionHeader": zod.boolean(),
+  "brut": zod.number(),
+  "amortissements": zod.number(),
+  "netN": zod.number()
+})),
+  "bilanPassif": zod.array(zod.object({
+  "lineCode": zod.string(),
+  "label": zod.string(),
+  "isSubtotal": zod.boolean(),
+  "isSectionHeader": zod.boolean(),
+  "montantN": zod.number()
+})),
+  "compteResultat": zod.array(zod.object({
+  "lineCode": zod.string(),
+  "label": zod.string(),
+  "produits": zod.number(),
+  "charges": zod.number(),
+  "solde": zod.number(),
+  "isIntermediate": zod.boolean(),
+  "isSectionHeader": zod.boolean()
+})),
+  "tft": zod.array(zod.object({
+  "lineCode": zod.string(),
+  "label": zod.string(),
+  "montantN": zod.number(),
+  "isSubtotal": zod.boolean(),
+  "isSectionHeader": zod.boolean()
+})),
+  "totalBilanActif": zod.number(),
+  "totalBilanPassif": zod.number(),
+  "balanceEquilibre": zod.boolean(),
+  "bilanEquilibre": zod.boolean(),
+  "totalDebits": zod.number(),
+  "totalCredits": zod.number()
+})
+
+
+/**
  * @summary Fill in or correct a purchase transaction's supplier name, NCC and invoice number (M21)
  */
 export const UpdateVatSupplierInfoParams = zod.object({
@@ -2918,5 +2968,159 @@ export const GetProfitabilityReportResponse = zod.object({
   "pct": zod.number()
 })).describe('Distribution of hours by task type across all clients for the month.')
 })
+
+
+/**
+ * @summary List the standard document templates available for compilation (M25)
+ */
+export const ListDocumentTemplatesResponseItem = zod.object({
+  "id": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "title": zod.string()
+})
+export const ListDocumentTemplatesResponse = zod.array(ListDocumentTemplatesResponseItem)
+
+
+/**
+ * @summary Hydrate a template's {{PLACEHOLDER}} tags with the client's real financial figures, without persisting anything (M25)
+ */
+export const CompileReportDocumentParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "templateId": zod.coerce.number(),
+  "year": zod.coerce.number()
+})
+
+export const CompileReportDocumentResponse = zod.object({
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "title": zod.string(),
+  "contentHtml": zod.string(),
+  "unresolvedKeys": zod.array(zod.string())
+})
+
+
+/**
+ * @summary List a client's generated documents (history), optionally filtered by year (M25)
+ */
+export const ListGeneratedDocumentsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number().optional()
+})
+
+export const ListGeneratedDocumentsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "year": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "finalizedAt": zod.string().nullable()
+})
+export const ListGeneratedDocumentsResponse = zod.array(ListGeneratedDocumentsResponseItem)
+
+
+/**
+ * @summary Persist a compiled/edited document, as DRAFT or directly as FINAL (M25)
+ */
+export const CreateGeneratedDocumentBody = zod.object({
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "year": zod.number(),
+  "title": zod.string(),
+  "contentHtml": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']).optional()
+})
+
+export const CreateGeneratedDocumentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "year": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "finalizedAt": zod.string().nullable()
+}).and(zod.object({
+  "contentHtml": zod.string()
+}))
+
+
+/**
+ * @summary Fetch one generated document, including its full content (M25)
+ */
+export const GetGeneratedDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetGeneratedDocumentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "year": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "finalizedAt": zod.string().nullable()
+}).and(zod.object({
+  "contentHtml": zod.string()
+}))
+
+
+/**
+ * @summary Edit a DRAFT document's title/content. Rejected once the document is FINAL (M25)
+ */
+export const UpdateGeneratedDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateGeneratedDocumentBody = zod.object({
+  "title": zod.string().optional(),
+  "contentHtml": zod.string().optional()
+})
+
+export const UpdateGeneratedDocumentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "year": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "finalizedAt": zod.string().nullable()
+}).and(zod.object({
+  "contentHtml": zod.string()
+}))
+
+
+/**
+ * @summary Lock a DRAFT document to FINAL, permanently (M25)
+ */
+export const FinalizeGeneratedDocumentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const FinalizeGeneratedDocumentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "templateId": zod.number(),
+  "templateType": zod.enum(['RAPPORT_GESTION', 'LETTRE_COMMENTAIRES', 'LETTRE_MISSION', 'SYNTHESE_PERFORMANCE']),
+  "year": zod.number(),
+  "title": zod.string(),
+  "status": zod.enum(['DRAFT', 'FINAL']),
+  "createdAt": zod.string(),
+  "updatedAt": zod.string(),
+  "finalizedAt": zod.string().nullable()
+}).and(zod.object({
+  "contentHtml": zod.string()
+}))
 
 

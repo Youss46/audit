@@ -52,6 +52,7 @@ import type {
   CloseDailyClosureResult,
   ClosePeriodResult,
   ClosingStatus,
+  CompiledDocumentPreview,
   CompteDeResultatResult,
   DailyClosure,
   DashboardSummary,
@@ -59,6 +60,8 @@ import type {
   Document,
   DocumentDetail,
   DocumentInput,
+  DocumentTemplateListResult,
+  DsfResult,
   Employee,
   EmployeeInput,
   EmployeeUpdate,
@@ -73,6 +76,9 @@ import type {
   FixedAssetUpdate,
   GenerateClosingsResult,
   GenerateFinanceJournalEntriesResult,
+  GeneratedDocumentDetail,
+  GeneratedDocumentListResult,
+  GeneratedDocumentPatchInput,
   GetAnalyticalReportParams,
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
@@ -92,6 +98,7 @@ import type {
   ListDocumentsParams,
   ListEmployeesParams,
   ListFinancialItemsParams,
+  ListGeneratedDocumentsParams,
   ListMissionsParams,
   ListPayslipsParams,
   ListTimesheetEntriesParams,
@@ -102,6 +109,7 @@ import type {
   MissionDetail,
   MissionInput,
   MissionUpdate,
+  NewGeneratedDocumentInput,
   Payslip,
   PilotageDashboardResult,
   PostPayrollLedgerResult,
@@ -5499,6 +5507,88 @@ export function useGetVatAnnex<TData = Awaited<ReturnType<typeof getVatAnnex>>, 
 
 
 
+export const getGetDsfUrl = (clientId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/tax/dsf/${clientId}/${year}`
+}
+
+/**
+ * @summary Compute the full DSF / Liasse Fiscale SYSCOHADA Révisé (Bilan, Compte de Résultat, TFT) live from the validated ledger (M24)
+ */
+export const getDsf = async (clientId: number,
+    year: number, options?: RequestInit): Promise<DsfResult> => {
+
+  return customFetch<DsfResult>(getGetDsfUrl(clientId,year),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetDsfQueryKey = (clientId: number,
+    year: number,) => {
+    return [
+    `/api/tax/dsf/${clientId}/${year}`
+    ] as const;
+    }
+
+
+export const getGetDsfQueryOptions = <TData = Awaited<ReturnType<typeof getDsf>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDsf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetDsfQueryKey(clientId,year);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getDsf>>> = ({ signal }) => getDsf(clientId,year, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && year !== null && year !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getDsf>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetDsfQueryResult = NonNullable<Awaited<ReturnType<typeof getDsf>>>
+export type GetDsfQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Compute the full DSF / Liasse Fiscale SYSCOHADA Révisé (Bilan, Compte de Résultat, TFT) live from the validated ledger (M24)
+ */
+
+export function useGetDsf<TData = Awaited<ReturnType<typeof getDsf>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getDsf>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetDsfQueryOptions(clientId,year,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUpdateVatSupplierInfoUrl = (id: number,) => {
 
 
@@ -7306,4 +7396,543 @@ export function useGetProfitabilityReport<TData = Awaited<ReturnType<typeof getP
 
 
 
+
+export const getListDocumentTemplatesUrl = () => {
+
+
+
+
+  return `/api/documents-synthesis/templates`
+}
+
+/**
+ * @summary List the standard document templates available for compilation (M25)
+ */
+export const listDocumentTemplates = async ( options?: RequestInit): Promise<DocumentTemplateListResult> => {
+
+  return customFetch<DocumentTemplateListResult>(getListDocumentTemplatesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListDocumentTemplatesQueryKey = () => {
+    return [
+    `/api/documents-synthesis/templates`
+    ] as const;
+    }
+
+
+export const getListDocumentTemplatesQueryOptions = <TData = Awaited<ReturnType<typeof listDocumentTemplates>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocumentTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListDocumentTemplatesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listDocumentTemplates>>> = ({ signal }) => listDocumentTemplates({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listDocumentTemplates>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListDocumentTemplatesQueryResult = NonNullable<Awaited<ReturnType<typeof listDocumentTemplates>>>
+export type ListDocumentTemplatesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the standard document templates available for compilation (M25)
+ */
+
+export function useListDocumentTemplates<TData = Awaited<ReturnType<typeof listDocumentTemplates>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listDocumentTemplates>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListDocumentTemplatesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCompileReportDocumentUrl = (clientId: number,
+    templateId: number,
+    year: number,) => {
+
+
+
+
+  return `/api/documents-synthesis/compile/${clientId}/${templateId}/${year}`
+}
+
+/**
+ * @summary Hydrate a template's {{PLACEHOLDER}} tags with the client's real financial figures, without persisting anything (M25)
+ */
+export const compileReportDocument = async (clientId: number,
+    templateId: number,
+    year: number, options?: RequestInit): Promise<CompiledDocumentPreview> => {
+
+  return customFetch<CompiledDocumentPreview>(getCompileReportDocumentUrl(clientId,templateId,year),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getCompileReportDocumentQueryKey = (clientId: number,
+    templateId: number,
+    year: number,) => {
+    return [
+    `/api/documents-synthesis/compile/${clientId}/${templateId}/${year}`
+    ] as const;
+    }
+
+
+export const getCompileReportDocumentQueryOptions = <TData = Awaited<ReturnType<typeof compileReportDocument>>, TError = ErrorType<ErrorResponse>>(clientId: number,
+    templateId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof compileReportDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getCompileReportDocumentQueryKey(clientId,templateId,year);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof compileReportDocument>>> = ({ signal }) => compileReportDocument(clientId,templateId,year, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: clientId !== null && clientId !== undefined && templateId !== null && templateId !== undefined && year !== null && year !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof compileReportDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type CompileReportDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof compileReportDocument>>>
+export type CompileReportDocumentQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Hydrate a template's {{PLACEHOLDER}} tags with the client's real financial figures, without persisting anything (M25)
+ */
+
+export function useCompileReportDocument<TData = Awaited<ReturnType<typeof compileReportDocument>>, TError = ErrorType<ErrorResponse>>(
+ clientId: number,
+    templateId: number,
+    year: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof compileReportDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getCompileReportDocumentQueryOptions(clientId,templateId,year,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListGeneratedDocumentsUrl = (params: ListGeneratedDocumentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/documents-synthesis/generated?${stringifiedParams}` : `/api/documents-synthesis/generated`
+}
+
+/**
+ * @summary List a client's generated documents (history), optionally filtered by year (M25)
+ */
+export const listGeneratedDocuments = async (params: ListGeneratedDocumentsParams, options?: RequestInit): Promise<GeneratedDocumentListResult> => {
+
+  return customFetch<GeneratedDocumentListResult>(getListGeneratedDocumentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListGeneratedDocumentsQueryKey = (params?: ListGeneratedDocumentsParams,) => {
+    return [
+    `/api/documents-synthesis/generated`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListGeneratedDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listGeneratedDocuments>>, TError = ErrorType<ErrorResponse>>(params: ListGeneratedDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGeneratedDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListGeneratedDocumentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listGeneratedDocuments>>> = ({ signal }) => listGeneratedDocuments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listGeneratedDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListGeneratedDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listGeneratedDocuments>>>
+export type ListGeneratedDocumentsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List a client's generated documents (history), optionally filtered by year (M25)
+ */
+
+export function useListGeneratedDocuments<TData = Awaited<ReturnType<typeof listGeneratedDocuments>>, TError = ErrorType<ErrorResponse>>(
+ params: ListGeneratedDocumentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listGeneratedDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListGeneratedDocumentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateGeneratedDocumentUrl = () => {
+
+
+
+
+  return `/api/documents-synthesis/generated`
+}
+
+/**
+ * @summary Persist a compiled/edited document, as DRAFT or directly as FINAL (M25)
+ */
+export const createGeneratedDocument = async (newGeneratedDocumentInput: NewGeneratedDocumentInput, options?: RequestInit): Promise<GeneratedDocumentDetail> => {
+
+  return customFetch<GeneratedDocumentDetail>(getCreateGeneratedDocumentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(newGeneratedDocumentInput)
+  }
+);}
+
+
+
+
+
+export const getCreateGeneratedDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGeneratedDocument>>, TError,{data: BodyType<NewGeneratedDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGeneratedDocument>>, TError,{data: BodyType<NewGeneratedDocumentInput>}, TContext> => {
+
+const mutationKey = ['createGeneratedDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGeneratedDocument>>, {data: BodyType<NewGeneratedDocumentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createGeneratedDocument(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGeneratedDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof createGeneratedDocument>>>
+    export type CreateGeneratedDocumentMutationBody = BodyType<NewGeneratedDocumentInput>
+    export type CreateGeneratedDocumentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Persist a compiled/edited document, as DRAFT or directly as FINAL (M25)
+ */
+export const useCreateGeneratedDocument = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGeneratedDocument>>, TError,{data: BodyType<NewGeneratedDocumentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createGeneratedDocument>>,
+        TError,
+        {data: BodyType<NewGeneratedDocumentInput>},
+        TContext
+      > => {
+      return useMutation(getCreateGeneratedDocumentMutationOptions(options));
+    }
+
+export const getGetGeneratedDocumentUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents-synthesis/generated/${id}`
+}
+
+/**
+ * @summary Fetch one generated document, including its full content (M25)
+ */
+export const getGeneratedDocument = async (id: number, options?: RequestInit): Promise<GeneratedDocumentDetail> => {
+
+  return customFetch<GeneratedDocumentDetail>(getGetGeneratedDocumentUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetGeneratedDocumentQueryKey = (id: number,) => {
+    return [
+    `/api/documents-synthesis/generated/${id}`
+    ] as const;
+    }
+
+
+export const getGetGeneratedDocumentQueryOptions = <TData = Awaited<ReturnType<typeof getGeneratedDocument>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGeneratedDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetGeneratedDocumentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getGeneratedDocument>>> = ({ signal }) => getGeneratedDocument(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getGeneratedDocument>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetGeneratedDocumentQueryResult = NonNullable<Awaited<ReturnType<typeof getGeneratedDocument>>>
+export type GetGeneratedDocumentQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Fetch one generated document, including its full content (M25)
+ */
+
+export function useGetGeneratedDocument<TData = Awaited<ReturnType<typeof getGeneratedDocument>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getGeneratedDocument>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetGeneratedDocumentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpdateGeneratedDocumentUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents-synthesis/generated/${id}`
+}
+
+/**
+ * @summary Edit a DRAFT document's title/content. Rejected once the document is FINAL (M25)
+ */
+export const updateGeneratedDocument = async (id: number,
+    generatedDocumentPatchInput: GeneratedDocumentPatchInput, options?: RequestInit): Promise<GeneratedDocumentDetail> => {
+
+  return customFetch<GeneratedDocumentDetail>(getUpdateGeneratedDocumentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(generatedDocumentPatchInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateGeneratedDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGeneratedDocument>>, TError,{id: number;data: BodyType<GeneratedDocumentPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateGeneratedDocument>>, TError,{id: number;data: BodyType<GeneratedDocumentPatchInput>}, TContext> => {
+
+const mutationKey = ['updateGeneratedDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateGeneratedDocument>>, {id: number;data: BodyType<GeneratedDocumentPatchInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateGeneratedDocument(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateGeneratedDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof updateGeneratedDocument>>>
+    export type UpdateGeneratedDocumentMutationBody = BodyType<GeneratedDocumentPatchInput>
+    export type UpdateGeneratedDocumentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Edit a DRAFT document's title/content. Rejected once the document is FINAL (M25)
+ */
+export const useUpdateGeneratedDocument = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateGeneratedDocument>>, TError,{id: number;data: BodyType<GeneratedDocumentPatchInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateGeneratedDocument>>,
+        TError,
+        {id: number;data: BodyType<GeneratedDocumentPatchInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateGeneratedDocumentMutationOptions(options));
+    }
+
+export const getFinalizeGeneratedDocumentUrl = (id: number,) => {
+
+
+
+
+  return `/api/documents-synthesis/generated/${id}/finalize`
+}
+
+/**
+ * @summary Lock a DRAFT document to FINAL, permanently (M25)
+ */
+export const finalizeGeneratedDocument = async (id: number, options?: RequestInit): Promise<GeneratedDocumentDetail> => {
+
+  return customFetch<GeneratedDocumentDetail>(getFinalizeGeneratedDocumentUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getFinalizeGeneratedDocumentMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeGeneratedDocument>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof finalizeGeneratedDocument>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['finalizeGeneratedDocument'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof finalizeGeneratedDocument>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  finalizeGeneratedDocument(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type FinalizeGeneratedDocumentMutationResult = NonNullable<Awaited<ReturnType<typeof finalizeGeneratedDocument>>>
+
+    export type FinalizeGeneratedDocumentMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Lock a DRAFT document to FINAL, permanently (M25)
+ */
+export const useFinalizeGeneratedDocument = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof finalizeGeneratedDocument>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof finalizeGeneratedDocument>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getFinalizeGeneratedDocumentMutationOptions(options));
+    }
 

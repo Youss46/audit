@@ -1522,6 +1522,150 @@ export interface AnalyticalReport {
   rows: AnalyticalReportCodeRow[];
 }
 
+export interface DsfBilanActifLine {
+  lineCode: string;
+  label: string;
+  isSubtotal: boolean;
+  isSectionHeader: boolean;
+  brut: number;
+  amortissements: number;
+  netN: number;
+}
+
+export interface DsfBilanPassifLine {
+  lineCode: string;
+  label: string;
+  isSubtotal: boolean;
+  isSectionHeader: boolean;
+  montantN: number;
+}
+
+export interface DsfCompteResultatLine {
+  lineCode: string;
+  label: string;
+  produits: number;
+  charges: number;
+  solde: number;
+  isIntermediate: boolean;
+  isSectionHeader: boolean;
+}
+
+export interface DsfTftLine {
+  lineCode: string;
+  label: string;
+  montantN: number;
+  isSubtotal: boolean;
+  isSectionHeader: boolean;
+}
+
+export interface DsfResult {
+  bilanActif: DsfBilanActifLine[];
+  bilanPassif: DsfBilanPassifLine[];
+  compteResultat: DsfCompteResultatLine[];
+  tft: DsfTftLine[];
+  totalBilanActif: number;
+  totalBilanPassif: number;
+  balanceEquilibre: boolean;
+  bilanEquilibre: boolean;
+  totalDebits: number;
+  totalCredits: number;
+}
+
+export type DocumentTemplateSummaryTemplateType = typeof DocumentTemplateSummaryTemplateType[keyof typeof DocumentTemplateSummaryTemplateType];
+
+
+export const DocumentTemplateSummaryTemplateType = {
+  RAPPORT_GESTION: 'RAPPORT_GESTION',
+  LETTRE_COMMENTAIRES: 'LETTRE_COMMENTAIRES',
+  LETTRE_MISSION: 'LETTRE_MISSION',
+  SYNTHESE_PERFORMANCE: 'SYNTHESE_PERFORMANCE',
+} as const;
+
+export interface DocumentTemplateSummary {
+  id: number;
+  templateType: DocumentTemplateSummaryTemplateType;
+  title: string;
+}
+
+export type DocumentTemplateListResult = DocumentTemplateSummary[];
+
+export type CompiledDocumentPreviewTemplateType = typeof CompiledDocumentPreviewTemplateType[keyof typeof CompiledDocumentPreviewTemplateType];
+
+
+export const CompiledDocumentPreviewTemplateType = {
+  RAPPORT_GESTION: 'RAPPORT_GESTION',
+  LETTRE_COMMENTAIRES: 'LETTRE_COMMENTAIRES',
+  LETTRE_MISSION: 'LETTRE_MISSION',
+  SYNTHESE_PERFORMANCE: 'SYNTHESE_PERFORMANCE',
+} as const;
+
+export interface CompiledDocumentPreview {
+  templateId: number;
+  templateType: CompiledDocumentPreviewTemplateType;
+  title: string;
+  contentHtml: string;
+  unresolvedKeys: string[];
+}
+
+export type GeneratedDocumentSummaryTemplateType = typeof GeneratedDocumentSummaryTemplateType[keyof typeof GeneratedDocumentSummaryTemplateType];
+
+
+export const GeneratedDocumentSummaryTemplateType = {
+  RAPPORT_GESTION: 'RAPPORT_GESTION',
+  LETTRE_COMMENTAIRES: 'LETTRE_COMMENTAIRES',
+  LETTRE_MISSION: 'LETTRE_MISSION',
+  SYNTHESE_PERFORMANCE: 'SYNTHESE_PERFORMANCE',
+} as const;
+
+export type GeneratedDocumentSummaryStatus = typeof GeneratedDocumentSummaryStatus[keyof typeof GeneratedDocumentSummaryStatus];
+
+
+export const GeneratedDocumentSummaryStatus = {
+  DRAFT: 'DRAFT',
+  FINAL: 'FINAL',
+} as const;
+
+export interface GeneratedDocumentSummary {
+  id: number;
+  clientId: number;
+  templateId: number;
+  templateType: GeneratedDocumentSummaryTemplateType;
+  year: number;
+  title: string;
+  status: GeneratedDocumentSummaryStatus;
+  createdAt: string;
+  updatedAt: string;
+  finalizedAt: string | null;
+}
+
+export type GeneratedDocumentListResult = GeneratedDocumentSummary[];
+
+export type GeneratedDocumentDetail = GeneratedDocumentSummary & {
+  contentHtml: string;
+};
+
+export type NewGeneratedDocumentInputStatus = typeof NewGeneratedDocumentInputStatus[keyof typeof NewGeneratedDocumentInputStatus];
+
+
+export const NewGeneratedDocumentInputStatus = {
+  DRAFT: 'DRAFT',
+  FINAL: 'FINAL',
+} as const;
+
+export interface NewGeneratedDocumentInput {
+  clientId: number;
+  templateId: number;
+  year: number;
+  title: string;
+  contentHtml: string;
+  status?: NewGeneratedDocumentInputStatus;
+}
+
+export interface GeneratedDocumentPatchInput {
+  title?: string;
+  contentHtml?: string;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -1653,5 +1797,10 @@ export type GetAnalyticalReportParams = {
 clientId: number;
 axisId: number;
 year: number;
+};
+
+export type ListGeneratedDocumentsParams = {
+clientId: number;
+year?: number;
 };
 

@@ -17,6 +17,8 @@ import payrollRouter from "./payroll";
 import taxRouter from "./tax";
 import cabinetAnalyticsRouter from "./cabinet-analytics";
 import analyticalRouter from "./analytical";
+import dsfRouter from "./dsf";
+import reportDocumentsRouter from "./report-documents";
 
 const router: IRouter = Router();
 
@@ -38,5 +40,7 @@ router.use(payrollRouter);
 router.use(taxRouter);
 router.use(cabinetAnalyticsRouter);
 router.use(analyticalRouter);
+router.use(dsfRouter);
+router.use(reportDocumentsRouter);
 
 export default router;
