@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
-import { db, vatSettingsTable, VAT_SETTING_DEFAULTS } from "@workspace/db";
+import { eq, and, inArray } from "drizzle-orm";
+import { db, vatSettingsTable, usersTable, VAT_SETTING_DEFAULTS } from "@workspace/db";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 
@@ -97,26 +97,38 @@ function serializeSetting(
 
 // ---------------------------------------------------------------------------
 // Lazy-seed: ensure this firm has all canonical VAT setting rows.
-// Called automatically on GET so the table is always populated without a
-// manual migration step after each re-import or new-firm creation.
+//
+// Performance: a module-level Set tracks which firmIds have already been
+// confirmed seeded during the lifetime of this server process. After the
+// first successful check the DB is never queried again for the seed guard,
+// removing one roundtrip from every subsequent GET request.
 // ---------------------------------------------------------------------------
+const seededFirmIds = new Set<number>();
+
 async function ensureFirmVatSettingsSeeded(firmId: number): Promise<void> {
+  // Fast path: we already know this firm is seeded in this process lifetime.
+  if (seededFirmIds.has(firmId)) return;
+
   const existing = await db.query.vatSettingsTable.findFirst({
     where: eq(vatSettingsTable.firmId, firmId),
     columns: { id: true },
   });
-  if (existing) return;
 
-  await db
-    .insert(vatSettingsTable)
-    .values(
-      VAT_SETTING_DEFAULTS.map((d) => ({
-        ...d,
-        firmId,
-        updatedById: null,
-      })),
-    )
-    .onConflictDoNothing();
+  if (!existing) {
+    await db
+      .insert(vatSettingsTable)
+      .values(
+        VAT_SETTING_DEFAULTS.map((d) => ({
+          ...d,
+          firmId,
+          updatedById: null,
+        })),
+      )
+      .onConflictDoNothing();
+  }
+
+  // Mark as seeded regardless — either we just seeded, or rows already existed.
+  seededFirmIds.add(firmId);
 }
 
 // ---------------------------------------------------------------------------
@@ -130,13 +142,27 @@ router.get("/cabinet/vat-settings", async (req, res) => {
 
   await ensureFirmVatSettingsSeeded(firmId);
 
+  // Fetch settings without a Drizzle relation join — the `with: {}` helper
+  // fires a second DB query under the hood, doubling the roundtrips.
   const rows = await db.query.vatSettingsTable.findMany({
     where: eq(vatSettingsTable.firmId, firmId),
-    with: { updatedBy: true },
     orderBy: (t, { desc }) => [desc(t.ratePercentage)],
   });
 
-  res.json(rows.map((r) => serializeSetting(r, r.updatedBy?.fullName)));
+  // Only look up user names when at least one row has been updated (audited).
+  // On first load (freshly seeded, all updatedById = null) this skips the
+  // extra DB query entirely.
+  const updaterIds = [...new Set(rows.flatMap((r) => (r.updatedById ? [r.updatedById] : [])))];
+  const userNames: Record<number, string> = {};
+  if (updaterIds.length > 0) {
+    const users = await db.query.usersTable.findMany({
+      where: inArray(usersTable.id, updaterIds),
+      columns: { id: true, fullName: true },
+    });
+    for (const u of users) userNames[u.id] = u.fullName;
+  }
+
+  res.json(rows.map((r) => serializeSetting(r, r.updatedById ? (userNames[r.updatedById] ?? null) : null)));
 });
 
 // ---------------------------------------------------------------------------
@@ -180,7 +206,6 @@ router.put(
         eq(vatSettingsTable.id, id),
         eq(vatSettingsTable.firmId, req.user!.firmId),
       ),
-      with: { updatedBy: true },
     });
 
     if (!existing) {
