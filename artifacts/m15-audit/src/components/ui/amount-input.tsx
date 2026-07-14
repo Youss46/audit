@@ -47,9 +47,12 @@ const AmountInput = React.forwardRef<HTMLInputElement, AmountInputProps>(
       if (onChange) {
         // Emit a synthetic event carrying the raw digit string so callers receive
         // a plain number-string ("150000") rather than the formatted display value.
-        const syntheticEvent = Object.create(e, {
-          target: { value: Object.assign(Object.create(e.target), { value: raw }) },
-        }) as React.ChangeEvent<HTMLInputElement>
+        // Use a plain object for target to avoid "Illegal invocation" from native
+        // HTMLInputElement prototype setters.
+        const syntheticEvent = {
+          ...e,
+          target: { value: raw },
+        } as unknown as React.ChangeEvent<HTMLInputElement>
         onChange(syntheticEvent)
       }
     }
