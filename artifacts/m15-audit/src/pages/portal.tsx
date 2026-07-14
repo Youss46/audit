@@ -255,30 +255,32 @@ export default function ClientPortal() {
         </Card>
       )}
 
-      <Card className="shadow-sm" data-testid="card-client-summary">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-              <Building2 className="h-5 w-5 text-primary" />
+      {user?.roleCode !== 'POMPISTE' && (
+        <Card className="shadow-sm" data-testid="card-client-summary">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <CardTitle>{client.name}</CardTitle>
+                <CardDescription>{client.legalForm} — {getSystemDescription(client.accountingSystem ?? 'SMT' as any)}</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle>{client.name}</CardTitle>
-              <CardDescription>{client.legalForm} — {getSystemDescription(client.accountingSystem ?? 'SMT' as any)}</CardDescription>
-            </div>
-          </div>
-          <Badge className={`${getStatusColor(client.missionStatus)} border-0 flex items-center gap-1.5`}>
-            {getStatusIcon(client.missionStatus)}
-            {getStatusLabel(client.missionStatus)}
-          </Badge>
-        </CardHeader>
-        {activeMission && (
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Mission en cours : exercice <span className="font-medium text-foreground">{activeMission.fiscalYear}</span> — {activeMission.checklistCompleted}/{activeMission.checklistTotal} points de contrôle traités par votre cabinet.
-            </p>
-          </CardContent>
-        )}
-      </Card>
+            <Badge className={`${getStatusColor(client.missionStatus)} border-0 flex items-center gap-1.5`}>
+              {getStatusIcon(client.missionStatus)}
+              {getStatusLabel(client.missionStatus)}
+            </Badge>
+          </CardHeader>
+          {activeMission && (
+            <CardContent>
+              <p className="text-sm text-muted-foreground">
+                Mission en cours : exercice <span className="font-medium text-foreground">{activeMission.fiscalYear}</span> — {activeMission.checklistCompleted}/{activeMission.checklistTotal} points de contrôle traités par votre cabinet.
+              </p>
+            </CardContent>
+          )}
+        </Card>
+      )}
 
       {threads && threads.length > 0 && (
         <Card className="shadow-sm border-blue-200 dark:border-blue-900" data-testid="card-pending-requests">
@@ -319,71 +321,75 @@ export default function ClientPortal() {
         </Card>
       )}
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Déposer un document</CardTitle>
-          <CardDescription>
-            Glissez-déposez votre liasse fiscale ou vos états financiers (PDF, PNG, JPEG). Le dépôt lance automatiquement la procédure de visa auprès de votre cabinet.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div
-            data-testid="dropzone-upload"
-            onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={(e) => {
-              e.preventDefault()
-              setIsDragging(false)
-              handleFiles(e.dataTransfer.files)
-            }}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
-              isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
-            } ${uploadMutation.isPending ? "opacity-60 pointer-events-none" : ""}`}
-          >
-            <UploadCloud className="h-10 w-10 text-muted-foreground" />
-            <div>
-              <p className="font-medium">
-                {uploadMutation.isPending ? "Envoi en cours..." : "Glissez-déposez votre fichier ici"}
-              </p>
-              <p className="text-sm text-muted-foreground mt-1">ou cliquez pour parcourir vos fichiers</p>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      {user?.roleCode !== 'POMPISTE' && (
+        <>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Déposer un document</CardTitle>
+              <CardDescription>
+                Glissez-déposez votre liasse fiscale ou vos états financiers (PDF, PNG, JPEG). Le dépôt lance automatiquement la procédure de visa auprès de votre cabinet.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div
+                data-testid="dropzone-upload"
+                onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+                onDragLeave={() => setIsDragging(false)}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  setIsDragging(false)
+                  handleFiles(e.dataTransfer.files)
+                }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center gap-3 rounded-lg border-2 border-dashed p-10 text-center cursor-pointer transition-colors ${
+                  isDragging ? "border-primary bg-primary/5" : "border-border hover:border-primary/50 hover:bg-muted/30"
+                } ${uploadMutation.isPending ? "opacity-60 pointer-events-none" : ""}`}
+              >
+                <UploadCloud className="h-10 w-10 text-muted-foreground" />
+                <div>
+                  <p className="font-medium">
+                    {uploadMutation.isPending ? "Envoi en cours..." : "Glissez-déposez votre fichier ici"}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">ou cliquez pour parcourir vos fichiers</p>
+                </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg,application/pdf,image/png,image/jpeg"
+                  className="hidden"
+                  onChange={(e) => handleFiles(e.target.files)}
+                />
+              </div>
+            </CardContent>
+          </Card>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Vos documents envoyés</CardTitle>
-          <CardDescription>Historique des dépôts pour la procédure de visa en cours.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {portalDocuments.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Aucun document envoyé pour le moment.</p>
-          ) : (
-            <ul className="divide-y" data-testid="list-portal-documents">
-              {portalDocuments.map((doc) => (
-                <li key={doc.id} className="flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <span className="truncate font-medium text-sm">{doc.fileName}</span>
-                  </div>
-                  <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                    {bytesToSize(doc.fileSize)} · {formatDateTime(doc.createdAt)}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle>Vos documents envoyés</CardTitle>
+              <CardDescription>Historique des dépôts pour la procédure de visa en cours.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {portalDocuments.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-6 text-center">Aucun document envoyé pour le moment.</p>
+              ) : (
+                <ul className="divide-y" data-testid="list-portal-documents">
+                  {portalDocuments.map((doc) => (
+                    <li key={doc.id} className="flex items-center justify-between py-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="truncate font-medium text-sm">{doc.fileName}</span>
+                      </div>
+                      <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                        {bytesToSize(doc.fileSize)} · {formatDateTime(doc.createdAt)}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {clientId && openThread && (
         <CommentThreadSidebar
