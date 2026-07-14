@@ -28,6 +28,7 @@ import { Plus, Minus, Wifi, WifiOff, RefreshCw, Lock, Wallet } from "lucide-reac
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
@@ -481,9 +482,8 @@ export default function CaisseExpress() {
             <form onSubmit={handleSubmitEntry} className="space-y-4 pt-2">
               <div className="space-y-2">
                 <Label htmlFor="entryAmount">Montant (FCFA)</Label>
-                <Input
+                <AmountInput
                   id="entryAmount"
-                  type="number"
                   min={1}
                   autoFocus
                   placeholder="0"
@@ -555,9 +555,8 @@ export default function CaisseExpress() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="physicalBalance">Montant compté physiquement (FCFA)</Label>
-              <Input
+              <AmountInput
                 id="physicalBalance"
-                type="number"
                 min={0}
                 value={physicalBalance}
                 onChange={(e) => setPhysicalBalance(e.target.value)}

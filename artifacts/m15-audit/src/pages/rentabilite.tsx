@@ -33,7 +33,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -550,20 +551,16 @@ function RatesSettingsDialog({ open, onClose }: { open: boolean; onClose: () => 
                   {editing?.userId === rate.userId ? (
                     <>
                       <TableCell>
-                        <Input
-                          type="number"
+                        <AmountInput
                           min="0"
-                          step="500"
                           className="h-8 text-right"
                           value={editing.cost}
                           onChange={(e) => setEditing({ ...editing, cost: e.target.value })}
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
+                        <AmountInput
                           min="0"
-                          step="500"
                           className="h-8 text-right"
                           value={editing.billing}
                           onChange={(e) => setEditing({ ...editing, billing: e.target.value })}
@@ -713,7 +710,7 @@ function ContractsSettingsDialog({ open, onClose }: { open: boolean; onClose: ()
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Forfait Mensuel (FCFA)</Label>
-                <Input className="h-8" type="number" min="0" step="1000" value={newFee} onChange={(e) => setNewFee(e.target.value)} placeholder="150 000" />
+                <AmountInput className="h-8" min="0" value={newFee} onChange={(e) => setNewFee(e.target.value)} placeholder="150 000" />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs">Date de début</Label>

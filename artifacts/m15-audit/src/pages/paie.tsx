@@ -29,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -704,8 +705,7 @@ export default function Paie() {
 
             <div>
               <Label>Salaire de base (FCFA)</Label>
-              <Input
-                type="number"
+              <AmountInput
                 min={1}
                 value={employeeForm.baseSalary}
                 onChange={(e) => setEmployeeForm((f) => ({ ...f, baseSalary: e.target.value }))}
@@ -713,8 +713,7 @@ export default function Paie() {
             </div>
             <div>
               <Label>Prime de transport (FCFA)</Label>
-              <Input
-                type="number"
+              <AmountInput
                 min={0}
                 value={employeeForm.transportAllowance}
                 onChange={(e) => setEmployeeForm((f) => ({ ...f, transportAllowance: e.target.value }))}
@@ -722,8 +721,7 @@ export default function Paie() {
             </div>
             <div>
               <Label>Autres primes imposables (FCFA)</Label>
-              <Input
-                type="number"
+              <AmountInput
                 min={0}
                 value={employeeForm.otherTaxablePrimes}
                 onChange={(e) => setEmployeeForm((f) => ({ ...f, otherTaxablePrimes: e.target.value }))}

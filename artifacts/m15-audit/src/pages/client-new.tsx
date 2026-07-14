@@ -11,6 +11,7 @@ import { getTaxRegimeLabel } from "@/lib/status"
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
@@ -294,7 +295,7 @@ export default function ClientNew() {
                     <FormItem>
                       <FormLabel>Chiffre d'Affaires Annuel (FCFA)</FormLabel>
                       <FormControl>
-                        <Input type="number" placeholder="0" {...field} />
+                        <AmountInput placeholder="0" {...field} />
                       </FormControl>
                       <FormDescription>
                         Servira à déterminer automatiquement le système comptable.

@@ -31,6 +31,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -850,9 +851,8 @@ export default function Immobilisations() {
                 <Label htmlFor="acquisitionCost">
                   Valeur d'origine HT (FCFA) <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <AmountInput
                   id="acquisitionCost"
-                  type="number"
                   min={1}
                   placeholder="5 000 000"
                   value={addForm.acquisitionCost}
@@ -875,9 +875,8 @@ export default function Immobilisations() {
             {/* ---- Salvage value ---- */}
             <div className="space-y-1.5">
               <Label htmlFor="salvageValue">Valeur résiduelle (FCFA)</Label>
-              <Input
+              <AmountInput
                 id="salvageValue"
-                type="number"
                 min={0}
                 value={addForm.salvageValue}
                 onChange={(e) => setAddForm((f) => ({ ...f, salvageValue: e.target.value }))}
@@ -964,9 +963,8 @@ export default function Immobilisations() {
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="cfg-salvageValue">Valeur résiduelle (FCFA)</Label>
-                <Input
+                <AmountInput
                   id="cfg-salvageValue"
-                  type="number"
                   min={0}
                   value={configureForm.salvageValue}
                   onChange={(e) =>

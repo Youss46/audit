@@ -67,6 +67,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { EtatsFinanciers } from "@/components/reporting/etats-financiers"
@@ -486,10 +487,9 @@ export default function ClientDetail() {
                     </div>
                     <div className="space-y-2">
                       <Label>Chiffre d'Affaires Annuel (FCFA)</Label>
-                      <Input
-                        type="number"
+                      <AmountInput
                         min={0}
-                        value={editTurnover}
+                        value={editTurnover || ""}
                         onChange={(e) => setEditTurnover(parseFloat(e.target.value) || 0)}
                       />
                     </div>

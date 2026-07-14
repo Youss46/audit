@@ -34,6 +34,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -804,9 +805,8 @@ export default function Financements() {
                 <Label htmlFor="principalAmount">
                   Montant nominal (FCFA) <span className="text-destructive">*</span>
                 </Label>
-                <Input
+                <AmountInput
                   id="principalAmount"
-                  type="number"
                   min={1}
                   placeholder="5 000 000"
                   value={addForm.principalAmount}

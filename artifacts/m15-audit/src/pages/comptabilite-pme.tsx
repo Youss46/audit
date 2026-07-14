@@ -30,6 +30,7 @@ import { Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarS
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
@@ -495,9 +496,8 @@ export default function ComptabilitePme() {
 
             <div className="space-y-2">
               <Label htmlFor="amount">Montant (FCFA)</Label>
-              <Input
+              <AmountInput
                 id="amount"
-                type="number"
                 min={1}
                 placeholder="0"
                 value={form.amount}
