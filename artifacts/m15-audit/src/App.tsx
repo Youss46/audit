@@ -75,6 +75,7 @@ function Router() {
         <Route path="/dsf" component={Dsf} />
         <Route path="/paie" component={Paie} />
         <Route path="/teledeclaration" component={Teledeclaration} />
+        <Route path="/scoring" component={Scoring} />
         <Route path="/cabinet/client/:clientId/paie" component={Paie} />
         <Route path="/cabinet/client/:clientId/cloture" component={ClotureAnnuelle} />
         <Route path="/cabinet/client/:clientId/teledeclaration" component={Teledeclaration} />
