@@ -506,11 +506,38 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col bg-sidebar border-r border-sidebar-border text-sidebar-foreground shrink-0">
-        <div className="h-16 flex items-center px-6 font-bold text-xl tracking-tight text-primary-foreground border-b border-sidebar-border shrink-0">
-          <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-mono mr-2 text-sm shadow-sm">
-            M15
+        <div className="h-16 flex items-center justify-between px-6 font-bold text-xl tracking-tight text-primary-foreground border-b border-sidebar-border shrink-0">
+          <div className="flex items-center">
+            <div className="w-8 h-8 rounded bg-primary text-primary-foreground flex items-center justify-center font-mono mr-2 text-sm shadow-sm">
+              M15
+            </div>
+            AUDIT
           </div>
-          AUDIT
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent shrink-0"
+                title="Déconnexion"
+                data-testid="button-logout-top"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Se déconnecter ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Vous devrez vous reconnecter avec votre email et votre mot de passe pour accéder à nouveau à votre espace.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={logout}>Se déconnecter</AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         </div>
         <div className="flex-1 overflow-y-auto py-2">
           <NavItems />
