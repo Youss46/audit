@@ -23,6 +23,7 @@ import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
+import { pumpShiftsTable } from "./station-service";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -419,5 +420,29 @@ export const vatSettingsRelations = relations(vatSettingsTable, ({ one }) => ({
   updatedBy: one(usersTable, {
     fields: [vatSettingsTable.updatedById],
     references: [usersTable.id],
+  }),
+}));
+
+// Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant).
+export const pumpShiftsRelations = relations(pumpShiftsTable, ({ one }) => ({
+  client: one(clientsTable, { fields: [pumpShiftsTable.clientId], references: [clientsTable.id] }),
+  cashRegister: one(cashRegistersTable, {
+    fields: [pumpShiftsTable.cashRegisterId],
+    references: [cashRegistersTable.id],
+  }),
+  openedBy: one(usersTable, { fields: [pumpShiftsTable.openedById], references: [usersTable.id] }),
+  validatedBy: one(usersTable, {
+    fields: [pumpShiftsTable.validatedById],
+    references: [usersTable.id],
+  }),
+  transaction: one(transactionsTable, {
+    fields: [pumpShiftsTable.transactionId],
+    references: [transactionsTable.id],
+    relationName: "pumpShiftSale",
+  }),
+  discrepancyTransaction: one(transactionsTable, {
+    fields: [pumpShiftsTable.discrepancyTransactionId],
+    references: [transactionsTable.id],
+    relationName: "pumpShiftDiscrepancy",
   }),
 }));

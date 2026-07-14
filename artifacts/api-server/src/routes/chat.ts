@@ -41,7 +41,11 @@ router.use(requireAuth);
 // Module M31 (Messagerie Interne du Cabinet — "le Slack du Cabinet"): staff
 // only. Portal accounts (client_pme / client_staff) never see this module,
 // mirroring the sidebar's own cabinet/portal split in Shell.tsx.
-router.use((req, res, next) => {
+// Scoped to "/chat" explicitly -- an unscoped router.use() here would run
+// for every request Express passes into this router (since it's mounted
+// with no path prefix in routes/index.ts) and 403 any portal-role request
+// bound for a different, later-mounted router (e.g. pump-shifts).
+router.use("/chat", (req, res, next) => {
   if (isPortalRole(req.user!.role)) {
     res.status(403).json({ error: "Ce module est réservé au personnel du cabinet." });
     return;

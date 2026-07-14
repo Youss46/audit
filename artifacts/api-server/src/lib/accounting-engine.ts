@@ -123,6 +123,17 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
     counterpartName: "Produits divers",
   },
 
+  // Module P7 (Un Pompiste = Un Shift): system-generated only, booked when
+  // a pompiste validates a pump shift ("Ventes de carburant"). Never
+  // offered in the PME's manual category picker.
+  vente_carburant: {
+    label: "Vente de carburant",
+    type: "recette",
+    counterpartAccount: "701",
+    counterpartName: "Ventes de marchandises (carburant)",
+    hidden: true,
+  },
+
   // Module P5 (Caisse Terrain): system-generated only, booked automatically
   // when a daily closure ("Clôture de Caisse en 1 Tap") reveals a
   // discrepancy between the theoretical and the physically counted

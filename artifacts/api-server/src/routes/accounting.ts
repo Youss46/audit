@@ -56,7 +56,7 @@ router.use(requireAuth);
 // middlewares/audit-interceptor.ts.
 router.use(auditInterceptor("transaction"));
 
-function serializeTransaction(
+export function serializeTransaction(
   tx: typeof transactionsTable.$inferSelect,
   extra: {
     clientName?: string | null;
@@ -109,7 +109,7 @@ function serializeTransaction(
 // separate M3 cabinet approval workflow, which only governs when the entry
 // is permanently booked into the general ledger. Uses an atomic SQL
 // increment so concurrent Caisse Express entries never race each other.
-async function applyCashRegisterMovement(
+export async function applyCashRegisterMovement(
   cashRegisterId: number,
   type: "recette" | "depense",
   amount: number,
@@ -121,7 +121,7 @@ async function applyCashRegisterMovement(
     .where(eq(cashRegistersTable.id, cashRegisterId));
 }
 
-async function withJournalLines(
+export async function withJournalLines(
   tx: typeof transactionsTable.$inferSelect,
   extra: Parameters<typeof serializeTransaction>[1] = {},
 ) {
@@ -131,7 +131,7 @@ async function withJournalLines(
   return { ...serializeTransaction(tx, extra), journalLines: lines };
 }
 
-class HttpError extends Error {
+export class HttpError extends Error {
   constructor(
     public status: number,
     message: string,
@@ -147,7 +147,7 @@ class HttpError extends Error {
 // balance. Throws HttpError for any validation failure so callers can
 // decide whether to fail the whole request (single create) or just skip
 // this one entry and keep processing the rest (batch sync).
-async function createTransactionEntry(
+export async function createTransactionEntry(
   req: Parameters<typeof requireOwnClient>[0],
   body: ReturnType<typeof CreateTransactionBody.parse>,
 ) {

@@ -1317,6 +1317,152 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pump-shifts/last-index:
+    get:
+      operationId: getLastPumpIndex
+      tags: [station-service]
+      summary: "Module P7: the ending index (compteur de fin) of the most recent shift recorded for this pump/fuel-type combination, used to prefill the read-only 'Index de Début' field. Returns null the first time a pump/fuel is used."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: pumpLabel
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: fuelType
+          in: query
+          required: true
+          schema:
+            $ref: "#/components/schemas/FuelType"
+      responses:
+        "200":
+          description: Last recorded index, or null if this pump/fuel has no prior shift
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LastPumpIndexResult"
+
+  /pump-shifts:
+    get:
+      operationId: listPumpShifts
+      tags: [station-service]
+      summary: "Module P7: list pump shifts for a client, optionally filtered by status (e.g. status=OPEN to find shifts awaiting sale validation)."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: status
+          in: query
+          required: false
+          schema:
+            $ref: "#/components/schemas/PumpShiftStatus"
+      responses:
+        "200":
+          description: List of pump shifts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PumpShift"
+    post:
+      operationId: createPumpShift
+      tags: [station-service]
+      summary: "'Relevé d'index de pompe': records a pump's start/end meter readings for one service shift. indexStart is resolved server-side from the pump/fuel's last shift, never trusted from the client."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PumpShiftCreateInput"
+      responses:
+        "201":
+          description: Pump shift created (status OPEN, awaiting sale validation)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PumpShift"
+        "400":
+          description: Invalid input, e.g. index de fin inférieur à l'index de début
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pump-shifts/{id}:
+    get:
+      operationId: getPumpShift
+      tags: [station-service]
+      summary: Get one pump shift's detail
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Pump shift detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PumpShift"
+        "404":
+          description: Pump shift not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /pump-shifts/{id}/validate:
+    post:
+      operationId: validatePumpShift
+      tags: [station-service]
+      summary: "'Valider le Shift' (Ventes de carburant): sets the unit price and payment method, computes the expected cash from the sold volume, posts the SYSCOHADA sale entry, and -- for espèces settlements -- compares the declared physical cash to the expected amount, booking any écart as a separate reviewable transaction."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PumpShiftValidateInput"
+      responses:
+        "200":
+          description: Validated pump shift, with the posted sale (and optional écart) transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PumpShiftValidateResult"
+        "400":
+          description: Invalid input, e.g. missing declared cash for an espèces settlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Pump shift not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Pump shift already validated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/balance:
     get:
       operationId: getBalanceDesComptes
@@ -4522,6 +4668,107 @@ components:
         cashRegister:
           $ref: "#/components/schemas/CashRegister"
         summaryTransaction:
+          anyOf:
+            - $ref: "#/components/schemas/TransactionDetail"
+            - type: "null"
+
+    FuelType:
+      type: string
+      enum: [super, gasoil]
+
+    PumpShiftStatus:
+      type: string
+      enum: [OPEN, VALIDATED]
+
+    LastPumpIndexResult:
+      type: object
+      required: [indexEnd]
+      properties:
+        indexEnd:
+          type: ["number", "null"]
+          description: The ending index (litres) of the last shift for this pump/fuel, or null if none exists yet (first-ever use).
+
+    PumpShift:
+      type: object
+      required:
+        [
+          id,
+          clientId,
+          pumpLabel,
+          fuelType,
+          indexStart,
+          indexEnd,
+          volumeLiters,
+          status,
+          createdAt,
+        ]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        cashRegisterId: { type: ["integer", "null"] }
+        pumpLabel: { type: string }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        indexStart: { type: number }
+        indexEnd: { type: number }
+        volumeLiters:
+          type: number
+          description: Computed as indexEnd - indexStart.
+        status:
+          $ref: "#/components/schemas/PumpShiftStatus"
+        unitPrice: { type: ["integer", "null"] }
+        paymentMethod:
+          anyOf:
+            - $ref: "#/components/schemas/PaymentMethod"
+            - type: "null"
+        expectedAmount:
+          type: ["integer", "null"]
+          description: unitPrice x volumeLiters, rounded to the nearest FCFA.
+        declaredPhysicalAmount: { type: ["integer", "null"] }
+        discrepancyAmount: { type: ["integer", "null"] }
+        transactionId: { type: ["integer", "null"] }
+        discrepancyTransactionId: { type: ["integer", "null"] }
+        openedByName: { type: ["string", "null"] }
+        validatedByName: { type: ["string", "null"] }
+        validatedAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    PumpShiftCreateInput:
+      type: object
+      required: [clientId, pumpLabel, fuelType, indexEnd]
+      properties:
+        clientId: { type: integer }
+        pumpLabel:
+          type: string
+          minLength: 1
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        indexEnd:
+          type: number
+          minimum: 0
+
+    PumpShiftValidateInput:
+      type: object
+      required: [unitPrice, paymentMethod]
+      properties:
+        unitPrice:
+          type: integer
+          minimum: 1
+        paymentMethod:
+          $ref: "#/components/schemas/PaymentMethod"
+        declaredPhysicalAmount:
+          description: Required when paymentMethod is "especes" -- the cash physically counted for this shift.
+          type: ["integer", "null"]
+
+    PumpShiftValidateResult:
+      type: object
+      required: [pumpShift, saleTransaction]
+      properties:
+        pumpShift:
+          $ref: "#/components/schemas/PumpShift"
+        saleTransaction:
+          $ref: "#/components/schemas/TransactionDetail"
+        discrepancyTransaction:
           anyOf:
             - $ref: "#/components/schemas/TransactionDetail"
             - type: "null"

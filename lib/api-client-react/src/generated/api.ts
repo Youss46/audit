@@ -100,6 +100,7 @@ import type {
   GetBilanSimplifieParams,
   GetCompteDeResultatParams,
   GetGrandLivreParams,
+  GetLastPumpIndexParams,
   GetPilotageDashboardParams,
   GrandLivreResult,
   HealthStatus,
@@ -107,6 +108,7 @@ import type {
   InvoiceDetail,
   InvoiceInput,
   InvoicePdfResponse,
+  LastPumpIndexResult,
   ListAnalyticalAllocationsParams,
   ListAnalyticalAxesParams,
   ListAnalyticalCodesParams,
@@ -122,6 +124,7 @@ import type {
   ListInvoicesParams,
   ListMissionsParams,
   ListPayslipsParams,
+  ListPumpShiftsParams,
   ListThreadsParams,
   ListTimesheetEntriesParams,
   ListTransactionCategoriesParams,
@@ -141,6 +144,10 @@ import type {
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
   ProfitabilityReport,
+  PumpShift,
+  PumpShiftCreateInput,
+  PumpShiftValidateInput,
+  PumpShiftValidateResult,
   RegisterInput,
   ResetFirstPasswordInput,
   Role,
@@ -4031,6 +4038,394 @@ export const useCloseDailyClosure = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCloseDailyClosureMutationOptions(options));
+    }
+
+export const getGetLastPumpIndexUrl = (params: GetLastPumpIndexParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pump-shifts/last-index?${stringifiedParams}` : `/api/pump-shifts/last-index`
+}
+
+/**
+ * @summary Module P7: the ending index (compteur de fin) of the most recent shift recorded for this pump/fuel-type combination, used to prefill the read-only 'Index de Début' field. Returns null the first time a pump/fuel is used.
+ */
+export const getLastPumpIndex = async (params: GetLastPumpIndexParams, options?: RequestInit): Promise<LastPumpIndexResult> => {
+
+  return customFetch<LastPumpIndexResult>(getGetLastPumpIndexUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetLastPumpIndexQueryKey = (params?: GetLastPumpIndexParams,) => {
+    return [
+    `/api/pump-shifts/last-index`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetLastPumpIndexQueryOptions = <TData = Awaited<ReturnType<typeof getLastPumpIndex>>, TError = ErrorType<unknown>>(params: GetLastPumpIndexParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLastPumpIndex>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetLastPumpIndexQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getLastPumpIndex>>> = ({ signal }) => getLastPumpIndex(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getLastPumpIndex>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetLastPumpIndexQueryResult = NonNullable<Awaited<ReturnType<typeof getLastPumpIndex>>>
+export type GetLastPumpIndexQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Module P7: the ending index (compteur de fin) of the most recent shift recorded for this pump/fuel-type combination, used to prefill the read-only 'Index de Début' field. Returns null the first time a pump/fuel is used.
+ */
+
+export function useGetLastPumpIndex<TData = Awaited<ReturnType<typeof getLastPumpIndex>>, TError = ErrorType<unknown>>(
+ params: GetLastPumpIndexParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getLastPumpIndex>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetLastPumpIndexQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListPumpShiftsUrl = (params: ListPumpShiftsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pump-shifts?${stringifiedParams}` : `/api/pump-shifts`
+}
+
+/**
+ * @summary Module P7: list pump shifts for a client, optionally filtered by status (e.g. status=OPEN to find shifts awaiting sale validation).
+ */
+export const listPumpShifts = async (params: ListPumpShiftsParams, options?: RequestInit): Promise<PumpShift[]> => {
+
+  return customFetch<PumpShift[]>(getListPumpShiftsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPumpShiftsQueryKey = (params?: ListPumpShiftsParams,) => {
+    return [
+    `/api/pump-shifts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPumpShiftsQueryOptions = <TData = Awaited<ReturnType<typeof listPumpShifts>>, TError = ErrorType<unknown>>(params: ListPumpShiftsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumpShifts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPumpShiftsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPumpShifts>>> = ({ signal }) => listPumpShifts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPumpShifts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPumpShiftsQueryResult = NonNullable<Awaited<ReturnType<typeof listPumpShifts>>>
+export type ListPumpShiftsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Module P7: list pump shifts for a client, optionally filtered by status (e.g. status=OPEN to find shifts awaiting sale validation).
+ */
+
+export function useListPumpShifts<TData = Awaited<ReturnType<typeof listPumpShifts>>, TError = ErrorType<unknown>>(
+ params: ListPumpShiftsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumpShifts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPumpShiftsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePumpShiftUrl = () => {
+
+
+
+
+  return `/api/pump-shifts`
+}
+
+/**
+ * @summary 'Relevé d'index de pompe': records a pump's start/end meter readings for one service shift. indexStart is resolved server-side from the pump/fuel's last shift, never trusted from the client.
+ */
+export const createPumpShift = async (pumpShiftCreateInput: PumpShiftCreateInput, options?: RequestInit): Promise<PumpShift> => {
+
+  return customFetch<PumpShift>(getCreatePumpShiftUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pumpShiftCreateInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePumpShiftMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPumpShift>>, TError,{data: BodyType<PumpShiftCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPumpShift>>, TError,{data: BodyType<PumpShiftCreateInput>}, TContext> => {
+
+const mutationKey = ['createPumpShift'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPumpShift>>, {data: BodyType<PumpShiftCreateInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPumpShift(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePumpShiftMutationResult = NonNullable<Awaited<ReturnType<typeof createPumpShift>>>
+    export type CreatePumpShiftMutationBody = BodyType<PumpShiftCreateInput>
+    export type CreatePumpShiftMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary 'Relevé d'index de pompe': records a pump's start/end meter readings for one service shift. indexStart is resolved server-side from the pump/fuel's last shift, never trusted from the client.
+ */
+export const useCreatePumpShift = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPumpShift>>, TError,{data: BodyType<PumpShiftCreateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPumpShift>>,
+        TError,
+        {data: BodyType<PumpShiftCreateInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePumpShiftMutationOptions(options));
+    }
+
+export const getGetPumpShiftUrl = (id: number,) => {
+
+
+
+
+  return `/api/pump-shifts/${id}`
+}
+
+/**
+ * @summary Get one pump shift's detail
+ */
+export const getPumpShift = async (id: number, options?: RequestInit): Promise<PumpShift> => {
+
+  return customFetch<PumpShift>(getGetPumpShiftUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPumpShiftQueryKey = (id: number,) => {
+    return [
+    `/api/pump-shifts/${id}`
+    ] as const;
+    }
+
+
+export const getGetPumpShiftQueryOptions = <TData = Awaited<ReturnType<typeof getPumpShift>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPumpShift>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPumpShiftQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPumpShift>>> = ({ signal }) => getPumpShift(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPumpShift>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPumpShiftQueryResult = NonNullable<Awaited<ReturnType<typeof getPumpShift>>>
+export type GetPumpShiftQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get one pump shift's detail
+ */
+
+export function useGetPumpShift<TData = Awaited<ReturnType<typeof getPumpShift>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPumpShift>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPumpShiftQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getValidatePumpShiftUrl = (id: number,) => {
+
+
+
+
+  return `/api/pump-shifts/${id}/validate`
+}
+
+/**
+ * @summary 'Valider le Shift' (Ventes de carburant): sets the unit price and payment method, computes the expected cash from the sold volume, posts the SYSCOHADA sale entry, and -- for espèces settlements -- compares the declared physical cash to the expected amount, booking any écart as a separate reviewable transaction.
+ */
+export const validatePumpShift = async (id: number,
+    pumpShiftValidateInput: PumpShiftValidateInput, options?: RequestInit): Promise<PumpShiftValidateResult> => {
+
+  return customFetch<PumpShiftValidateResult>(getValidatePumpShiftUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(pumpShiftValidateInput)
+  }
+);}
+
+
+
+
+
+export const getValidatePumpShiftMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validatePumpShift>>, TError,{id: number;data: BodyType<PumpShiftValidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof validatePumpShift>>, TError,{id: number;data: BodyType<PumpShiftValidateInput>}, TContext> => {
+
+const mutationKey = ['validatePumpShift'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof validatePumpShift>>, {id: number;data: BodyType<PumpShiftValidateInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  validatePumpShift(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ValidatePumpShiftMutationResult = NonNullable<Awaited<ReturnType<typeof validatePumpShift>>>
+    export type ValidatePumpShiftMutationBody = BodyType<PumpShiftValidateInput>
+    export type ValidatePumpShiftMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary 'Valider le Shift' (Ventes de carburant): sets the unit price and payment method, computes the expected cash from the sold volume, posts the SYSCOHADA sale entry, and -- for espèces settlements -- compares the declared physical cash to the expected amount, booking any écart as a separate reviewable transaction.
+ */
+export const useValidatePumpShift = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validatePumpShift>>, TError,{id: number;data: BodyType<PumpShiftValidateInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof validatePumpShift>>,
+        TError,
+        {id: number;data: BodyType<PumpShiftValidateInput>},
+        TContext
+      > => {
+      return useMutation(getValidatePumpShiftMutationOptions(options));
     }
 
 export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {

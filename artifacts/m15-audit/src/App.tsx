@@ -24,6 +24,8 @@ import ComptabiliteJournaux from '@/pages/comptabilite-journaux';
 import ComptabiliteGrandLivre from '@/pages/comptabilite-grand-livre';
 import ComptabiliteEtatsFinanciers from '@/pages/comptabilite-etats-financiers';
 import CaisseExpress from '@/pages/caisse-express';
+import PumpIndex from '@/pages/pump-index';
+import FuelSales from '@/pages/fuel-sales';
 import Pilotage from '@/pages/pilotage';
 import Analytique from '@/pages/analytique';
 import Immobilisations from '@/pages/immobilisations';
@@ -62,6 +64,9 @@ function Router() {
         <Route path="/portal" component={ClientPortal} />
         <Route path="/mes-operations" component={ComptabilitePme} />
         <Route path="/caisse" component={CaisseExpress} />
+        <Route path="/releve-index" component={PumpIndex} />
+        <Route path="/ventes-carburant" component={FuelSales} />
+        <Route path="/ventes-carburant/:id" component={FuelSales} />
         <Route path="/pilotage" component={Pilotage} />
         <Route path="/facturation" component={Facturation} />
         <Route path="/client/settings/staff" component={ClientStaff} />

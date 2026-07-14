@@ -191,7 +191,7 @@ export default function ClientPortal() {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Button asChild size="lg" className="justify-between bg-amber-600 hover:bg-amber-700 text-white h-auto py-4">
-                <Link href="/caisse">
+                <Link href="/releve-index">
                   <div className="text-left">
                     <div className="font-semibold">Relevé d'index de pompe</div>
                     <div className="text-xs opacity-80 font-normal mt-0.5">Saisir les compteurs en début / fin de service</div>
@@ -200,7 +200,7 @@ export default function ClientPortal() {
                 </Link>
               </Button>
               <Button asChild size="lg" variant="outline" className="justify-between border-amber-300 dark:border-amber-700 h-auto py-4">
-                <Link href="/caisse">
+                <Link href="/ventes-carburant">
                   <div className="text-left">
                     <div className="font-semibold">Ventes de carburant</div>
                     <div className="text-xs text-muted-foreground font-normal mt-0.5">Enregistrer les recettes de la pompe</div>

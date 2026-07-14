@@ -1,0 +1,11 @@
+---
+name: P7 pump-shift (Relevé d'Index & Ventes de Carburant) design
+description: Two-step pump-shift lifecycle, reuse of createTransactionEntry for fuel sales, and the écart-booking pattern for a pompiste's own cash drawer.
+---
+
+- One `pump_shifts` row models the pompiste's whole shift, not two separate tables: "Relevé d'index" creates it (OPEN), "Ventes de carburant" finalizes it (VALIDATED) via a "Valider le Shift" action.
+- `indexStart` is always resolved server-side from that pump+fuel's own last shift record — never accepted from the client — so the sold volume (`indexEnd - indexStart`) can't be inflated by tampering with a hidden field.
+- The sale itself is posted through the existing shared `createTransactionEntry()` helper (same one used by manual entries/Caisse Express/batch sync), not bespoke ledger-posting code — keeps SYSCOHADA journal-line generation, anomaly detection, audit logging, and pending-count broadcasting consistent across the app. Needed exporting several previously-private helpers/class from the accounting routes file (`createTransactionEntry`, `HttpError`, `withJournalLines`, `serializeTransaction`, `applyCashRegisterMovement`).
+- Cash-discrepancy handling mirrors the daily-closure écart pattern (separate reviewable transaction, `ecart_caisse_gain`/`ecart_caisse_perte`) but must still pass `treasuryAccountOverride` (accountNumber+label of the pompiste's own cash register) into `computeJournalLines()` — otherwise the écart silently books to the generic "571" account instead of the pompiste's dedicated sub-account (e.g. "571101"), breaking that person's personal sub-ledger reconciliation. Any écart-booking helper for a per-owner cash drawer must take and forward the register's own account number/label.
+- Discrepancy/declared-cash comparison only applies when `paymentMethod === "especes"`; other payment methods (mobile money, etc.) skip the physical-cash step entirely and never require `declaredPhysicalAmount`.
+- **Why:** keeps a pump shift's data as one coherent record instead of duplicating volume logic across two tables, and keeps every ledger entry (sale + écart) flowing through the one code path that already handles SYSCOHADA correctness, anomaly detection, and audit logging.

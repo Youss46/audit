@@ -27,6 +27,7 @@ import staffRouter from "./staff";
 import chatRouter from "./chat";
 import payrollSettingsRouter from "./payroll-settings";
 import vatSettingsRouter from "./vat-settings";
+import pumpShiftsRouter from "./pump-shifts";
 
 const router: IRouter = Router();
 
@@ -58,5 +59,6 @@ router.use(staffRouter);
 router.use(chatRouter);
 router.use(payrollSettingsRouter);
 router.use(vatSettingsRouter);
+router.use(pumpShiftsRouter);
 
 export default router;

@@ -28,3 +28,4 @@
 - [M33 forced password reset design](m33-forced-password-reset-design.md) — restricted-scope JWT reset flow; single-use tokens need a DB-state re-check, not just a scope claim, to actually block reuse.
 - [Unscoped router.use(requireRole) blocks unrelated routes](unscoped-router-middleware-collision.md) — a sub-router's blanket role-gate `.use()` with no path can 403 requests meant for a different, later-mounted router.
 - [Pompiste = Caisse (P6) design](pompiste-caisse-p6-design.md) — extends P5 cash registers with owner/sub-account fields; treasuryAccountOverride needed so ledger posts to the personal sub-account, not generic 571.
+- [P7 pump-shift design](p7-pump-shift-design.md) — one pump_shifts row per shift lifecycle; reuse createTransactionEntry; écart booking must pass treasuryAccountOverride or it silently posts to generic 571.

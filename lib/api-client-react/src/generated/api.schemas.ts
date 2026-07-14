@@ -724,6 +724,93 @@ export interface CloseDailyClosureResult {
   summaryTransaction?: TransactionDetail | null;
 }
 
+export type FuelType = typeof FuelType[keyof typeof FuelType];
+
+
+export const FuelType = {
+  super: 'super',
+  gasoil: 'gasoil',
+} as const;
+
+export type PumpShiftStatus = typeof PumpShiftStatus[keyof typeof PumpShiftStatus];
+
+
+export const PumpShiftStatus = {
+  OPEN: 'OPEN',
+  VALIDATED: 'VALIDATED',
+} as const;
+
+export interface LastPumpIndexResult {
+  /**
+     * The ending index (litres) of the last shift for this pump/fuel, or null if none exists yet (first-ever use).
+     * @nullable
+     */
+  indexEnd: number | null;
+}
+
+export interface PumpShift {
+  id: number;
+  clientId: number;
+  /** @nullable */
+  cashRegisterId?: number | null;
+  pumpLabel: string;
+  fuelType: FuelType;
+  indexStart: number;
+  indexEnd: number;
+  /** Computed as indexEnd - indexStart. */
+  volumeLiters: number;
+  status: PumpShiftStatus;
+  /** @nullable */
+  unitPrice?: number | null;
+  paymentMethod?: PaymentMethod | null;
+  /**
+     * unitPrice x volumeLiters, rounded to the nearest FCFA.
+     * @nullable
+     */
+  expectedAmount?: number | null;
+  /** @nullable */
+  declaredPhysicalAmount?: number | null;
+  /** @nullable */
+  discrepancyAmount?: number | null;
+  /** @nullable */
+  transactionId?: number | null;
+  /** @nullable */
+  discrepancyTransactionId?: number | null;
+  /** @nullable */
+  openedByName?: string | null;
+  /** @nullable */
+  validatedByName?: string | null;
+  /** @nullable */
+  validatedAt?: string | null;
+  createdAt: string;
+}
+
+export interface PumpShiftCreateInput {
+  clientId: number;
+  /** @minLength 1 */
+  pumpLabel: string;
+  fuelType: FuelType;
+  /** @minimum 0 */
+  indexEnd: number;
+}
+
+export interface PumpShiftValidateInput {
+  /** @minimum 1 */
+  unitPrice: number;
+  paymentMethod: PaymentMethod;
+  /**
+     * Required when paymentMethod is "especes" -- the cash physically counted for this shift.
+     * @nullable
+     */
+  declaredPhysicalAmount?: number | null;
+}
+
+export interface PumpShiftValidateResult {
+  pumpShift: PumpShift;
+  saleTransaction: TransactionDetail;
+  discrepancyTransaction?: TransactionDetail | null;
+}
+
 export type UpdateJournalLinesInputLinesItem = {
   id: number;
   /** @minLength 1 */
@@ -2226,6 +2313,17 @@ status?: TransactionStatus;
 
 export type ListCashRegistersParams = {
 clientId?: number;
+};
+
+export type GetLastPumpIndexParams = {
+clientId: number;
+pumpLabel: string;
+fuelType: FuelType;
+};
+
+export type ListPumpShiftsParams = {
+clientId: number;
+status?: PumpShiftStatus;
 };
 
 export type GetBalanceDesComptesParams = {

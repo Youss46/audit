@@ -23,4 +23,5 @@ export * from "./invoicing";
 export * from "./chat";
 export * from "./payroll-settings";
 export * from "./vat-settings";
+export * from "./station-service";
 export * from "./relations";

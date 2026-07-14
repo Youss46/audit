@@ -1614,6 +1614,245 @@ export const CloseDailyClosureResponse = zod.object({
 
 
 /**
+ * @summary Module P7: the ending index (compteur de fin) of the most recent shift recorded for this pump/fuel-type combination, used to prefill the read-only 'Index de Début' field. Returns null the first time a pump/fuel is used.
+ */
+export const GetLastPumpIndexQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "pumpLabel": zod.coerce.string(),
+  "fuelType": zod.enum(['super', 'gasoil'])
+})
+
+export const GetLastPumpIndexResponse = zod.object({
+  "indexEnd": zod.number().nullable().describe('The ending index (litres) of the last shift for this pump\/fuel, or null if none exists yet (first-ever use).')
+})
+
+
+/**
+ * @summary Module P7: list pump shifts for a client, optionally filtered by status (e.g. status=OPEN to find shifts awaiting sale validation).
+ */
+export const ListPumpShiftsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "status": zod.enum(['OPEN', 'VALIDATED']).optional()
+})
+
+export const ListPumpShiftsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "cashRegisterId": zod.number().nullish(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "indexStart": zod.number(),
+  "indexEnd": zod.number(),
+  "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
+  "status": zod.enum(['OPEN', 'VALIDATED']),
+  "unitPrice": zod.number().nullish(),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
+  "declaredPhysicalAmount": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "transactionId": zod.number().nullish(),
+  "discrepancyTransactionId": zod.number().nullish(),
+  "openedByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPumpShiftsResponse = zod.array(ListPumpShiftsResponseItem)
+
+
+/**
+ * @summary 'Relevé d'index de pompe': records a pump's start/end meter readings for one service shift. indexStart is resolved server-side from the pump/fuel's last shift, never trusted from the client.
+ */
+
+export const createPumpShiftBodyIndexEndMin = 0;
+
+
+
+export const CreatePumpShiftBody = zod.object({
+  "clientId": zod.number(),
+  "pumpLabel": zod.string().min(1),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "indexEnd": zod.number().min(createPumpShiftBodyIndexEndMin)
+})
+
+export const CreatePumpShiftResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "cashRegisterId": zod.number().nullish(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "indexStart": zod.number(),
+  "indexEnd": zod.number(),
+  "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
+  "status": zod.enum(['OPEN', 'VALIDATED']),
+  "unitPrice": zod.number().nullish(),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
+  "declaredPhysicalAmount": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "transactionId": zod.number().nullish(),
+  "discrepancyTransactionId": zod.number().nullish(),
+  "openedByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get one pump shift's detail
+ */
+export const GetPumpShiftParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPumpShiftResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "cashRegisterId": zod.number().nullish(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "indexStart": zod.number(),
+  "indexEnd": zod.number(),
+  "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
+  "status": zod.enum(['OPEN', 'VALIDATED']),
+  "unitPrice": zod.number().nullish(),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
+  "declaredPhysicalAmount": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "transactionId": zod.number().nullish(),
+  "discrepancyTransactionId": zod.number().nullish(),
+  "openedByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary 'Valider le Shift' (Ventes de carburant): sets the unit price and payment method, computes the expected cash from the sold volume, posts the SYSCOHADA sale entry, and -- for espèces settlements -- compares the declared physical cash to the expected amount, booking any écart as a separate reviewable transaction.
+ */
+export const ValidatePumpShiftParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const ValidatePumpShiftBody = zod.object({
+  "unitPrice": zod.number().min(1),
+  "paymentMethod": zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),
+  "declaredPhysicalAmount": zod.number().nullish().describe('Required when paymentMethod is \"especes\" -- the cash physically counted for this shift.')
+})
+
+export const ValidatePumpShiftResponse = zod.object({
+  "pumpShift": zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "cashRegisterId": zod.number().nullish(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "indexStart": zod.number(),
+  "indexEnd": zod.number(),
+  "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
+  "status": zod.enum(['OPEN', 'VALIDATED']),
+  "unitPrice": zod.number().nullish(),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
+  "declaredPhysicalAmount": zod.number().nullish(),
+  "discrepancyAmount": zod.number().nullish(),
+  "transactionId": zod.number().nullish(),
+  "discrepancyTransactionId": zod.number().nullish(),
+  "openedByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "saleTransaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),
+  "discrepancyTransaction": zod.union([zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),zod.null()]).optional()
+})
+
+
+/**
  * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
  */
 export const GetBalanceDesComptesQueryParams = zod.object({
