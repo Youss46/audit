@@ -252,6 +252,11 @@ router.delete("/cabinet-analytics/contracts/:id", requireRole("expert_comptable"
 
 router.get("/cabinet-analytics/timesheet-entries", requireRole("expert_comptable", "collaborateur", "stagiaire"), async (req, res) => {
   const params = ListTimesheetEntriesQueryParams.parse(req.query);
+  // dateFrom/dateTo are plain strings in the schema (not format: date-time)
+  // -- see openapi.yaml for why -- so they need to be parsed into Dates
+  // here rather than relying on the generated zod schema to coerce them.
+  const dateFrom = params.dateFrom ? new Date(params.dateFrom) : undefined;
+  const dateTo = params.dateTo ? new Date(params.dateTo) : undefined;
 
   // Non-expert callers always see their own entries only.
   const effectiveUserId =
@@ -262,8 +267,8 @@ router.get("/cabinet-analytics/timesheet-entries", requireRole("expert_comptable
       eq(timesheetEntriesTable.firmId, req.user!.firmId),
       effectiveUserId ? eq(timesheetEntriesTable.userId, effectiveUserId) : undefined,
       params.clientId ? eq(timesheetEntriesTable.clientId, params.clientId) : undefined,
-      params.dateFrom ? gte(timesheetEntriesTable.date, params.dateFrom) : undefined,
-      params.dateTo ? lte(timesheetEntriesTable.date, params.dateTo) : undefined,
+      dateFrom ? gte(timesheetEntriesTable.date, dateFrom) : undefined,
+      dateTo ? lte(timesheetEntriesTable.date, dateTo) : undefined,
     ),
     with: { user: true, client: true },
     orderBy: (t, { desc }) => [desc(t.date)],

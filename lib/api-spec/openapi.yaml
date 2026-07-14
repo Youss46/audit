@@ -2459,11 +2459,13 @@ paths:
         - name: dateFrom
           in: query
           required: false
-          schema: { type: string, format: date-time }
+          description: "ISO date/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler."
+          schema: { type: string }
         - name: dateTo
           in: query
           required: false
-          schema: { type: string, format: date-time }
+          description: "ISO date/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler."
+          schema: { type: string }
       responses:
         "200":
           description: List of timesheet entries

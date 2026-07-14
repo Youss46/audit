@@ -35,6 +35,26 @@ in this codegen setup — drop the query param (filter client-side) or split
 into a separate endpoint. Confirmed to NOT happen for query-only or
 path-only operations.
 
+## `format: date-time` on a *query param* breaks it at runtime (not just typecheck)
+
+Orval emits `zod.date()` for a query parameter typed `{ type: string, format:
+date-time }`. Unlike path/query `integer` params (which Orval emits as
+`zod.coerce.number()`), there's no coercion for dates -- `zod.date()` requires
+an actual `Date` instance and rejects every real query string with a 500
+`ZodError` ("expected date, received string"). This one passes typecheck
+and codegen cleanly, so it isn't caught until the endpoint is called -- it
+surfaces to users as a page stuck on a loading spinner (react-query retries
+the failing request a few times before giving up).
+
+**Why:** query params are always strings on the wire; Orval's date-time
+handling assumes the caller already has a `Date`.
+
+**How to apply:** for query params carrying a date/date-time, use a plain
+`{ type: string }` (no `format`) in `openapi.yaml`, then parse it into a
+`Date` manually in the route handler (`new Date(params.foo)`). Reserve
+`format: date-time` for request/response *body* fields, where this doesn't
+occur.
+
 ## File uploads: use base64 JSON, not multipart/format:binary
 
 `type: string, format: binary` in a multipart/form-data request body makes

@@ -2837,8 +2837,8 @@ export const DeleteClientContractResponse = zod.void()
 export const ListTimesheetEntriesQueryParams = zod.object({
   "userId": zod.coerce.number().optional().describe('Only honored for expert_comptable callers; others always see their own entries.'),
   "clientId": zod.coerce.number().optional(),
-  "dateFrom": zod.date().optional(),
-  "dateTo": zod.date().optional()
+  "dateFrom": zod.coerce.string().optional().describe('ISO date\/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler.'),
+  "dateTo": zod.coerce.string().optional().describe('ISO date\/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler.')
 })
 
 export const ListTimesheetEntriesResponseItem = zod.object({

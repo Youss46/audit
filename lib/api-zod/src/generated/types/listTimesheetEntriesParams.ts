@@ -12,6 +12,12 @@ export type ListTimesheetEntriesParams = {
  */
 userId?: number;
 clientId?: number;
-dateFrom?: Date;
-dateTo?: Date;
+/**
+ * ISO date/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler.
+ */
+dateFrom?: string;
+/**
+ * ISO date/date-time string. Deliberately plain type=string (no date-time format) -- that format makes Orval emit zod.date(), which rejects the string every query param actually arrives as. Parsed into a Date manually in the route handler.
+ */
+dateTo?: string;
 };
