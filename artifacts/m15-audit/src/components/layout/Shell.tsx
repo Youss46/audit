@@ -532,7 +532,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </div>
               AUDIT
             </div>
-            <NavItems />
+            <div className="flex-1 overflow-y-auto py-2">
+              <NavItems />
+            </div>
             <UserMenu />
           </SheetContent>
         </Sheet>
