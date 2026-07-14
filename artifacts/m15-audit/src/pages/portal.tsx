@@ -210,12 +210,14 @@ export default function ClientPortal() {
                   <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
                 </Link>
               </Button>
-              <Button asChild size="sm" variant="ghost" className="sm:col-span-2 text-muted-foreground justify-start">
-                <Link href="/caisse">
-                  <Wallet className="h-4 w-4 mr-2" />
-                  Ouvrir la Caisse Terrain complète
-                </Link>
-              </Button>
+              {user?.roleCode !== 'POMPISTE' && (
+                <Button asChild size="sm" variant="ghost" className="sm:col-span-2 text-muted-foreground justify-start">
+                  <Link href="/caisse">
+                    <Wallet className="h-4 w-4 mr-2" />
+                    Ouvrir la Caisse Terrain complète
+                  </Link>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>
