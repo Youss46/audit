@@ -1643,10 +1643,15 @@ export const GetGrandLivreResponse = zod.object({
 /**
  * @summary Module P4 (Pilotage Dirigeant): plain-language dashboard aggregates for the PME director -- net cash position, monthly revenue trend and top expense categories
  */
+export const getPilotageDashboardQueryMonthMax = 12;
+
+
+
 export const GetPilotageDashboardQueryParams = zod.object({
   "clientId": zod.coerce.number(),
   "year": zod.coerce.number(),
-  "basis": zod.enum(['engagement', 'tresorerie']).optional().describe('Module M21: \'engagement\' (comptabilité d\'engagement, default) or \'tresorerie\' (comptabilité de trésorerie -- credit operations count only once settled)')
+  "basis": zod.enum(['engagement', 'tresorerie']).optional().describe('Module M21: \'engagement\' (comptabilité d\'engagement, default) or \'tresorerie\' (comptabilité de trésorerie -- credit operations count only once settled)'),
+  "month": zod.coerce.number().min(1).max(getPilotageDashboardQueryMonthMax).optional().describe('Filters the KPI cards (chiffre d\'affaires, marge brute, trésorerie) to a specific month (1-12) within the selected year, compared against the month right before it. Omit to default to the most recent month with activity.')
 })
 
 export const getPilotageDashboardResponseChiffreAffairesParMoisItemMonthMax = 12;
@@ -2832,8 +2837,8 @@ export const DeleteClientContractResponse = zod.void()
 export const ListTimesheetEntriesQueryParams = zod.object({
   "userId": zod.coerce.number().optional().describe('Only honored for expert_comptable callers; others always see their own entries.'),
   "clientId": zod.coerce.number().optional(),
-  "dateFrom": zod.coerce.date().optional(),
-  "dateTo": zod.coerce.date().optional()
+  "dateFrom": zod.date().optional(),
+  "dateTo": zod.date().optional()
 })
 
 export const ListTimesheetEntriesResponseItem = zod.object({

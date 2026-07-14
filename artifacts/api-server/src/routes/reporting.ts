@@ -205,7 +205,7 @@ router.get("/reports/grand-livre", requirePermission("pilotage.view"), async (re
 // the PME director, plus the richer executive KPIs (marge, trésorerie
 // mensuelle, seuil de rentabilité, répartition par nature) added by M21.
 router.get("/reports/pilotage", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year, basis } = GetPilotageDashboardQueryParams.parse(req.query);
+  const { clientId, year, basis, month } = GetPilotageDashboardQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -223,6 +223,7 @@ router.get("/reports/pilotage", requirePermission("pilotage.view"), async (req, 
     yearEndExclusive,
     new Date(),
     basis ?? "engagement",
+    month ?? null,
   );
 
   const monthLabel = (point: { year: number; month: number }) => `${MOIS_FR[point.month - 1]} ${point.year}`;

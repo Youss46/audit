@@ -49,6 +49,21 @@ function buildYearOptions() {
   return years
 }
 
+const MOIS_OPTIONS = [
+  { value: 1, label: "Janvier" },
+  { value: 2, label: "Février" },
+  { value: 3, label: "Mars" },
+  { value: 4, label: "Avril" },
+  { value: 5, label: "Mai" },
+  { value: 6, label: "Juin" },
+  { value: 7, label: "Juillet" },
+  { value: 8, label: "Août" },
+  { value: 9, label: "Septembre" },
+  { value: 10, label: "Octobre" },
+  { value: 11, label: "Novembre" },
+  { value: 12, label: "Décembre" },
+]
+
 const PIE_COLORS = ["#2563eb", "#0891b2", "#7c3aed", "#d97706", "#dc2626", "#059669", "#4f46e5", "#db2777"]
 
 function VariationBadge({ pct }: { pct: number | null | undefined }) {
@@ -91,13 +106,16 @@ export default function Pilotage() {
   const yearOptions = useMemo(() => buildYearOptions(), [])
   const [year, setYear] = useState(yearOptions[0] ?? new Date().getFullYear())
   const [basis, setBasis] = useState<"engagement" | "tresorerie">("engagement")
+  // undefined = "Mois en cours (auto)" -- the backend then falls back to the
+  // most recent month with any booked activity in the selected year.
+  const [month, setMonth] = useState<number | undefined>(undefined)
 
   const { data, isLoading } = useGetPilotageDashboard(
-    { clientId, year, basis },
+    { clientId, year, basis, month },
     {
       query: {
         enabled: !!clientId,
-        queryKey: getGetPilotageDashboardQueryKey({ clientId, year, basis }),
+        queryKey: getGetPilotageDashboardQueryKey({ clientId, year, basis, month }),
       },
     },
   )
@@ -110,6 +128,8 @@ export default function Pilotage() {
       "Charges d'exploitation": chargesByKey.get(`${point.year}-${point.month}`) ?? 0,
     }))
   }, [data])
+
+  const periodeLabel = month != null ? MOIS_OPTIONS.find((m) => m.value === month)?.label ?? "" : null
 
   const tresorerieChartData = (data?.tresorerieParMois ?? []).map((point) => ({
     label: point.label,
@@ -144,6 +164,22 @@ export default function Pilotage() {
               onCheckedChange={(checked) => setBasis(checked ? "tresorerie" : "engagement")}
             />
           </div>
+          <Select
+            value={month != null ? String(month) : "auto"}
+            onValueChange={(v) => setMonth(v === "auto" ? undefined : parseInt(v))}
+          >
+            <SelectTrigger className="w-[180px]" data-testid="select-pilotage-month">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="auto">Mois en cours</SelectItem>
+              {MOIS_OPTIONS.map((m) => (
+                <SelectItem key={m.value} value={String(m.value)}>
+                  {m.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={String(year)} onValueChange={(v) => setYear(parseInt(v))}>
             <SelectTrigger className="w-[160px]" data-testid="select-pilotage-year">
               <SelectValue />
@@ -187,7 +223,9 @@ export default function Pilotage() {
                   <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
                     <TrendingUp className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">Chiffre d'affaires du mois</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Chiffre d'affaires {periodeLabel ? `de ${periodeLabel}` : "du mois"}
+                  </p>
                 </div>
                 <p className="text-2xl font-bold">{formatFcfa(data.kpis.chiffreAffaires.moisCourant)}</p>
                 <div className="mt-2">
@@ -202,7 +240,9 @@ export default function Pilotage() {
                   <div className="h-10 w-10 rounded-full bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center shrink-0">
                     <Percent className="h-5 w-5 text-violet-600 dark:text-violet-400" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">Marge brute du mois</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Marge brute {periodeLabel ? `de ${periodeLabel}` : "du mois"}
+                  </p>
                 </div>
                 <p className="text-2xl font-bold">{formatFcfa(data.kpis.margeBrute.moisCourant)}</p>
                 <p className="text-xs text-muted-foreground mt-1">

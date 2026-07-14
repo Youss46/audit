@@ -14,4 +14,10 @@ year: number;
  * Module M21: 'engagement' (comptabilité d'engagement, default) or 'tresorerie' (comptabilité de trésorerie -- credit operations count only once settled)
  */
 basis?: GetPilotageDashboardBasis;
+/**
+ * Filters the KPI cards (chiffre d'affaires, marge brute, trésorerie) to a specific month (1-12) within the selected year, compared against the month right before it. Omit to default to the most recent month with activity.
+ * @minimum 1
+ * @maximum 12
+ */
+month?: number;
 };

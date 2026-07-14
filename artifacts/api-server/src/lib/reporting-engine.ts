@@ -449,6 +449,7 @@ export function computePilotageAggregates(
   yearEndExclusive: Date,
   asOf: Date,
   basis: DashboardBasis = "engagement",
+  selectedMonth?: number | null,
 ): PilotageAggregates {
   // Trésorerie nette (both the headline KPI and the monthly curve) is
   // always a real cash position -- money only ever hits a class 5 account
@@ -573,25 +574,39 @@ export function computePilotageAggregates(
         : null,
   };
 
-  // "Mois courant" is the most recent month with any activity in the
-  // selected year (today's month when the current year is selected and
+  // "Mois courant" is normally the most recent month with any activity in
+  // the selected year (today's month when the current year is selected and
   // already has data, otherwise the last month the client actually booked
   // something) so the KPI cards always compare two real, populated months
-  // rather than an empty upcoming month.
-  const monthsWithData = Array.from(
-    new Set([...monthlyRevenue.keys(), ...monthlyCharges.keys()]),
-  )
-    .map((key) => {
-      const [y, m] = key.split("-").map(Number);
-      return { year: y, month: m + 1 };
-    })
-    .sort((a, b) => a.year - b.year || a.month - b.month);
+  // rather than an empty upcoming month. When the caller (the "Mois" filter
+  // on the Pilotage dashboard) picks a specific month, that month becomes
+  // "courant" instead, compared against the calendar month right before it
+  // -- regardless of whether either month has any booked activity, so
+  // picking an empty period correctly shows zeros rather than silently
+  // falling back to the latest populated month.
+  let currentPoint: { year: number; month: number } | null;
+  let previousPoint: { year: number; month: number } | null;
 
-  const currentPoint = monthsWithData[monthsWithData.length - 1] ?? null;
-  const previousMonthIndex = currentPoint
-    ? monthsWithData.findIndex((p) => p.year === currentPoint.year && p.month === currentPoint.month) - 1
-    : -1;
-  const previousPoint = previousMonthIndex >= 0 ? monthsWithData[previousMonthIndex] : null;
+  if (selectedMonth != null) {
+    currentPoint = { year: yearStart.getUTCFullYear(), month: selectedMonth };
+    previousPoint =
+      selectedMonth > 1 ? { year: yearStart.getUTCFullYear(), month: selectedMonth - 1 } : null;
+  } else {
+    const monthsWithData = Array.from(
+      new Set([...monthlyRevenue.keys(), ...monthlyCharges.keys()]),
+    )
+      .map((key) => {
+        const [y, m] = key.split("-").map(Number);
+        return { year: y, month: m + 1 };
+      })
+      .sort((a, b) => a.year - b.year || a.month - b.month);
+
+    currentPoint = monthsWithData[monthsWithData.length - 1] ?? null;
+    const previousMonthIndex = currentPoint
+      ? monthsWithData.findIndex((p) => p.year === currentPoint!.year && p.month === currentPoint!.month) - 1
+      : -1;
+    previousPoint = previousMonthIndex >= 0 ? monthsWithData[previousMonthIndex] : null;
+  }
 
   function valueAt(map: Map<string, MonthlyRevenuePoint>, point: { year: number; month: number } | null): number {
     if (!point) return 0;
