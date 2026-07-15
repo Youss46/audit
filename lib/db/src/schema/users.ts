@@ -13,6 +13,7 @@ import { z } from "zod/v4";
 import { firmsTable } from "./firms";
 import { clientsTable } from "./clients";
 import { rolesTable } from "./roles";
+import { stationsTable } from "./stations";
 
 // RBAC roles for module M9 (Administration & Auth).
 //
@@ -83,6 +84,13 @@ export const usersTable = pgTable(
     // the account's first login. Cleared (set to null) the moment
     // requiresPasswordChange flips to false -- never retained after that.
     temporaryPasswordPlain: text("temporary_password_plain"),
+    // Multi-station (P8): for POMPISTE and other site-level staff roles,
+    // the station they are assigned to. Null for client_pme owners and
+    // cabinet staff, who have cross-station access. Embedded in the JWT at
+    // login so every request can be scoped without an extra DB lookup.
+    stationId: integer("station_id").references(() => stationsTable.id, {
+      onDelete: "set null",
+    }),
     // Module P6 (Un Pompiste = Une Caisse): denormalized copy of the
     // personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when
     // this account is created as a POMPISTE for a STATION_SERVICE client.

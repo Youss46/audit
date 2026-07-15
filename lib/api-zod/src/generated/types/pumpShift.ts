@@ -12,6 +12,16 @@ import type { PumpShiftStatus } from './pumpShiftStatus';
 export interface PumpShift {
   id: number;
   clientId: number;
+  /**
+     * Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the station, for filtering and reporting.
+     * @nullable
+     */
+  stationName?: string | null;
   /** @nullable */
   cashRegisterId?: number | null;
   pumpLabel: string;

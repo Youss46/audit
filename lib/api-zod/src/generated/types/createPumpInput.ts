@@ -9,6 +9,8 @@ import type { FuelType } from './fuelType';
 
 export interface CreatePumpInput {
   clientId: number;
+  /** Multi-station (P8): station this pump belongs to. */
+  stationId?: number;
   /** @minLength 1 */
   label: string;
   fuelType: FuelType;

@@ -15,4 +15,6 @@ export interface StaffInput {
   /** @minLength 2 */
   fullName: string;
   roleId: number;
+  /** Multi-station (P8): station to assign this staff member to. Required for POMPISTE role; optional for others. */
+  stationId?: number;
 }

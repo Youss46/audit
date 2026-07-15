@@ -32,11 +32,14 @@ function getFuelTypeLabel(fuel: FuelType | "") {
 // pompiste's first action of a shift. Pump selection is restricted to the
 // pumps assigned to this user for today by the PME owner; the server also
 // enforces this restriction when the shift is saved.
+// Multi-station (P8): if the authenticated user has a stationId, a station
+// badge is shown so they know which site they are operating on.
 export default function PumpIndex() {
   const { user } = useAuth()
   const { toast } = useToast()
   const [, navigate] = useLocation()
   const clientId = user?.clientId ?? 0
+  const stationName = (user as any)?.stationName as string | null | undefined
 
   // The selected assignment ID drives both pumpLabel and fuelType.
   const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null)
@@ -143,6 +146,12 @@ export default function PumpIndex() {
           <CardDescription>
             Saisissez le compteur de fin de service pour calculer le volume vendu.
           </CardDescription>
+          {stationName && (
+            <div className="flex items-center gap-1.5 text-xs text-amber-700 dark:text-amber-400 mt-1">
+              <Lock className="h-3.5 w-3.5 shrink-0" />
+              <span>Station : <span className="font-semibold">{stationName}</span></span>
+            </div>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
 

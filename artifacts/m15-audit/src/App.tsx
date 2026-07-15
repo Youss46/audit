@@ -40,6 +40,7 @@ import Scoring from '@/pages/scoring';
 import Facturation from '@/pages/facturation';
 import ClientStaff from '@/pages/client-staff';
 import PumpSettings from '@/pages/pump-settings';
+import StationSettings from '@/pages/station-settings';
 import FuelPriceSettings from '@/pages/fuel-price-settings';
 import PumpAssignments from '@/pages/pump-assignments';
 import Communication from '@/pages/communication';
@@ -73,6 +74,7 @@ function Router() {
         <Route path="/pilotage" component={Pilotage} />
         <Route path="/facturation" component={Facturation} />
         <Route path="/client/settings/staff" component={ClientStaff} />
+        <Route path="/client/settings/stations" component={StationSettings} />
         <Route path="/client/settings/pumps" component={PumpSettings} />
         <Route path="/client/settings/fuel-prices" component={FuelPriceSettings} />
         <Route path="/client/settings/pump-assignments" component={PumpAssignments} />

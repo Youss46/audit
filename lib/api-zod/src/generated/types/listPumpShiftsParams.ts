@@ -10,4 +10,8 @@ import type { PumpShiftStatus } from './pumpShiftStatus';
 export type ListPumpShiftsParams = {
 clientId: number;
 status?: PumpShiftStatus;
+/**
+ * Multi-station (P8): filter shifts to a specific station.
+ */
+stationId?: number;
 };

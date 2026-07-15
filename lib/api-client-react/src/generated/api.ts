@@ -71,6 +71,7 @@ import type {
   ContextualCommentInput,
   CreatePumpAssignmentInput,
   CreatePumpInput,
+  CreateStationInput,
   CreditNoteInput,
   DailyClosure,
   DashboardSummary,
@@ -133,6 +134,7 @@ import type {
   ListPumpAssignmentsParams,
   ListPumpShiftsParams,
   ListPumpsParams,
+  ListStationsParams,
   ListThreadsParams,
   ListTimesheetEntriesParams,
   ListTransactionCategoriesParams,
@@ -170,6 +172,7 @@ import type {
   StaffInput,
   StaffUpdate,
   StaffUser,
+  Station,
   TimesheetEntry,
   TimesheetEntryInput,
   TimesheetEntryUpdate,
@@ -180,6 +183,7 @@ import type {
   TransactionSettleInput,
   UpdateJournalLinesInput,
   UpdatePumpInput,
+  UpdateStationInput,
   UpsertFuelPriceInput,
   User,
   UserInput,
@@ -4666,6 +4670,304 @@ export const useCreateMobileMoneyTransfer = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateMobileMoneyTransferMutationOptions(options));
+    }
+
+export const getListStationsUrl = (params: ListStationsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/stations?${stringifiedParams}` : `/api/stations`
+}
+
+/**
+ * @summary Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff.
+ */
+export const listStations = async (params: ListStationsParams, options?: RequestInit): Promise<Station[]> => {
+
+  return customFetch<Station[]>(getListStationsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListStationsQueryKey = (params?: ListStationsParams,) => {
+    return [
+    `/api/stations`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListStationsQueryOptions = <TData = Awaited<ReturnType<typeof listStations>>, TError = ErrorType<unknown>>(params: ListStationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListStationsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listStations>>> = ({ signal }) => listStations(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listStations>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListStationsQueryResult = NonNullable<Awaited<ReturnType<typeof listStations>>>
+export type ListStationsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff.
+ */
+
+export function useListStations<TData = Awaited<ReturnType<typeof listStations>>, TError = ErrorType<unknown>>(
+ params: ListStationsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listStations>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListStationsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateStationUrl = () => {
+
+
+
+
+  return `/api/stations`
+}
+
+/**
+ * @summary Multi-station (P8): register a new station. PME owner only.
+ */
+export const createStation = async (createStationInput: CreateStationInput, options?: RequestInit): Promise<Station> => {
+
+  return customFetch<Station>(getCreateStationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createStationInput)
+  }
+);}
+
+
+
+
+
+export const getCreateStationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStation>>, TError,{data: BodyType<CreateStationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createStation>>, TError,{data: BodyType<CreateStationInput>}, TContext> => {
+
+const mutationKey = ['createStation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createStation>>, {data: BodyType<CreateStationInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createStation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateStationMutationResult = NonNullable<Awaited<ReturnType<typeof createStation>>>
+    export type CreateStationMutationBody = BodyType<CreateStationInput>
+    export type CreateStationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Multi-station (P8): register a new station. PME owner only.
+ */
+export const useCreateStation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createStation>>, TError,{data: BodyType<CreateStationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createStation>>,
+        TError,
+        {data: BodyType<CreateStationInput>},
+        TContext
+      > => {
+      return useMutation(getCreateStationMutationOptions(options));
+    }
+
+export const getUpdateStationUrl = (id: number,) => {
+
+
+
+
+  return `/api/stations/${id}`
+}
+
+/**
+ * @summary Multi-station (P8): update a station's name or city. PME owner only.
+ */
+export const updateStation = async (id: number,
+    updateStationInput: UpdateStationInput, options?: RequestInit): Promise<Station> => {
+
+  return customFetch<Station>(getUpdateStationUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateStationInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateStationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStation>>, TError,{id: number;data: BodyType<UpdateStationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateStation>>, TError,{id: number;data: BodyType<UpdateStationInput>}, TContext> => {
+
+const mutationKey = ['updateStation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateStation>>, {id: number;data: BodyType<UpdateStationInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateStation(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateStationMutationResult = NonNullable<Awaited<ReturnType<typeof updateStation>>>
+    export type UpdateStationMutationBody = BodyType<UpdateStationInput>
+    export type UpdateStationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Multi-station (P8): update a station's name or city. PME owner only.
+ */
+export const useUpdateStation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateStation>>, TError,{id: number;data: BodyType<UpdateStationInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateStation>>,
+        TError,
+        {id: number;data: BodyType<UpdateStationInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateStationMutationOptions(options));
+    }
+
+export const getDeleteStationUrl = (id: number,) => {
+
+
+
+
+  return `/api/stations/${id}`
+}
+
+/**
+ * @summary Multi-station (P8): delete a station. PME owner only. Fails if the station still has pumps.
+ */
+export const deleteStation = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteStationUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteStationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteStation>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteStation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteStation>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteStation(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteStationMutationResult = NonNullable<Awaited<ReturnType<typeof deleteStation>>>
+
+    export type DeleteStationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Multi-station (P8): delete a station. PME owner only. Fails if the station still has pumps.
+ */
+export const useDeleteStation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteStation>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteStation>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteStationMutationOptions(options));
     }
 
 export const getListPumpsUrl = (params: ListPumpsParams,) => {

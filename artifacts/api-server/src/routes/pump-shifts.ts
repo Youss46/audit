@@ -4,6 +4,7 @@ import {
   db,
   clientsTable,
   pumpsTable,
+  stationsTable,
   pumpShiftsTable,
   pumpAssignmentsTable,
   fuelPricesTable,
@@ -46,11 +47,17 @@ router.use(requireAuth);
 
 function serializePumpShift(
   shift: PumpShift,
-  extra: { openedByName?: string | null; validatedByName?: string | null } = {},
+  extra: {
+    openedByName?: string | null;
+    validatedByName?: string | null;
+    stationName?: string | null;
+  } = {},
 ) {
   return {
     id: shift.id,
     clientId: shift.clientId,
+    stationId: shift.stationId ?? null,
+    stationName: extra.stationName ?? null,
     cashRegisterId: shift.cashRegisterId ?? null,
     pumpLabel: shift.pumpLabel,
     fuelType: shift.fuelType,
@@ -118,25 +125,32 @@ router.get("/pump-shifts/last-index", requirePermission("caisse.view"), async (r
 });
 
 router.get("/pump-shifts", requirePermission("caisse.view"), async (req, res) => {
-  const { clientId, status } = ListPumpShiftsQueryParams.parse(req.query);
+  const { clientId, status, stationId } = ListPumpShiftsQueryParams.parse(req.query);
   const effectiveClientId = effectiveClientIdFor(req, clientId);
   if (!effectiveClientId || !requireOwnClient(req, res, effectiveClientId)) return;
+
+  // Multi-station (P8): if the caller is a site-restricted user (pompiste /
+  // station manager), automatically scope to their station. A cabinet or PME
+  // owner caller with an explicit stationId param gets that filter instead.
+  const effectiveStationId = req.user!.stationId ?? stationId ?? null;
 
   const shifts = await db.query.pumpShiftsTable.findMany({
     where: and(
       eq(pumpShiftsTable.clientId, effectiveClientId),
       status ? eq(pumpShiftsTable.status, status) : undefined,
+      effectiveStationId ? eq(pumpShiftsTable.stationId, effectiveStationId) : undefined,
     ),
     orderBy: [desc(pumpShiftsTable.createdAt)],
-    with: { openedBy: true, validatedBy: true },
+    with: { openedBy: true, validatedBy: true, station: true },
   });
 
   res.json(
     ListPumpShiftsResponse.parse(
       shifts.map((s) =>
         serializePumpShift(s, {
-          openedByName: s.openedBy?.fullName,
-          validatedByName: s.validatedBy?.fullName,
+          openedByName: (s as any).openedBy?.fullName,
+          validatedByName: (s as any).validatedBy?.fullName,
+          stationName: (s as any).station?.name ?? null,
         }),
       ),
     ),
@@ -162,6 +176,27 @@ router.post("/pump-shifts", requirePermission("caisse.create"), async (req, res)
     return;
   }
 
+  // Resolve the pump row so we can (a) check the assignment for client_staff
+  // and (b) denormalize stationId onto the new shift for reporting.
+  const pump = await db.query.pumpsTable.findFirst({
+    where: and(
+      eq(pumpsTable.clientId, body.clientId),
+      eq(pumpsTable.label, body.pumpLabel),
+      eq(pumpsTable.fuelType, body.fuelType),
+    ),
+  });
+
+  // Multi-station (P8): if the authenticated user is site-restricted
+  // (stationId in JWT), verify the pump belongs to the same station.
+  // This closes the loophole where a pompiste from station A could tamper
+  // a request to submit a reading for a pump at station B.
+  if (req.user!.stationId && pump && pump.stationId !== req.user!.stationId) {
+    res.status(403).json({
+      error: "Cette pompe n'appartient pas à votre station. Contactez votre responsable.",
+    });
+    return;
+  }
+
   // Module P7 (Restriction d'attribution des pompes): a "client_staff"
   // account (POMPISTE) may only submit a reading for a pump it has been
   // explicitly assigned to for today by the PME owner. This is the
@@ -172,13 +207,6 @@ router.post("/pump-shifts", requirePermission("caisse.create"), async (req, res)
   // pompiste's cash reconciliation. Every other role (owner, cabinet
   // staff) is unrestricted, matching the rest of this module's scoping.
   if (req.user!.role === "client_staff") {
-    const pump = await db.query.pumpsTable.findFirst({
-      where: and(
-        eq(pumpsTable.clientId, body.clientId),
-        eq(pumpsTable.label, body.pumpLabel),
-        eq(pumpsTable.fuelType, body.fuelType),
-      ),
-    });
     const assignment = pump
       ? await db.query.pumpAssignmentsTable.findFirst({
           where: and(
@@ -227,6 +255,9 @@ router.post("/pump-shifts", requirePermission("caisse.create"), async (req, res)
     .insert(pumpShiftsTable)
     .values({
       clientId: body.clientId,
+      // Multi-station (P8): denormalize stationId from the pump so that
+      // per-station filtering and reporting work without an extra join.
+      stationId: pump?.stationId ?? null,
       cashRegisterId: ownedRegister?.id ?? null,
       pumpLabel: body.pumpLabel,
       fuelType: body.fuelType,

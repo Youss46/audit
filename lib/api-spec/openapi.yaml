@@ -1422,6 +1422,12 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/PumpShiftStatus"
+        - name: stationId
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: "Multi-station (P8): filter shifts to a specific station."
       responses:
         "200":
           description: List of pump shifts
@@ -1555,6 +1561,103 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stations:
+    get:
+      operationId: listStations
+      tags: [station-service]
+      summary: "Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of stations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Station"
+    post:
+      operationId: createStation
+      tags: [station-service]
+      summary: "Multi-station (P8): register a new station. PME owner only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateStationInput"
+      responses:
+        "201":
+          description: Station created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Station"
+        "403":
+          description: Restricted to the PME owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stations/{id}:
+    put:
+      operationId: updateStation
+      tags: [station-service]
+      summary: "Multi-station (P8): update a station's name or city. PME owner only."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateStationInput"
+      responses:
+        "200":
+          description: Station updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Station"
+        "404":
+          description: Station not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteStation
+      tags: [station-service]
+      summary: "Multi-station (P8): delete a station. PME owner only. Fails if the station still has pumps."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Station deleted
+        "409":
+          description: Station still has pumps assigned
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Station not found
           content:
             application/json:
               schema:
@@ -4195,6 +4298,12 @@ components:
           type: array
           items: { type: string }
           description: Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.
+        stationId:
+          type: ["integer", "null"]
+          description: "Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access)."
+        stationName:
+          type: ["string", "null"]
+          description: "Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null."
         temporaryPassword:
           type: ["string", "null"]
           description: Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
@@ -4297,6 +4406,12 @@ components:
         roleId: { type: ["integer", "null"] }
         roleCode: { type: ["string", "null"] }
         roleLabel: { type: ["string", "null"] }
+        stationId:
+          type: ["integer", "null"]
+          description: "Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access."
+        stationName:
+          type: ["string", "null"]
+          description: "Display name of the assigned station."
         createdAt: { type: string, format: date-time }
         associatedCashAccountNumber:
           type: ["string", "null"]
@@ -4316,6 +4431,9 @@ components:
         email: { type: string, minLength: 3 }
         fullName: { type: string, minLength: 2 }
         roleId: { type: integer }
+        stationId:
+          type: integer
+          description: "Multi-station (P8): station to assign this staff member to. Required for POMPISTE role; optional for others."
 
     StaffUpdate:
       type: object
@@ -5006,12 +5124,50 @@ components:
           type: ["number", "null"]
           description: The ending index (litres) of the last shift for this pump/fuel, or null if none exists yet (first-ever use).
 
+    Station:
+      type: object
+      required: [id, clientId, name, city, createdAt]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        name: { type: string, description: "Display name, e.g. «Station Yamoussoukro Autogare»." }
+        city: { type: string, description: "City, e.g. «Yamoussoukro»." }
+        createdAt: { type: string, format: date-time }
+
+    CreateStationInput:
+      type: object
+      required: [clientId, name, city]
+      properties:
+        clientId: { type: integer }
+        name:
+          type: string
+          minLength: 2
+        city:
+          type: string
+          minLength: 2
+
+    UpdateStationInput:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 2
+        city:
+          type: string
+          minLength: 2
+
     Pump:
       type: object
       required: [id, clientId, label, fuelType, initialIndex, createdAt]
       properties:
         id: { type: integer }
         clientId: { type: integer }
+        stationId:
+          type: ["integer", "null"]
+          description: "Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps."
+        stationName:
+          type: ["string", "null"]
+          description: "Display name of the pump's station."
         label: { type: string }
         fuelType:
           $ref: "#/components/schemas/FuelType"
@@ -5025,6 +5181,9 @@ components:
       required: [clientId, label, fuelType]
       properties:
         clientId: { type: integer }
+        stationId:
+          type: integer
+          description: "Multi-station (P8): station this pump belongs to."
         label:
           type: string
           minLength: 1
@@ -5128,6 +5287,12 @@ components:
       properties:
         id: { type: integer }
         clientId: { type: integer }
+        stationId:
+          type: ["integer", "null"]
+          description: "Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time."
+        stationName:
+          type: ["string", "null"]
+          description: "Display name of the station, for filtering and reporting."
         cashRegisterId: { type: ["integer", "null"] }
         pumpLabel: { type: string }
         fuelType:

@@ -66,6 +66,16 @@ export interface User {
   /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
   permissions?: string[];
   /**
+     * Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.
+     * @nullable
+     */
+  stationName?: string | null;
+  /**
      * Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
      * @nullable
      */
@@ -164,6 +174,16 @@ export interface StaffUser {
   roleCode?: string | null;
   /** @nullable */
   roleLabel?: string | null;
+  /**
+     * Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the assigned station.
+     * @nullable
+     */
+  stationName?: string | null;
   createdAt: string;
   /**
      * Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.
@@ -186,6 +206,8 @@ export interface StaffInput {
   /** @minLength 2 */
   fullName: string;
   roleId: number;
+  /** Multi-station (P8): station to assign this staff member to. Required for POMPISTE role; optional for others. */
+  stationId?: number;
 }
 
 export interface StaffUpdate {
@@ -771,9 +793,44 @@ export interface LastPumpIndexResult {
   indexEnd: number | null;
 }
 
+export interface Station {
+  id: number;
+  clientId: number;
+  /** Display name, e.g. «Station Yamoussoukro Autogare». */
+  name: string;
+  /** City, e.g. «Yamoussoukro». */
+  city: string;
+  createdAt: string;
+}
+
+export interface CreateStationInput {
+  clientId: number;
+  /** @minLength 2 */
+  name: string;
+  /** @minLength 2 */
+  city: string;
+}
+
+export interface UpdateStationInput {
+  /** @minLength 2 */
+  name?: string;
+  /** @minLength 2 */
+  city?: string;
+}
+
 export interface Pump {
   id: number;
   clientId: number;
+  /**
+     * Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the pump's station.
+     * @nullable
+     */
+  stationName?: string | null;
   label: string;
   fuelType: FuelType;
   /** Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift. */
@@ -783,6 +840,8 @@ export interface Pump {
 
 export interface CreatePumpInput {
   clientId: number;
+  /** Multi-station (P8): station this pump belongs to. */
+  stationId?: number;
   /** @minLength 1 */
   label: string;
   fuelType: FuelType;
@@ -850,6 +909,16 @@ export interface CreatePumpAssignmentInput {
 export interface PumpShift {
   id: number;
   clientId: number;
+  /**
+     * Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the station, for filtering and reporting.
+     * @nullable
+     */
+  stationName?: string | null;
   /** @nullable */
   cashRegisterId?: number | null;
   pumpLabel: string;
@@ -2498,6 +2567,14 @@ fuelType: FuelType;
 export type ListPumpShiftsParams = {
 clientId: number;
 status?: PumpShiftStatus;
+/**
+ * Multi-station (P8): filter shifts to a specific station.
+ */
+stationId?: number;
+};
+
+export type ListStationsParams = {
+clientId: number;
 };
 
 export type ListPumpsParams = {

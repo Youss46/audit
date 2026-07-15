@@ -18,6 +18,16 @@ export interface StaffUser {
   roleCode?: string | null;
   /** @nullable */
   roleLabel?: string | null;
+  /**
+     * Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the assigned station.
+     * @nullable
+     */
+  stationName?: string | null;
   createdAt: Date;
   /**
      * Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. "571101") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.

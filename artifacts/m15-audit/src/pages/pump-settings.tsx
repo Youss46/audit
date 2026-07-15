@@ -6,7 +6,10 @@ import {
   useCreatePump,
   useUpdatePump,
   useDeletePump,
+  useListStations,
+  getListStationsQueryKey,
   FuelType,
+  type Station,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
@@ -18,6 +21,8 @@ import {
   ArrowLeft,
   AlertTriangle,
   Gauge,
+  Building2,
+  MapPin,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -62,29 +67,33 @@ type PumpFormState = {
   label: string
   fuelType: FuelType | ""
   initialIndex: string
+  stationId: number | null
 }
 
-const EMPTY_FORM: PumpFormState = { label: "", fuelType: "", initialIndex: "0" }
+const EMPTY_FORM: PumpFormState = { label: "", fuelType: "", initialIndex: "0", stationId: null }
 
 // Module P7 (Calibration initiale): PME owner screen for registering physical
-// pumps and their meter readings at onboarding time.  Only "client_pme"
-// accounts reach this page (enforced both here and on the server).
+// pumps and their meter readings at onboarding time.
+// Multi-station (P8): pumps are now grouped by station; each pump must be
+// assigned to a station when stations are configured.
 export default function PumpSettings() {
   const { user } = useAuth()
   const { toast } = useToast()
   const clientId = user?.clientId ?? 0
 
-  // Dialogs
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [editingPump, setEditingPump] = useState<{ id: number } & PumpFormState | null>(null)
   const [deletingPumpId, setDeletingPumpId] = useState<number | null>(null)
-
-  // Form state for create dialog
   const [form, setForm] = useState<PumpFormState>(EMPTY_FORM)
 
   const { data: pumps = [], isLoading, refetch } = useListPumps(
     { clientId },
     { query: { enabled: !!clientId, queryKey: getListPumpsQueryKey({ clientId }) } },
+  )
+
+  const { data: stations = [] } = useListStations(
+    { clientId },
+    { query: { enabled: !!clientId, queryKey: getListStationsQueryKey({ clientId }) } },
   )
 
   const createMutation = useCreatePump({
@@ -96,7 +105,11 @@ export default function PumpSettings() {
         refetch()
       },
       onError: (err: any) => {
-        toast({ title: "Erreur", description: err?.data?.error ?? "Impossible d'ajouter cette pompe.", variant: "destructive" })
+        toast({
+          title: "Erreur",
+          description: err?.data?.error ?? "Impossible d'ajouter cette pompe.",
+          variant: "destructive",
+        })
       },
     },
   })
@@ -109,7 +122,11 @@ export default function PumpSettings() {
         refetch()
       },
       onError: (err: any) => {
-        toast({ title: "Erreur", description: err?.data?.error ?? "Impossible de mettre à jour.", variant: "destructive" })
+        toast({
+          title: "Erreur",
+          description: err?.data?.error ?? "Impossible de mettre à jour.",
+          variant: "destructive",
+        })
       },
     },
   })
@@ -122,7 +139,11 @@ export default function PumpSettings() {
         refetch()
       },
       onError: (err: any) => {
-        toast({ title: "Erreur", description: err?.data?.error ?? "Impossible de supprimer.", variant: "destructive" })
+        toast({
+          title: "Erreur",
+          description: err?.data?.error ?? "Impossible de supprimer.",
+          variant: "destructive",
+        })
       },
     },
   })
@@ -136,7 +157,8 @@ export default function PumpSettings() {
         label: form.label,
         fuelType: form.fuelType as FuelType,
         initialIndex: isNaN(idx) ? 0 : idx,
-      },
+        ...(form.stationId ? { stationId: form.stationId } : {}),
+      } as any,
     })
   }
 
@@ -159,10 +181,19 @@ export default function PumpSettings() {
       label: pump.label,
       fuelType: pump.fuelType as FuelType,
       initialIndex: String(pump.initialIndex),
+      stationId: (pump as any).stationId ?? null,
     })
   }
 
-  const fuelLabel = (f: FuelType | string) => f === "super" ? "Super" : f === "gasoil" ? "Gasoil" : f
+  const fuelLabel = (f: FuelType | string) =>
+    f === "super" ? "Super" : f === "gasoil" ? "Gasoil" : f
+
+  // Group pumps by station for display.
+  const pumpsByStation = stations.map((station) => ({
+    station,
+    pumps: pumps.filter((p) => (p as any).stationId === station.id),
+  }))
+  const unassignedPumps = pumps.filter((p) => !(p as any).stationId)
 
   return (
     <div className="max-w-3xl mx-auto p-4 space-y-6">
@@ -193,68 +224,58 @@ export default function PumpSettings() {
         </Button>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Pompes enregistrées</CardTitle>
-          <CardDescription>
-            Chaque pompe est identifiée par son libellé et son type de carburant. L'index d'étalonnage sert uniquement au premier relevé.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">Chargement…</p>
-          ) : pumps.length === 0 ? (
-            <p className="text-sm text-muted-foreground py-6 text-center">
-              Aucune pompe enregistrée. Cliquez sur « Ajouter une pompe » pour commencer.
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Libellé</TableHead>
-                  <TableHead>Carburant</TableHead>
-                  <TableHead className="text-right">Index initial (L)</TableHead>
-                  <TableHead className="w-24" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {pumps.map((pump) => (
-                  <TableRow key={pump.id}>
-                    <TableCell className="font-medium">{pump.label}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{fuelLabel(pump.fuelType)}</Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-mono text-sm">
-                      {pump.initialIndex.toLocaleString("fr-FR")} L
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 justify-end">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEdit(pump)}
-                          data-testid={`button-edit-pump-${pump.id}`}
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeletingPumpId(pump.id)}
-                          data-testid={`button-delete-pump-${pump.id}`}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+      {stations.length > 0 ? (
+        // ── Multi-station view: grouped by station ──────────────────────
+        <div className="space-y-4">
+          {pumpsByStation.map(({ station, pumps: stationPumps }) => (
+            <StationPumpCard
+              key={station.id}
+              station={station}
+              pumps={stationPumps}
+              isLoading={isLoading}
+              fuelLabel={fuelLabel}
+              onEdit={openEdit}
+              onDelete={(id) => setDeletingPumpId(id)}
+            />
+          ))}
+          {unassignedPumps.length > 0 && (
+            <StationPumpCard
+              station={null}
+              pumps={unassignedPumps}
+              isLoading={false}
+              fuelLabel={fuelLabel}
+              onEdit={openEdit}
+              onDelete={(id) => setDeletingPumpId(id)}
+            />
           )}
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        // ── Single-station / legacy view: flat table ────────────────────
+        <Card className="shadow-sm">
+          <CardHeader>
+            <CardTitle>Pompes enregistrées</CardTitle>
+            <CardDescription>
+              Chaque pompe est identifiée par son libellé et son type de carburant. L'index d'étalonnage sert uniquement au premier relevé.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">Chargement…</p>
+            ) : pumps.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-6 text-center">
+                Aucune pompe enregistrée. Cliquez sur « Ajouter une pompe » pour commencer.
+              </p>
+            ) : (
+              <PumpTable
+                pumps={pumps}
+                fuelLabel={fuelLabel}
+                onEdit={openEdit}
+                onDelete={(id) => setDeletingPumpId(id)}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* ── Create dialog ── */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
@@ -265,9 +286,11 @@ export default function PumpSettings() {
               Renseignez le libellé, le type de carburant et l'index physique actuellement affiché sur le compteur.
             </DialogDescription>
           </DialogHeader>
-          <PumpForm form={form} onChange={setForm} />
+          <PumpForm form={form} onChange={setForm} stations={stations} />
           <DialogFooter>
-            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Annuler</Button>
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)}>
+              Annuler
+            </Button>
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white"
               onClick={handleCreate}
@@ -285,22 +308,27 @@ export default function PumpSettings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Modifier la pompe</DialogTitle>
-            <DialogDescription>
-              Mettez à jour les informations de cette pompe.
-            </DialogDescription>
+            <DialogDescription>Mettez à jour les informations de cette pompe.</DialogDescription>
           </DialogHeader>
           {editingPump && (
             <PumpForm
               form={editingPump}
-              onChange={(updated) => setEditingPump((prev) => prev ? { ...prev, ...updated } : null)}
+              onChange={(updated) =>
+                setEditingPump((prev) => (prev ? { ...prev, ...updated } : null))
+              }
+              stations={stations}
             />
           )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingPump(null)}>Annuler</Button>
+            <Button variant="outline" onClick={() => setEditingPump(null)}>
+              Annuler
+            </Button>
             <Button
               className="bg-amber-600 hover:bg-amber-700 text-white"
               onClick={handleUpdate}
-              disabled={!editingPump?.label || !editingPump?.fuelType || updateMutation.isPending}
+              disabled={
+                !editingPump?.label || !editingPump?.fuelType || updateMutation.isPending
+              }
               data-testid="button-confirm-edit-pump"
             >
               {updateMutation.isPending ? "Enregistrement…" : "Mettre à jour"}
@@ -310,7 +338,10 @@ export default function PumpSettings() {
       </Dialog>
 
       {/* ── Delete confirmation ── */}
-      <AlertDialog open={deletingPumpId !== null} onOpenChange={(open) => !open && setDeletingPumpId(null)}>
+      <AlertDialog
+        open={deletingPumpId !== null}
+        onOpenChange={(open) => !open && setDeletingPumpId(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Supprimer cette pompe ?</AlertDialogTitle>
@@ -322,7 +353,9 @@ export default function PumpSettings() {
             <AlertDialogCancel>Annuler</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive hover:bg-destructive/90"
-              onClick={() => deletingPumpId !== null && deleteMutation.mutate({ id: deletingPumpId })}
+              onClick={() =>
+                deletingPumpId !== null && deleteMutation.mutate({ id: deletingPumpId })
+              }
             >
               Supprimer
             </AlertDialogAction>
@@ -333,16 +366,151 @@ export default function PumpSettings() {
   )
 }
 
-// ── Shared form fields (used in both create and edit dialogs) ──────────────
+// ── Station-grouped pump card ───────────────────────────────────────────────
+function StationPumpCard({
+  station,
+  pumps,
+  isLoading,
+  fuelLabel,
+  onEdit,
+  onDelete,
+}: {
+  station: Station | null
+  pumps: any[]
+  isLoading: boolean
+  fuelLabel: (f: string) => string
+  onEdit: (pump: any) => void
+  onDelete: (id: number) => void
+}) {
+  return (
+    <Card className="shadow-sm">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Building2 className="h-4 w-4 text-amber-600" />
+          {station ? (
+            <span>
+              {station.name}
+              <span className="ml-2 font-normal text-muted-foreground text-sm flex items-center gap-1 inline-flex">
+                <MapPin className="h-3.5 w-3.5" />
+                {station.city}
+              </span>
+            </span>
+          ) : (
+            <span className="text-muted-foreground">Pompes non attribuées</span>
+          )}
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">Chargement…</p>
+        ) : pumps.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-4 text-center">
+            Aucune pompe enregistrée pour cette station.
+          </p>
+        ) : (
+          <PumpTable pumps={pumps} fuelLabel={fuelLabel} onEdit={onEdit} onDelete={onDelete} />
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Pump table (shared) ────────────────────────────────────────────────────
+function PumpTable({
+  pumps,
+  fuelLabel,
+  onEdit,
+  onDelete,
+}: {
+  pumps: any[]
+  fuelLabel: (f: string) => string
+  onEdit: (pump: any) => void
+  onDelete: (id: number) => void
+}) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Libellé</TableHead>
+          <TableHead>Carburant</TableHead>
+          <TableHead className="text-right">Index initial (L)</TableHead>
+          <TableHead className="w-24" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {pumps.map((pump) => (
+          <TableRow key={pump.id}>
+            <TableCell className="font-medium">{pump.label}</TableCell>
+            <TableCell>
+              <Badge variant="outline">{fuelLabel(pump.fuelType)}</Badge>
+            </TableCell>
+            <TableCell className="text-right font-mono text-sm">
+              {pump.initialIndex.toLocaleString("fr-FR")} L
+            </TableCell>
+            <TableCell>
+              <div className="flex items-center gap-1 justify-end">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => onEdit(pump)}
+                  data-testid={`button-edit-pump-${pump.id}`}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                  onClick={() => onDelete(pump.id)}
+                  data-testid={`button-delete-pump-${pump.id}`}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+// ── Shared form fields ─────────────────────────────────────────────────────
 function PumpForm({
   form,
   onChange,
+  stations,
 }: {
   form: PumpFormState
   onChange: (v: PumpFormState) => void
+  stations: Station[]
 }) {
   return (
     <div className="space-y-4 py-2">
+      {stations.length > 0 && (
+        <div className="space-y-2">
+          <Label htmlFor="pump-station">Station</Label>
+          <Select
+            value={form.stationId ? String(form.stationId) : "none"}
+            onValueChange={(v) =>
+              onChange({ ...form, stationId: v === "none" ? null : Number(v) })
+            }
+          >
+            <SelectTrigger id="pump-station">
+              <SelectValue placeholder="Attribuer à une station…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">Sans station</SelectItem>
+              {stations.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name} — {s.city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
       <div className="space-y-2">
         <Label htmlFor="pump-label">Libellé de la pompe</Label>
         <Input
@@ -388,7 +556,9 @@ function PumpForm({
         <div className="flex gap-2 rounded-md border border-amber-200 bg-amber-50/60 dark:border-amber-800 dark:bg-amber-950/20 p-3 text-sm text-amber-800 dark:text-amber-300">
           <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
           <p>
-            <span className="font-semibold">Important :</span> Saisissez l'index physique actuellement affiché sur le compteur de la pompe. Cet index servira de point de départ absolu pour le tout premier shift enregistré sur l'application.
+            <span className="font-semibold">Important :</span> Saisissez l'index physique
+            actuellement affiché sur le compteur de la pompe. Cet index servira de point de départ
+            absolu pour le tout premier shift enregistré sur l'application.
           </p>
         </div>
       </div>

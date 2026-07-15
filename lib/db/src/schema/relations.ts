@@ -24,6 +24,7 @@ import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
+import { stationsTable } from "./stations";
 import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable, fuelPricesTable } from "./station-service";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
@@ -36,6 +37,8 @@ export const usersRelations = relations(usersTable, ({ one }) => ({
   client: one(clientsTable, { fields: [usersTable.clientId], references: [clientsTable.id] }),
   // Module M29: only set for "client_staff" accounts.
   role: one(rolesTable, { fields: [usersTable.roleId], references: [rolesTable.id] }),
+  // Multi-station (P8): only set for site-restricted staff (POMPISTE etc.).
+  station: one(stationsTable, { fields: [usersTable.stationId], references: [stationsTable.id] }),
 }));
 
 // Module M29 (RBAC & Gestion du Personnel PME).
@@ -442,9 +445,18 @@ export const vatSettingsRelations = relations(vatSettingsTable, ({ one }) => ({
   }),
 }));
 
+// Multi-station (P8): stations belong to a client; many pumps / staff per station.
+export const stationsRelations = relations(stationsTable, ({ one, many }) => ({
+  client: one(clientsTable, { fields: [stationsTable.clientId], references: [clientsTable.id] }),
+  pumps: many(pumpsTable),
+  staff: many(usersTable),
+  shifts: many(pumpShiftsTable),
+}));
+
 // Module P7 (Calibration initiale): pump registration with initial index.
 export const pumpsRelations = relations(pumpsTable, ({ one, many }) => ({
   client: one(clientsTable, { fields: [pumpsTable.clientId], references: [clientsTable.id] }),
+  station: one(stationsTable, { fields: [pumpsTable.stationId], references: [stationsTable.id] }),
   assignments: many(pumpAssignmentsTable),
 }));
 
@@ -468,6 +480,7 @@ export const fuelPricesRelations = relations(fuelPricesTable, ({ one }) => ({
 // Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant).
 export const pumpShiftsRelations = relations(pumpShiftsTable, ({ one }) => ({
   client: one(clientsTable, { fields: [pumpShiftsTable.clientId], references: [clientsTable.id] }),
+  station: one(stationsTable, { fields: [pumpShiftsTable.stationId], references: [stationsTable.id] }),
   cashRegister: one(cashRegistersTable, {
     fields: [pumpShiftsTable.cashRegisterId],
     references: [cashRegistersTable.id],

@@ -7,6 +7,8 @@ import {
   getGetPumpShiftQueryKey,
   useListFuelPrices,
   getListFuelPricesQueryKey,
+  useListStations,
+  getListStationsQueryKey,
   useValidatePumpShift,
   type PumpShiftValidateResult,
 } from "@workspace/api-client-react"
@@ -14,7 +16,14 @@ import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatFcfa } from "@/lib/status"
 import { formatDateTime } from "@/lib/utils"
-import { ArrowLeft, Fuel, CheckCircle2, Gauge, AlertCircle } from "lucide-react"
+import { ArrowLeft, Fuel, CheckCircle2, Gauge, AlertCircle, Building2 } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AmountInput } from "@/components/ui/amount-input"
@@ -40,11 +49,38 @@ export default function FuelSales() {
 function PendingShiftsList() {
   const { user } = useAuth()
   const clientId = user?.clientId ?? 0
+  // Multi-station (P8): pompistes are auto-scoped server-side via their JWT
+  // stationId. Admins and cabinet staff get a manual station selector here.
+  const userStationId = (user as any)?.stationId as number | null | undefined
+  const [selectedStationId, setSelectedStationId] = useState<number | "all">("all")
 
-  const { data: shifts, isLoading } = useListPumpShifts(
-    { clientId, status: "OPEN" },
-    { query: { enabled: !!clientId, queryKey: getListPumpShiftsQueryKey({ clientId, status: "OPEN" }) } },
+  const { data: stations = [] } = useListStations(
+    { clientId },
+    {
+      query: {
+        enabled: !!clientId && !userStationId,
+        queryKey: getListStationsQueryKey({ clientId }),
+      },
+    },
   )
+
+  const effectiveStationId =
+    userStationId ?? (selectedStationId === "all" ? undefined : selectedStationId)
+
+  const queryParams = {
+    clientId,
+    status: "OPEN" as const,
+    ...(effectiveStationId ? { stationId: effectiveStationId } : {}),
+  }
+
+  const { data: shifts, isLoading } = useListPumpShifts(queryParams, {
+    query: {
+      enabled: !!clientId,
+      queryKey: getListPumpShiftsQueryKey(queryParams),
+    },
+  })
+
+  const showStationSelector = !userStationId && stations.length > 1
 
   return (
     <div className="max-w-lg mx-auto p-4 space-y-4">
@@ -54,6 +90,31 @@ function PendingShiftsList() {
           Retour
         </Link>
       </Button>
+
+      {/* ── Station selector for multi-station admins ─────────────── */}
+      {showStationSelector && (
+        <div className="flex items-center gap-2">
+          <Building2 className="h-4 w-4 text-amber-600 shrink-0" />
+          <Select
+            value={selectedStationId === "all" ? "all" : String(selectedStationId)}
+            onValueChange={(v) =>
+              setSelectedStationId(v === "all" ? "all" : Number(v))
+            }
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Toutes les stations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Toutes les stations</SelectItem>
+              {stations.map((s) => (
+                <SelectItem key={s.id} value={String(s.id)}>
+                  {s.name} — {s.city}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <Card className="shadow-sm border-amber-200 dark:border-amber-800">
         <CardHeader>
@@ -86,7 +147,18 @@ function PendingShiftsList() {
                   <div className="font-medium">
                     {s.pumpLabel} · {getFuelLabel(s.fuelType)}
                   </div>
-                  <div className="text-xs text-muted-foreground">{formatDateTime(s.createdAt)}</div>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <span>{formatDateTime(s.createdAt)}</span>
+                    {(s as any).stationName && (
+                      <>
+                        <span>·</span>
+                        <span className="flex items-center gap-1">
+                          <Building2 className="h-3 w-3" />
+                          {(s as any).stationName}
+                        </span>
+                      </>
+                    )}
+                  </div>
                 </div>
                 <Badge variant="outline" className="border-transparent bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300">
                   {s.volumeLiters} L

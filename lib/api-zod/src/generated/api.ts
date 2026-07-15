@@ -54,6 +54,8 @@ export const RegisterResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
 })
@@ -89,6 +91,8 @@ export const LoginResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
 })
@@ -126,6 +130,8 @@ export const ResetFirstPasswordResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 }).optional()
 })
@@ -148,6 +154,8 @@ export const GetCurrentUserResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
@@ -169,6 +177,8 @@ export const ListUsersResponseItem = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
@@ -204,6 +214,8 @@ export const CreateUserResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
@@ -240,6 +252,8 @@ export const UpdateUserResponse = zod.object({
   "roleLabel": zod.string().nullish().describe('Module M29 - French display label of the staff Role (e.g. \"Pompiste\"), null for non-client_staff accounts.'),
   "roleCode": zod.string().nullish().describe('Module M29 - stable machine key of the staff Role (e.g. \"POMPISTE\", \"AGENT_TERRAIN\"), null for non-client_staff accounts. Use for conditional logic; prefer roleLabel for display.'),
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
+  "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
 })
 
@@ -278,6 +292,8 @@ export const ListStaffResponseItem = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access.'),
+  "stationName": zod.string().nullish().describe('Display name of the assigned station.'),
   "createdAt": zod.coerce.date(),
   "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
@@ -297,7 +313,8 @@ export const createStaffBodyFullNameMin = 2;
 export const CreateStaffBody = zod.object({
   "email": zod.string().min(createStaffBodyEmailMin),
   "fullName": zod.string().min(createStaffBodyFullNameMin),
-  "roleId": zod.number()
+  "roleId": zod.number(),
+  "stationId": zod.number().optional().describe('Multi-station (P8): station to assign this staff member to. Required for POMPISTE role; optional for others.')
 }).describe('Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created StaffUser) rather than accepting one from the owner.')
 
 export const CreateStaffResponse = zod.object({
@@ -308,6 +325,8 @@ export const CreateStaffResponse = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access.'),
+  "stationName": zod.string().nullish().describe('Display name of the assigned station.'),
   "createdAt": zod.coerce.date(),
   "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
@@ -339,6 +358,8 @@ export const UpdateStaffResponse = zod.object({
   "roleId": zod.number().nullable(),
   "roleCode": zod.string().nullish(),
   "roleLabel": zod.string().nullish(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station assigned to this staff member. Required for POMPISTE; null for roles with cross-station access.'),
+  "stationName": zod.string().nullish().describe('Display name of the assigned station.'),
   "createdAt": zod.coerce.date(),
   "associatedCashAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the personal SYSCOHADA cash sub-account (e.g. \"571101\") auto-assigned when this account is a POMPISTE for a STATION_SERVICE client. Null for every other account.'),
   "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/staff, immediately after account creation; the plaintext auto-generated temporary password to hand to the new staff member. Always null on every other endpoint.')
@@ -1697,12 +1718,15 @@ export const GetLastPumpIndexResponse = zod.object({
  */
 export const ListPumpShiftsQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "status": zod.enum(['OPEN', 'VALIDATED']).optional()
+  "status": zod.enum(['OPEN', 'VALIDATED']).optional(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): filter shifts to a specific station.')
 })
 
 export const ListPumpShiftsResponseItem = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.'),
+  "stationName": zod.string().nullish().describe('Display name of the station, for filtering and reporting.'),
   "cashRegisterId": zod.number().nullish(),
   "pumpLabel": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
@@ -1747,6 +1771,8 @@ export const CreatePumpShiftBody = zod.object({
 export const CreatePumpShiftResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.'),
+  "stationName": zod.string().nullish().describe('Display name of the station, for filtering and reporting.'),
   "cashRegisterId": zod.number().nullish(),
   "pumpLabel": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
@@ -1782,6 +1808,8 @@ export const GetPumpShiftParams = zod.object({
 export const GetPumpShiftResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.'),
+  "stationName": zod.string().nullish().describe('Display name of the station, for filtering and reporting.'),
   "cashRegisterId": zod.number().nullish(),
   "pumpLabel": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
@@ -1840,6 +1868,8 @@ export const ValidatePumpShiftResponse = zod.object({
   "pumpShift": zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this shift belongs to, denormalized from the pump at creation time.'),
+  "stationName": zod.string().nullish().describe('Display name of the station, for filtering and reporting.'),
   "cashRegisterId": zod.number().nullish(),
   "pumpLabel": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
@@ -2008,6 +2038,84 @@ export const CreateMobileMoneyTransferResponse = zod.object({
 
 
 /**
+ * @summary Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff.
+ */
+export const ListStationsQueryParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const ListStationsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string().describe('Display name, e.g. «Station Yamoussoukro Autogare».'),
+  "city": zod.string().describe('City, e.g. «Yamoussoukro».'),
+  "createdAt": zod.coerce.date()
+})
+export const ListStationsResponse = zod.array(ListStationsResponseItem)
+
+
+/**
+ * @summary Multi-station (P8): register a new station. PME owner only.
+ */
+export const createStationBodyNameMin = 2;
+
+export const createStationBodyCityMin = 2;
+
+
+
+export const CreateStationBody = zod.object({
+  "clientId": zod.number(),
+  "name": zod.string().min(createStationBodyNameMin),
+  "city": zod.string().min(createStationBodyCityMin)
+})
+
+export const CreateStationResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string().describe('Display name, e.g. «Station Yamoussoukro Autogare».'),
+  "city": zod.string().describe('City, e.g. «Yamoussoukro».'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Multi-station (P8): update a station's name or city. PME owner only.
+ */
+export const UpdateStationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const updateStationBodyNameMin = 2;
+
+export const updateStationBodyCityMin = 2;
+
+
+
+export const UpdateStationBody = zod.object({
+  "name": zod.string().min(updateStationBodyNameMin).optional(),
+  "city": zod.string().min(updateStationBodyCityMin).optional()
+})
+
+export const UpdateStationResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "name": zod.string().describe('Display name, e.g. «Station Yamoussoukro Autogare».'),
+  "city": zod.string().describe('City, e.g. «Yamoussoukro».'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Multi-station (P8): delete a station. PME owner only. Fails if the station still has pumps.
+ */
+export const DeleteStationParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteStationResponse = zod.void()
+
+
+/**
  * @summary Module P7 (Admin): list registered pumps for a station-service client. PME owner only.
  */
 export const ListPumpsQueryParams = zod.object({
@@ -2017,6 +2125,8 @@ export const ListPumpsQueryParams = zod.object({
 export const ListPumpsResponseItem = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps.'),
+  "stationName": zod.string().nullish().describe('Display name of the pump\'s station.'),
   "label": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
   "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),
@@ -2036,6 +2146,7 @@ export const createPumpBodyInitialIndexMin = 0;
 
 export const CreatePumpBody = zod.object({
   "clientId": zod.number(),
+  "stationId": zod.number().optional().describe('Multi-station (P8): station this pump belongs to.'),
   "label": zod.string().min(1),
   "fuelType": zod.enum(['super', 'gasoil']),
   "initialIndex": zod.number().min(createPumpBodyInitialIndexMin).default(createPumpBodyInitialIndexDefault)
@@ -2044,6 +2155,8 @@ export const CreatePumpBody = zod.object({
 export const CreatePumpResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps.'),
+  "stationName": zod.string().nullish().describe('Display name of the pump\'s station.'),
   "label": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
   "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),
@@ -2072,6 +2185,8 @@ export const UpdatePumpBody = zod.object({
 export const UpdatePumpResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps.'),
+  "stationName": zod.string().nullish().describe('Display name of the pump\'s station.'),
   "label": zod.string(),
   "fuelType": zod.enum(['super', 'gasoil']),
   "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),

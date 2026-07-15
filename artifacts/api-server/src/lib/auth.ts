@@ -27,6 +27,10 @@ export interface AuthTokenPayload {
   // require a fresh login to take effect.
   roleId?: number | null;
   permissions?: string[];
+  // Multi-station (P8): only present for POMPISTE and other site-restricted
+  // staff. Null for client_pme owners and cabinet staff (full cross-station
+  // access). Embedded at login time from users.stationId.
+  stationId?: number | null;
   // Module M33 (Enforced Temporary Password Reset Flow): only present on a
   // restricted token issued by /auth/login when the account still has
   // requiresPasswordChange = true. requireAuth() rejects any token

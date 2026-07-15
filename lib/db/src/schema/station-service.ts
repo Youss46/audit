@@ -5,6 +5,7 @@ import { clientsTable } from "./clients";
 import { usersTable } from "./users";
 import { cashRegistersTable } from "./caisse";
 import { transactionsTable, type PaymentMethod } from "./accounting";
+import { stationsTable } from "./stations";
 
 // Module P7 (Un Pompiste = Un Shift): station-service pump-index readings
 // (compteur début/fin de service) and their downstream fuel-sale
@@ -34,6 +35,11 @@ export const pumpShiftsTable = pgTable("pump_shifts", {
   clientId: integer("client_id")
     .notNull()
     .references(() => clientsTable.id, { onDelete: "cascade" }),
+  // Multi-station (P8): denormalized from the pump at shift creation time
+  // to allow per-station reporting without a join through pumps.
+  stationId: integer("station_id").references(() => stationsTable.id, {
+    onDelete: "set null",
+  }),
   // The pompiste's own P6 cash drawer, when they have one -- null until the
   // shift is validated with an "especes" payment method against a shared
   // register (kept in sync with the register createTransactionEntry() picks).
@@ -93,6 +99,11 @@ export const pumpsTable = pgTable("pumps", {
   clientId: integer("client_id")
     .notNull()
     .references(() => clientsTable.id, { onDelete: "cascade" }),
+  // Multi-station (P8): every pump belongs to one physical station.
+  // Nullable for backward compatibility with pre-multi-station pumps.
+  stationId: integer("station_id").references(() => stationsTable.id, {
+    onDelete: "set null",
+  }),
   label: text("label").notNull(),
   fuelType: text("fuel_type").notNull().$type<FuelType>(),
   // Physical meter reading at the moment this pump was registered on the

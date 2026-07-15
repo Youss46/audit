@@ -41,6 +41,16 @@ export interface User {
   /** Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role. */
   permissions?: string[];
   /**
+     * Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.
+     * @nullable
+     */
+  stationName?: string | null;
+  /**
      * Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
      * @nullable
      */

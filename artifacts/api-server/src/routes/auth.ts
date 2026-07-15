@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, firmsTable, usersTable, rolesTable } from "@workspace/db";
+import { db, firmsTable, usersTable, rolesTable, stationsTable } from "@workspace/db";
 import {
   RegisterBody,
   RegisterResponse,
@@ -26,6 +26,7 @@ function serializeUser(
   user: typeof usersTable.$inferSelect,
   firmName?: string | null,
   role?: typeof rolesTable.$inferSelect | null,
+  station?: typeof stationsTable.$inferSelect | null,
 ) {
   return {
     id: user.id,
@@ -42,6 +43,9 @@ function serializeUser(
     roleCode: role?.code ?? null,
     roleLabel: role?.label ?? null,
     permissions: role?.permissions ?? [],
+    // Multi-station (P8): only set for site-restricted staff.
+    stationId: user.stationId ?? null,
+    stationName: station?.name ?? null,
   };
 }
 
@@ -52,6 +56,16 @@ async function resolveStaffRole(user: typeof usersTable.$inferSelect) {
   return (
     (await db.query.rolesTable.findFirst({
       where: eq(rolesTable.id, user.roleId),
+    })) ?? null
+  );
+}
+
+// Multi-station (P8): resolves the station for site-restricted staff.
+async function resolveStation(user: typeof usersTable.$inferSelect) {
+  if (!user.stationId) return null;
+  return (
+    (await db.query.stationsTable.findFirst({
+      where: eq(stationsTable.id, user.stationId),
     })) ?? null
   );
 }
@@ -162,7 +176,11 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
-  const staffRole = await resolveStaffRole(user);
+  const [staffRole, station, firm] = await Promise.all([
+    resolveStaffRole(user),
+    resolveStation(user),
+    db.query.firmsTable.findFirst({ where: eq(firmsTable.id, user.firmId) }),
+  ]);
   const token = signToken({
     id: user.id,
     firmId: user.firmId,
@@ -172,16 +190,14 @@ router.post("/auth/login", async (req, res) => {
     clientId: user.clientId,
     roleId: user.roleId,
     permissions: staffRole?.permissions ?? [],
+    stationId: user.stationId ?? null,
   });
 
-  const firm = await db.query.firmsTable.findFirst({
-    where: eq(firmsTable.id, user.firmId),
-  });
   res.json(
     LoginResponse.parse({
       status: "OK",
       token,
-      user: serializeUser(user, firm?.name, staffRole),
+      user: serializeUser(user, firm?.name, staffRole, station),
     }),
   );
 });
@@ -252,7 +268,11 @@ router.post(
       ipAddress: req.ip,
     });
 
-    const staffRole = await resolveStaffRole(updated);
+    const [staffRole, station, firm] = await Promise.all([
+      resolveStaffRole(updated),
+      resolveStation(updated),
+      db.query.firmsTable.findFirst({ where: eq(firmsTable.id, updated.firmId) }),
+    ]);
     const token = signToken({
       id: updated.id,
       firmId: updated.firmId,
@@ -262,16 +282,14 @@ router.post(
       clientId: updated.clientId,
       roleId: updated.roleId,
       permissions: staffRole?.permissions ?? [],
+      stationId: updated.stationId ?? null,
     });
 
-    const firm = await db.query.firmsTable.findFirst({
-      where: eq(firmsTable.id, updated.firmId),
-    });
     res.json(
       ResetFirstPasswordResponse.parse({
         status: "OK",
         token,
-        user: serializeUser(updated, firm?.name, staffRole),
+        user: serializeUser(updated, firm?.name, staffRole, station),
       }),
     );
   },
@@ -285,11 +303,12 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     res.status(404).json({ error: "Utilisateur introuvable." });
     return;
   }
-  const firm = await db.query.firmsTable.findFirst({
-    where: eq(firmsTable.id, user.firmId),
-  });
-  const staffRole = await resolveStaffRole(user);
-  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name, staffRole)));
+  const [firm, staffRole, station] = await Promise.all([
+    db.query.firmsTable.findFirst({ where: eq(firmsTable.id, user.firmId) }),
+    resolveStaffRole(user),
+    resolveStation(user),
+  ]);
+  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name, staffRole, station)));
 });
 
 export default router;

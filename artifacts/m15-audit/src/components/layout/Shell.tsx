@@ -223,6 +223,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (
     user.role !== "client_pme" &&
     (location.startsWith("/client/settings/staff") ||
+      location.startsWith("/client/settings/stations") ||
       location.startsWith("/client/settings/pumps") ||
       location.startsWith("/client/settings/fuel-prices") ||
       location.startsWith("/client/settings/pump-assignments"))
@@ -306,6 +307,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-staff">
               <UserCog className="h-5 w-5" />
               Équipe
+            </Link>
+          )}
+
+          {/* Multi-station (P8): physical station management -- PME owner only. */}
+          {user?.role === "client_pme" && (
+            <Link href="/client/settings/stations" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/client/settings/stations")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-stations">
+              <MapPin className="h-5 w-5" />
+              Gestion des stations
             </Link>
           )}
 

@@ -10,6 +10,16 @@ import type { FuelType } from './fuelType';
 export interface Pump {
   id: number;
   clientId: number;
+  /**
+     * Multi-station (P8): station this pump belongs to. Null for pre-multi-station pumps.
+     * @nullable
+     */
+  stationId?: number | null;
+  /**
+     * Display name of the pump's station.
+     * @nullable
+     */
+  stationName?: string | null;
   label: string;
   fuelType: FuelType;
   /** Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift. */
