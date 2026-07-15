@@ -5,7 +5,9 @@
 //
 // All monetary values are integers (FCFA). Rates are floating-point fractions
 // (0.0–1.0). The engine respects the salvage value floor so VNC never drops
-// below it. Prorata temporis is computed in days on a 365-day year.
+// below it. Prorata temporis is computed on the SYSCOHADA commercial-year
+// convention: a 360-day year made of twelve 30-day months (not actual
+// calendar days / 365).
 
 import type { DepreciationType } from "@workspace/db";
 
@@ -40,18 +42,24 @@ export interface AssetDepreciationParams {
 // Internal helpers
 // ---------------------------------------------------------------------------
 
+/** Number of days (max 360) in a fiscal year, per the SYSCOHADA convention. */
+const DAYS_PER_YEAR = 360;
+
 /**
- * Number of days from acquisitionDate (inclusive) to Dec 31 of that calendar
- * year (inclusive). Used for prorata temporis on the first fiscal year.
+ * Number of days from acquisitionDate (inclusive) to the end of that fiscal
+ * year, on the SYSCOHADA "année commerciale" basis: twelve 30-day months
+ * (360-day year), not actual calendar days. Used for prorata temporis on the
+ * first fiscal year.
+ *
+ * Example: acquisition on 2026-04-10 → 21 remaining days in April
+ * (30 - 10 + 1) + 8 full months (May..December) × 30 = 21 + 240 = 261 days.
  */
 function prorataDaysInAcquisitionYear(acquisitionDate: Date): number {
-  const year = acquisitionDate.getFullYear();
-  const endOfYear = new Date(Date.UTC(year, 11, 31));
-  const start = new Date(
-    Date.UTC(acquisitionDate.getFullYear(), acquisitionDate.getMonth(), acquisitionDate.getDate()),
-  );
-  const diffMs = endOfYear.getTime() - start.getTime();
-  return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1; // inclusive of both ends
+  const day = Math.min(acquisitionDate.getDate(), 30);
+  const month = acquisitionDate.getMonth(); // 0 (January) .. 11 (December)
+  const daysInAcquisitionMonth = 30 - day + 1;
+  const remainingFullMonths = 11 - month;
+  return daysInAcquisitionMonth + remainingFullMonths * DAYS_PER_YEAR / 12;
 }
 
 /** True if the asset was acquired after Jan 1, requiring a partial first year. */
@@ -73,7 +81,7 @@ function buildLinearSchedule(params: AssetDepreciationParams): DepreciationSched
   const acquisitionYear = acquisitionDate.getFullYear();
   const partial = isPartialFirstYear(acquisitionDate);
   const days = prorataDaysInAcquisitionYear(acquisitionDate);
-  const year1Annuity = partial ? Math.round(fullAnnuity * days / 365) : fullAnnuity;
+  const year1Annuity = partial ? Math.round(fullAnnuity * days / DAYS_PER_YEAR) : fullAnnuity;
 
   // A partial first year spills one extra year at the end.
   const totalRows = partial ? usefulLifeYears + 1 : usefulLifeYears;
@@ -89,7 +97,7 @@ function buildLinearSchedule(params: AssetDepreciationParams): DepreciationSched
 
     if (i === 0) {
       annuity = year1Annuity;
-      effectiveRate = partial ? rate * days / 365 : rate;
+      effectiveRate = partial ? rate * days / DAYS_PER_YEAR : rate;
     } else if (i === totalRows - 1) {
       // Last row: absorb any rounding residual so VNC lands exactly on
       // salvageValue.
@@ -163,9 +171,9 @@ function buildDegressifSchedule(params: AssetDepreciationParams): DepreciationSc
 
     if (i === 0) {
       // First (possibly partial) year: apply degRate with prorata.
-      const rawDeg = openingVNC * degRate * (partial ? days / 365 : 1);
+      const rawDeg = openingVNC * degRate * (partial ? days / DAYS_PER_YEAR : 1);
       annuity = Math.round(rawDeg);
-      effectiveRate = degRate * (partial ? days / 365 : 1);
+      effectiveRate = degRate * (partial ? days / DAYS_PER_YEAR : 1);
     } else {
       // Choose the higher of declining-balance and straight-line fallback.
       const degAnnuity = Math.round(openingVNC * degRate);
@@ -268,10 +276,14 @@ export function deriveAmortissementAccount(assetAccountNumber: string): string {
 }
 
 /**
- * Choose the appropriate dotation charge account:
- *   Class 21 (incorporelles) → 6812
- *   All other Class 2 assets → 6811 (corporelles)
+ * Choose the appropriate dotation (681) charge account per the SYSCOHADA
+ * révisé nomenclature:
+ *   Class 20 (charges immobilisées / frais d'établissement) → 6811
+ *   Class 21 (immobilisations incorporelles)                → 6812
+ *   Classes 22-24+ (immobilisations corporelles)             → 6813
  */
 export function deriveDotationAccount(assetAccountNumber: string): string {
-  return assetAccountNumber.startsWith("21") ? "6812" : "6811";
+  if (assetAccountNumber.startsWith("20")) return "6811";
+  if (assetAccountNumber.startsWith("21")) return "6812";
+  return "6813";
 }

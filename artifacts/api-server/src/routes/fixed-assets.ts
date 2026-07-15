@@ -6,6 +6,7 @@ import {
   transactionsTable,
   journalLinesTable,
   fixedAssetsTable,
+  assetDepreciationPostingsTable,
 } from "@workspace/db";
 import {
   ListAssetsQueryParams,
@@ -240,8 +241,27 @@ router.post(
       transactionId: number;
     }> = [];
     const skipped: Array<{ assetId: number; assetLabel: string; reason: string }> = [];
+    let alreadyPostedCount = 0;
 
     for (const asset of activeAssets) {
+      // Anti-duplicate boundary: this asset's dotation for this fiscal year
+      // was already booked by a previous "Générer les dotations" run.
+      const existingPosting = await db.query.assetDepreciationPostingsTable.findFirst({
+        where: and(
+          eq(assetDepreciationPostingsTable.assetId, asset.id),
+          eq(assetDepreciationPostingsTable.fiscalYear, year),
+        ),
+      });
+      if (existingPosting) {
+        alreadyPostedCount++;
+        skipped.push({
+          assetId: asset.id,
+          assetLabel: asset.label,
+          reason: "Dotation déjà comptabilisée pour cet exercice.",
+        });
+        continue;
+      }
+
       const acquisitionYear = asset.acquisitionDate.getFullYear();
       if (acquisitionYear > year) {
         skipped.push({
@@ -282,28 +302,31 @@ router.post(
         continue;
       }
 
-      // Debit: 6811 (corporelles) or 6812 (incorporelles)
+      // Debit: 6811 (charges immobilisées), 6812 (incorporelles) or 6813
+      // (corporelles) per the SYSCOHADA nomenclature.
       const debitAccount = deriveDotationAccount(asset.accountNumber);
-      // Credit: amortissement cumulé (e.g. "284110" for asset "241100")
+      // Credit: amortissement cumulé (e.g. "28441" for asset "2441")
       const creditAccount = deriveAmortissementAccount(asset.accountNumber);
 
       // Direct DB insert — depreciation is a non-cash adjusting entry that
       // bypasses the category-based accounting engine (like settlement
       // transactions). paymentMethod is null because no treasury movement occurs.
+      // source "depreciation_closing" classifies the entry into the OD
+      // (Opérations Diverses) journal in the Journaux / Grand Livre views.
       const [tx] = await db
         .insert(transactionsTable)
         .values({
           firmId: req.user!.firmId,
           clientId,
           date: new Date(`${year}-12-31T00:00:00.000Z`),
-          label: `Dotation aux amortissements — ${asset.label} — Exercice ${year}`,
+          label: `Dotation aux amortissements ${year} - ${asset.label}`,
           amount: annuity,
           type: "depense",
           category: null,
           paymentType: "cash",
           paymentMethod: null,
           status: "a_valider",
-          source: "manual_cabinet",
+          source: "depreciation_closing",
           createdById: req.user!.id,
           anomalies: [],
         })
@@ -313,20 +336,38 @@ router.post(
         {
           transactionId: tx.id,
           accountNumber: debitAccount,
-          label: `Dotation — ${asset.label} — ${year}`,
+          label: `Dotation aux amortissements ${year} - ${asset.label}`,
           debitAmount: annuity,
           creditAmount: 0,
         },
         {
           transactionId: tx.id,
           accountNumber: creditAccount,
-          label: `Amortissement — ${asset.label} — ${year}`,
+          label: `Dotation aux amortissements ${year} - ${asset.label}`,
           debitAmount: 0,
           creditAmount: annuity,
         },
       ]);
 
+      // Record the posting so a future run for the same (asset, year) is
+      // recognized as a duplicate and skipped.
+      await db.insert(assetDepreciationPostingsTable).values({
+        assetId: asset.id,
+        fiscalYear: year,
+        transactionId: tx.id,
+      });
+
       generated.push({ assetId: asset.id, assetLabel: asset.label, annuity, transactionId: tx.id });
+    }
+
+    // Nothing new was posted, and the only reason was "already booked" for
+    // every otherwise-eligible asset — this is a genuine duplicate re-run of
+    // an exercice that has already been closed out.
+    if (generated.length === 0 && alreadyPostedCount > 0) {
+      res.status(409).json({
+        error: "Les dotations pour cet exercice ont déjà été comptabilisées.",
+      });
+      return;
     }
 
     await logAudit({

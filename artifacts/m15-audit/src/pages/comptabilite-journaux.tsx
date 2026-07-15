@@ -16,7 +16,7 @@ import { formatDate } from "@/lib/utils"
 import { formatFcfa, getJournalCode, getJournalCodeLabel } from "@/lib/status"
 import { BookText, CalendarDays } from "lucide-react"
 
-type JournalCodeFilter = "ALL" | "HA" | "VT" | "BQ" | "CA"
+type JournalCodeFilter = "ALL" | "HA" | "VT" | "BQ" | "CA" | "OD"
 
 const JOURNAL_CODE_FILTERS: { value: JournalCodeFilter; label: string }[] = [
   { value: "ALL", label: "Tous les journaux" },
@@ -24,6 +24,7 @@ const JOURNAL_CODE_FILTERS: { value: JournalCodeFilter; label: string }[] = [
   { value: "VT",  label: "VT — Ventes"       },
   { value: "BQ",  label: "BQ — Banque"       },
   { value: "CA",  label: "CA — Caisse"       },
+  { value: "OD",  label: "OD — Opérations Diverses" },
 ]
 
 const JOURNAL_CODE_COLORS: Record<string, string> = {
@@ -31,6 +32,7 @@ const JOURNAL_CODE_COLORS: Record<string, string> = {
   VT: "bg-green-100  text-green-800  border-green-200  dark:bg-green-900/30  dark:text-green-300",
   BQ: "bg-blue-100   text-blue-800   border-blue-200   dark:bg-blue-900/30   dark:text-blue-300",
   CA: "bg-amber-100  text-amber-800  border-amber-200  dark:bg-amber-900/30  dark:text-amber-300",
+  OD: "bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-300",
 }
 
 function buildYearOptions() {
@@ -101,7 +103,7 @@ export default function ComptabiliteJournaux() {
   // so the accountant can visually scan each auxiliary journal.
   const sections = useMemo(() => {
     if (journalFilter !== "ALL") return null
-    const order: JournalCodeFilter[] = ["HA", "VT", "BQ", "CA"]
+    const order: JournalCodeFilter[] = ["HA", "VT", "BQ", "CA", "OD"]
     return order
       .map((code) => ({ code, rows: rows.filter((r) => r.journalCode === code) }))
       .filter((s) => s.rows.length > 0)
@@ -184,7 +186,7 @@ export default function ComptabiliteJournaux() {
               rows={rows}
               totalDebit={totalDebit}
               totalCredit={totalCredit}
-              title={getJournalCodeLabel(journalFilter as "HA" | "VT" | "BQ" | "CA")}
+              title={getJournalCodeLabel(journalFilter as "HA" | "VT" | "BQ" | "CA" | "OD")}
               colorClass={JOURNAL_CODE_COLORS[journalFilter]}
             />
           ) : (
@@ -199,7 +201,7 @@ export default function ComptabiliteJournaux() {
                     rows={section.rows}
                     totalDebit={sDebit}
                     totalCredit={sCredit}
-                    title={getJournalCodeLabel(section.code as "HA" | "VT" | "BQ" | "CA")}
+                    title={getJournalCodeLabel(section.code as "HA" | "VT" | "BQ" | "CA" | "OD")}
                     colorClass={JOURNAL_CODE_COLORS[section.code]}
                   />
                 )
@@ -235,7 +237,7 @@ export default function ComptabiliteJournaux() {
 interface JournalRow {
   key:           string
   date:          string
-  journalCode:   "HA" | "VT" | "BQ" | "CA"
+  journalCode:   "HA" | "VT" | "BQ" | "CA" | "OD"
   accountNumber: string
   label:         string
   debitAmount:   number

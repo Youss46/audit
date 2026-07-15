@@ -5,6 +5,7 @@ import {
   serial,
   text,
   timestamp,
+  unique,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
@@ -87,3 +88,37 @@ export const insertFixedAssetSchema = createInsertSchema(fixedAssetsTable).omit(
 });
 export type InsertFixedAsset = z.infer<typeof insertFixedAssetSchema>;
 export type FixedAsset = typeof fixedAssetsTable.$inferSelect;
+
+// -- Asset depreciation postings ---------------------------------------------
+// One row per (asset, fiscal year) once a "Générer les dotations" run has
+// booked that asset's annuity to the OD journal. This is the anti-duplicate
+// boundary for /assets/generate-closings: a unique constraint on
+// (assetId, fiscalYear) makes it impossible to silently double-post the same
+// asset's dotation for the same exercice, and lets the route tell a genuinely
+// "nothing new to do" re-run apart from a partial run that still has other
+// assets left to post. No FK to `transactionsTable` (defined in
+// accounting.ts) to avoid a schema-file import cycle -- same pattern as
+// `postedTransactionId` on invoices/payslips/VAT declarations.
+export const assetDepreciationPostingsTable = pgTable(
+  "asset_depreciation_postings",
+  {
+    id: serial("id").primaryKey(),
+    assetId: integer("asset_id")
+      .notNull()
+      .references(() => fixedAssetsTable.id, { onDelete: "cascade" }),
+    fiscalYear: integer("fiscal_year").notNull(),
+    transactionId: integer("transaction_id").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [
+    unique("asset_depreciation_postings_asset_year_unique").on(
+      table.assetId,
+      table.fiscalYear,
+    ),
+    index("asset_depreciation_postings_asset_id_idx").on(table.assetId),
+  ],
+);
+
+export type AssetDepreciationPosting = typeof assetDepreciationPostingsTable.$inferSelect;

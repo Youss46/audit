@@ -217,21 +217,37 @@ export function getPaymentTypeLabel(type: PaymentType | string | null | undefine
 // derived from the payment method / operation type actually recorded,
 // since this MVP's matching engine doesn't book to a dedicated journal
 // column. HA (Achats), VT (Ventes), BQ (Banque), CA (Caisse).
+// Sources that book non-cash adjusting entries (no treasury movement) --
+// year-end closings, VAT liquidation, dotations aux amortissements, etc.
+// These always classify into "OD" (Opérations Diverses) regardless of
+// `type`/`paymentMethod`, since neither reflects a purchase/sale or a
+// treasury movement.
+const OD_JOURNAL_SOURCES = new Set<TransactionSource | string>([
+  "closing_result",
+  "a_nouveaux",
+  "vat_liquidation",
+  "depreciation_closing",
+])
+
 export function getJournalCode(entry: {
   type: TransactionType | string
   paymentMethod?: PaymentMethod | string | null
-}): "HA" | "VT" | "BQ" | "CA" {
+  source?: TransactionSource | string | null
+}): "HA" | "VT" | "BQ" | "CA" | "OD" {
+  if (entry.source && OD_JOURNAL_SOURCES.has(entry.source)) return "OD"
   if (entry.paymentMethod === "especes") return "CA"
   if (entry.paymentMethod === "virement" || entry.paymentMethod === "cheque" || entry.paymentMethod === "mobile_money") return "BQ"
+  if (entry.paymentMethod == null) return "OD"
   return entry.type === "recette" ? "VT" : "HA"
 }
 
-export function getJournalCodeLabel(code: "HA" | "VT" | "BQ" | "CA") {
+export function getJournalCodeLabel(code: "HA" | "VT" | "BQ" | "CA" | "OD") {
   switch (code) {
     case "HA": return "HA — Achats"
     case "VT": return "VT — Ventes"
     case "BQ": return "BQ — Banque"
     case "CA": return "CA — Caisse"
+    case "OD": return "OD — Opérations Diverses"
   }
 }
 

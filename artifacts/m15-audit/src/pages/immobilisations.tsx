@@ -9,6 +9,7 @@ import {
   useGetAssetDepreciationSchedule,
   getGetAssetDepreciationScheduleQueryKey,
   useGenerateDepreciationClosings,
+  getListTransactionsQueryKey,
 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -244,13 +245,28 @@ export default function Immobilisations() {
     mutation: {
       onSuccess: (data) => {
         const { generated, skipped } = data as { generated: unknown[]; skipped: unknown[] }
-        toast({
-          title: `Dotations générées — Exercice ${closingYear}`,
-          description: `${generated.length} écriture(s) créée(s) à valider en M3${skipped.length ? `, ${skipped.length} ignorée(s)` : ""}.`,
-        })
-        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        if (generated.length > 0) {
+          toast({
+            title: `Dotations générées — Exercice ${closingYear}`,
+            description:
+              "Les écritures de dotations aux amortissements ont été générées avec succès dans le journal OD." +
+              (skipped.length ? ` ${skipped.length} immobilisation(s) ignorée(s).` : ""),
+          })
+        } else {
+          toast({
+            title: `Aucune dotation générée — Exercice ${closingYear}`,
+            description: "Aucune immobilisation éligible pour cet exercice.",
+          })
+        }
+        queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() })
+        invalidateAssets()
       },
-      onError: () => toast({ title: "Erreur lors de la génération", variant: "destructive" }),
+      onError: (err: unknown) => {
+        const message =
+          (err as { data?: { error?: string } } | undefined)?.data?.error ??
+          "Erreur lors de la génération des dotations."
+        toast({ title: "Erreur lors de la génération", description: message, variant: "destructive" })
+      },
     },
   })
 

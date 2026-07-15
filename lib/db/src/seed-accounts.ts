@@ -69,6 +69,11 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "658", name: "Charges diverses", accountClass: 6 },
   { accountNumber: "661", name: "Appointements, salaires et commissions", accountClass: 6 },
   { accountNumber: "681", name: "Dotations aux amortissements", accountClass: 6 },
+  // Module M17 (Immobilisations & Amortissements) — dotation sub-accounts,
+  // SYSCOHADA révisé nomenclature.
+  { accountNumber: "6811", name: "Dotations aux amortissements des charges immobilisées", accountClass: 6 },
+  { accountNumber: "6812", name: "Dotations aux amortissements des immobilisations incorporelles", accountClass: 6 },
+  { accountNumber: "6813", name: "Dotations aux amortissements des immobilisations corporelles", accountClass: 6 },
   // Module M18 (Immobilisations Financières & Emprunts).
   { accountNumber: "671", name: "Intérêts des emprunts", accountClass: 6 },
 
