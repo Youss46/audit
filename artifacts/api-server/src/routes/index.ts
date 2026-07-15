@@ -28,6 +28,7 @@ import chatRouter from "./chat";
 import payrollSettingsRouter from "./payroll-settings";
 import vatSettingsRouter from "./vat-settings";
 import pumpShiftsRouter from "./pump-shifts";
+import pumpsRouter from "./pumps";
 import mobileMoneyRouter from "./mobile-money";
 
 const router: IRouter = Router();
@@ -61,6 +62,7 @@ router.use(chatRouter);
 router.use(payrollSettingsRouter);
 router.use(vatSettingsRouter);
 router.use(pumpShiftsRouter);
+router.use(pumpsRouter);
 router.use(mobileMoneyRouter);
 
 export default router;

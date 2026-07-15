@@ -1500,6 +1500,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /pumps:
+    get:
+      operationId: listPumps
+      tags: [station-service]
+      summary: "Module P7 (Admin): list registered pumps for a station-service client. PME owner only."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of registered pumps
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Pump"
+    post:
+      operationId: createPump
+      tags: [station-service]
+      summary: "Register a new pump with its initial calibration index. The initial_index is used as indexStart for the pump's very first shift."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePumpInput"
+      responses:
+        "201":
+          description: Pump registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pump"
+
+  /pumps/{id}:
+    put:
+      operationId: updatePump
+      tags: [station-service]
+      summary: "Update a registered pump's label, fuel type, or initial calibration index."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePumpInput"
+      responses:
+        "200":
+          description: Updated pump
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Pump"
+        "404":
+          description: Pump not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deletePump
+      tags: [station-service]
+      summary: "Remove a registered pump. Does not affect existing pump shifts."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Pump deleted
+
   /reports/balance:
     get:
       operationId: getBalanceDesComptes
@@ -4724,6 +4803,47 @@ components:
         indexEnd:
           type: ["number", "null"]
           description: The ending index (litres) of the last shift for this pump/fuel, or null if none exists yet (first-ever use).
+
+    Pump:
+      type: object
+      required: [id, clientId, label, fuelType, initialIndex, createdAt]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        label: { type: string }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        initialIndex:
+          type: number
+          description: Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.
+        createdAt: { type: string, format: date-time }
+
+    CreatePumpInput:
+      type: object
+      required: [clientId, label, fuelType]
+      properties:
+        clientId: { type: integer }
+        label:
+          type: string
+          minLength: 1
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        initialIndex:
+          type: number
+          minimum: 0
+          default: 0
+
+    UpdatePumpInput:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        initialIndex:
+          type: number
+          minimum: 0
 
     PumpShift:
       type: object

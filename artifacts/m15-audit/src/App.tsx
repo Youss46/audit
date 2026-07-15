@@ -39,6 +39,7 @@ import ComptabiliteRevision from '@/pages/comptabilite-revision';
 import Scoring from '@/pages/scoring';
 import Facturation from '@/pages/facturation';
 import ClientStaff from '@/pages/client-staff';
+import PumpSettings from '@/pages/pump-settings';
 import Communication from '@/pages/communication';
 import PayrollSettings from '@/pages/payroll-settings';
 import VatSettings from '@/pages/vat-settings';
@@ -70,6 +71,7 @@ function Router() {
         <Route path="/pilotage" component={Pilotage} />
         <Route path="/facturation" component={Facturation} />
         <Route path="/client/settings/staff" component={ClientStaff} />
+        <Route path="/client/settings/pumps" component={PumpSettings} />
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/saisie" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/journaux" component={ComptabiliteJournaux} />

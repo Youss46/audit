@@ -748,6 +748,33 @@ export interface LastPumpIndexResult {
   indexEnd: number | null;
 }
 
+export interface Pump {
+  id: number;
+  clientId: number;
+  label: string;
+  fuelType: FuelType;
+  /** Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift. */
+  initialIndex: number;
+  createdAt: string;
+}
+
+export interface CreatePumpInput {
+  clientId: number;
+  /** @minLength 1 */
+  label: string;
+  fuelType: FuelType;
+  /** @minimum 0 */
+  initialIndex?: number;
+}
+
+export interface UpdatePumpInput {
+  /** @minLength 1 */
+  label?: string;
+  fuelType?: FuelType;
+  /** @minimum 0 */
+  initialIndex?: number;
+}
+
 export interface PumpShift {
   id: number;
   clientId: number;
@@ -2398,6 +2425,10 @@ fuelType: FuelType;
 export type ListPumpShiftsParams = {
 clientId: number;
 status?: PumpShiftStatus;
+};
+
+export type ListPumpsParams = {
+clientId: number;
 };
 
 export type GetBalanceDesComptesParams = {

@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import {
   db,
   clientsTable,
+  pumpsTable,
   pumpShiftsTable,
   cashRegistersTable,
   transactionsTable,
@@ -85,16 +86,33 @@ router.get("/pump-shifts/last-index", requirePermission("caisse.view"), async (r
   const { clientId, pumpLabel, fuelType } = GetLastPumpIndexQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
+  // Priority 1: most recent VALIDATED shift's closing index.
   const last = await db.query.pumpShiftsTable.findFirst({
     where: and(
       eq(pumpShiftsTable.clientId, clientId),
       eq(pumpShiftsTable.pumpLabel, pumpLabel),
       eq(pumpShiftsTable.fuelType, fuelType),
+      eq(pumpShiftsTable.status, "VALIDATED"),
     ),
     orderBy: [desc(pumpShiftsTable.createdAt)],
   });
 
-  res.json(GetLastPumpIndexResponse.parse({ indexEnd: last?.indexEnd ?? null }));
+  if (last) {
+    return res.json(GetLastPumpIndexResponse.parse({ indexEnd: last.indexEnd }));
+  }
+
+  // Priority 2 (first-ever shift): fall back to the pump's initial
+  // calibration index registered by the PME owner.  Returns null if
+  // neither a past shift nor a registered pump exists yet.
+  const pump = await db.query.pumpsTable.findFirst({
+    where: and(
+      eq(pumpsTable.clientId, clientId),
+      eq(pumpsTable.label, pumpLabel),
+      eq(pumpsTable.fuelType, fuelType),
+    ),
+  });
+
+  res.json(GetLastPumpIndexResponse.parse({ indexEnd: pump?.initialIndex ?? null }));
 });
 
 router.get("/pump-shifts", requirePermission("caisse.view"), async (req, res) => {

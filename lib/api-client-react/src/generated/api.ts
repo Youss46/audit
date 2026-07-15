@@ -69,6 +69,7 @@ import type {
   CompteDeResultatResult,
   ContextualComment,
   ContextualCommentInput,
+  CreatePumpInput,
   CreditNoteInput,
   DailyClosure,
   DashboardSummary,
@@ -125,6 +126,7 @@ import type {
   ListMissionsParams,
   ListPayslipsParams,
   ListPumpShiftsParams,
+  ListPumpsParams,
   ListThreadsParams,
   ListTimesheetEntriesParams,
   ListTransactionCategoriesParams,
@@ -146,6 +148,7 @@ import type {
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
   ProfitabilityReport,
+  Pump,
   PumpShift,
   PumpShiftCreateInput,
   PumpShiftValidateInput,
@@ -168,6 +171,7 @@ import type {
   TransactionRejectInput,
   TransactionSettleInput,
   UpdateJournalLinesInput,
+  UpdatePumpInput,
   User,
   UserInput,
   UserRateInput,
@@ -4499,6 +4503,304 @@ export const useCreateMobileMoneyTransfer = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateMobileMoneyTransferMutationOptions(options));
+    }
+
+export const getListPumpsUrl = (params: ListPumpsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pumps?${stringifiedParams}` : `/api/pumps`
+}
+
+/**
+ * @summary Module P7 (Admin): list registered pumps for a station-service client. PME owner only.
+ */
+export const listPumps = async (params: ListPumpsParams, options?: RequestInit): Promise<Pump[]> => {
+
+  return customFetch<Pump[]>(getListPumpsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPumpsQueryKey = (params?: ListPumpsParams,) => {
+    return [
+    `/api/pumps`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPumpsQueryOptions = <TData = Awaited<ReturnType<typeof listPumps>>, TError = ErrorType<unknown>>(params: ListPumpsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPumpsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPumps>>> = ({ signal }) => listPumps(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPumps>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPumpsQueryResult = NonNullable<Awaited<ReturnType<typeof listPumps>>>
+export type ListPumpsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Module P7 (Admin): list registered pumps for a station-service client. PME owner only.
+ */
+
+export function useListPumps<TData = Awaited<ReturnType<typeof listPumps>>, TError = ErrorType<unknown>>(
+ params: ListPumpsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumps>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPumpsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePumpUrl = () => {
+
+
+
+
+  return `/api/pumps`
+}
+
+/**
+ * @summary Register a new pump with its initial calibration index. The initial_index is used as indexStart for the pump's very first shift.
+ */
+export const createPump = async (createPumpInput: CreatePumpInput, options?: RequestInit): Promise<Pump> => {
+
+  return customFetch<Pump>(getCreatePumpUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPumpInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePumpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPump>>, TError,{data: BodyType<CreatePumpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPump>>, TError,{data: BodyType<CreatePumpInput>}, TContext> => {
+
+const mutationKey = ['createPump'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPump>>, {data: BodyType<CreatePumpInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPump(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePumpMutationResult = NonNullable<Awaited<ReturnType<typeof createPump>>>
+    export type CreatePumpMutationBody = BodyType<CreatePumpInput>
+    export type CreatePumpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Register a new pump with its initial calibration index. The initial_index is used as indexStart for the pump's very first shift.
+ */
+export const useCreatePump = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPump>>, TError,{data: BodyType<CreatePumpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPump>>,
+        TError,
+        {data: BodyType<CreatePumpInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePumpMutationOptions(options));
+    }
+
+export const getUpdatePumpUrl = (id: number,) => {
+
+
+
+
+  return `/api/pumps/${id}`
+}
+
+/**
+ * @summary Update a registered pump's label, fuel type, or initial calibration index.
+ */
+export const updatePump = async (id: number,
+    updatePumpInput: UpdatePumpInput, options?: RequestInit): Promise<Pump> => {
+
+  return customFetch<Pump>(getUpdatePumpUrl(id),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updatePumpInput)
+  }
+);}
+
+
+
+
+
+export const getUpdatePumpMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePump>>, TError,{id: number;data: BodyType<UpdatePumpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updatePump>>, TError,{id: number;data: BodyType<UpdatePumpInput>}, TContext> => {
+
+const mutationKey = ['updatePump'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updatePump>>, {id: number;data: BodyType<UpdatePumpInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updatePump(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdatePumpMutationResult = NonNullable<Awaited<ReturnType<typeof updatePump>>>
+    export type UpdatePumpMutationBody = BodyType<UpdatePumpInput>
+    export type UpdatePumpMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Update a registered pump's label, fuel type, or initial calibration index.
+ */
+export const useUpdatePump = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updatePump>>, TError,{id: number;data: BodyType<UpdatePumpInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updatePump>>,
+        TError,
+        {id: number;data: BodyType<UpdatePumpInput>},
+        TContext
+      > => {
+      return useMutation(getUpdatePumpMutationOptions(options));
+    }
+
+export const getDeletePumpUrl = (id: number,) => {
+
+
+
+
+  return `/api/pumps/${id}`
+}
+
+/**
+ * @summary Remove a registered pump. Does not affect existing pump shifts.
+ */
+export const deletePump = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePumpUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePumpMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePump>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePump>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deletePump'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePump>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePump(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePumpMutationResult = NonNullable<Awaited<ReturnType<typeof deletePump>>>
+
+    export type DeletePumpMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a registered pump. Does not affect existing pump shifts.
+ */
+export const useDeletePump = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePump>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePump>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeletePumpMutationOptions(options));
     }
 
 export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {

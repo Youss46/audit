@@ -23,7 +23,7 @@ import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
-import { pumpShiftsTable } from "./station-service";
+import { pumpsTable, pumpShiftsTable } from "./station-service";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -421,6 +421,11 @@ export const vatSettingsRelations = relations(vatSettingsTable, ({ one }) => ({
     fields: [vatSettingsTable.updatedById],
     references: [usersTable.id],
   }),
+}));
+
+// Module P7 (Calibration initiale): pump registration with initial index.
+export const pumpsRelations = relations(pumpsTable, ({ one }) => ({
+  client: one(clientsTable, { fields: [pumpsTable.clientId], references: [clientsTable.id] }),
 }));
 
 // Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant).

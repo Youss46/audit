@@ -81,3 +81,28 @@ export const insertPumpShiftSchema = createInsertSchema(pumpShiftsTable).omit({
 });
 export type InsertPumpShift = z.infer<typeof insertPumpShiftSchema>;
 export type PumpShift = typeof pumpShiftsTable.$inferSelect;
+
+// Module P7 (Calibration initiale): one row per physical pump/fuel-type
+// combination registered by the PME owner. Stores the initial meter reading
+// (initial_index) so the very first shift has a meaningful start value
+// instead of 0. After the first shift is validated, the last-index fallback
+// switches to pumpShiftsTable.indexEnd automatically.
+export const pumpsTable = pgTable("pumps", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clientsTable.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  fuelType: text("fuel_type").notNull().$type<FuelType>(),
+  // Physical meter reading at the moment this pump was registered on the
+  // platform.  Serves as indexStart for the very first shift only.
+  initialIndex: doublePrecision("initial_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertPumpSchema = createInsertSchema(pumpsTable).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPump = z.infer<typeof insertPumpSchema>;
+export type Pump = typeof pumpsTable.$inferSelect;

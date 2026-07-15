@@ -1945,6 +1945,88 @@ export const CreateMobileMoneyTransferResponse = zod.object({
 
 
 /**
+ * @summary Module P7 (Admin): list registered pumps for a station-service client. PME owner only.
+ */
+export const ListPumpsQueryParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const ListPumpsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "label": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),
+  "createdAt": zod.coerce.date()
+})
+export const ListPumpsResponse = zod.array(ListPumpsResponseItem)
+
+
+/**
+ * @summary Register a new pump with its initial calibration index. The initial_index is used as indexStart for the pump's very first shift.
+ */
+
+export const createPumpBodyInitialIndexDefault = 0;
+export const createPumpBodyInitialIndexMin = 0;
+
+
+
+export const CreatePumpBody = zod.object({
+  "clientId": zod.number(),
+  "label": zod.string().min(1),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "initialIndex": zod.number().min(createPumpBodyInitialIndexMin).default(createPumpBodyInitialIndexDefault)
+})
+
+export const CreatePumpResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "label": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a registered pump's label, fuel type, or initial calibration index.
+ */
+export const UpdatePumpParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const updatePumpBodyInitialIndexMin = 0;
+
+
+
+export const UpdatePumpBody = zod.object({
+  "label": zod.string().min(1).optional(),
+  "fuelType": zod.enum(['super', 'gasoil']).optional(),
+  "initialIndex": zod.number().min(updatePumpBodyInitialIndexMin).optional()
+})
+
+export const UpdatePumpResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "label": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "initialIndex": zod.number().describe('Physical meter reading at the time this pump was registered. Used as indexStart for the very first shift.'),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Remove a registered pump. Does not affect existing pump shifts.
+ */
+export const DeletePumpParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeletePumpResponse = zod.void()
+
+
+/**
  * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
  */
 export const GetBalanceDesComptesQueryParams = zod.object({
