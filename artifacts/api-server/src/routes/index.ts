@@ -64,6 +64,7 @@ router.use(payrollSettingsRouter);
 router.use(vatSettingsRouter);
 router.use(pumpShiftsRouter);
 router.use(pumpsRouter);
+router.use(pumpAssignmentsRouter);
 router.use(mobileMoneyRouter);
 
 export default router;

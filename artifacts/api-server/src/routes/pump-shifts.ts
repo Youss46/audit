@@ -5,6 +5,7 @@ import {
   clientsTable,
   pumpsTable,
   pumpShiftsTable,
+  pumpAssignmentsTable,
   cashRegistersTable,
   transactionsTable,
   journalLinesTable,
@@ -144,6 +145,10 @@ router.get("/pump-shifts", requirePermission("caisse.view"), async (req, res) =>
 // "Relevé d'index de pompe": indexStart is always resolved from this
 // pump/fuel's own last shift (never trusted from the client), so a
 // pompiste can never inflate the sold volume by editing a hidden field.
+function todayISO(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
 router.post("/pump-shifts", requirePermission("caisse.create"), async (req, res) => {
   const body = CreatePumpShiftBody.parse(req.body);
   if (!requireOwnClient(req, res, body.clientId)) return;
@@ -154,6 +159,41 @@ router.post("/pump-shifts", requirePermission("caisse.create"), async (req, res)
   if (!client) {
     res.status(404).json({ error: "Client introuvable." });
     return;
+  }
+
+  // Module P7 (Restriction d'attribution des pompes): a "client_staff"
+  // account (POMPISTE) may only submit a reading for a pump it has been
+  // explicitly assigned to for today by the PME owner. This is the
+  // authoritative check -- the frontend also filters the dropdown, but a
+  // tampered request must still be rejected here, or a pompiste could
+  // submit readings (and, downstream, sales) against a pump/register that
+  // isn't theirs, corrupting that pump's index history and the other
+  // pompiste's cash reconciliation. Every other role (owner, cabinet
+  // staff) is unrestricted, matching the rest of this module's scoping.
+  if (req.user!.role === "client_staff") {
+    const pump = await db.query.pumpsTable.findFirst({
+      where: and(
+        eq(pumpsTable.clientId, body.clientId),
+        eq(pumpsTable.label, body.pumpLabel),
+        eq(pumpsTable.fuelType, body.fuelType),
+      ),
+    });
+    const assignment = pump
+      ? await db.query.pumpAssignmentsTable.findFirst({
+          where: and(
+            eq(pumpAssignmentsTable.clientId, body.clientId),
+            eq(pumpAssignmentsTable.pumpId, pump.id),
+            eq(pumpAssignmentsTable.staffUserId, req.user!.id),
+            eq(pumpAssignmentsTable.shiftDate, todayISO()),
+          ),
+        })
+      : null;
+    if (!assignment) {
+      res.status(403).json({
+        error: "Cette pompe ne vous est pas attribuée pour aujourd'hui. Contactez votre responsable.",
+      });
+      return;
+    }
   }
 
   const last = await db.query.pumpShiftsTable.findFirst({

@@ -166,7 +166,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
       !isLoading &&
       user &&
       user.role !== "client_pme" &&
-      (location.startsWith("/client/settings/staff") || location.startsWith("/client/settings/pumps"))
+      (location.startsWith("/client/settings/staff") ||
+        location.startsWith("/client/settings/pumps") ||
+        location.startsWith("/client/settings/pump-assignments"))
     ) {
       setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
     }
@@ -217,7 +219,12 @@ export function Shell({ children }: { children: React.ReactNode }) {
   if (!isPortalRole(user.role) && CLIENT_PME_PREFIXES.some((p) => location.startsWith(p))) {
     return <div className="min-h-screen bg-background" />
   }
-  if (user.role !== "client_pme" && (location.startsWith("/client/settings/staff") || location.startsWith("/client/settings/pumps"))) {
+  if (
+    user.role !== "client_pme" &&
+    (location.startsWith("/client/settings/staff") ||
+      location.startsWith("/client/settings/pumps") ||
+      location.startsWith("/client/settings/pump-assignments"))
+  ) {
     return <div className="min-h-screen bg-background" />
   }
   if (user.role !== "expert_comptable" && location.startsWith("/cabinet/compliance")) {
@@ -310,6 +317,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-pumps">
               <Fuel className="h-5 w-5" />
               Gestion des pompes
+            </Link>
+          )}
+
+          {/* Module P7: daily pump-to-pompiste assignment -- PME owner only. */}
+          {user?.role === "client_pme" && (
+            <Link href="/client/settings/pump-assignments" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/client/settings/pump-assignments")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-pump-assignments">
+              <UserCog className="h-5 w-5" />
+              Attribution des pompes
             </Link>
           )}
         </>

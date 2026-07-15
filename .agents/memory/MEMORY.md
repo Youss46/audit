@@ -31,3 +31,4 @@
 - [P7 pump-shift design](p7-pump-shift-design.md) — one pump_shifts row per shift lifecycle; reuse createTransactionEntry; écart booking must pass treasuryAccountOverride or it silently posts to generic 571.
 - [Mobile Money pump-shift split-payment design](mobile-money-pump-shift-design.md) — split-payment fuel sales bypass createTransactionEntry; computeFuelSaleJournalLines + direct insert; discrepancy against cashAmount only; /mobile-money/transfers for Cabinet virements.
 - [Pump initial calibration design](pump-calibration-design.md) — pumpsTable + two-priority last-index fallback; never import bare `zod` in api-server routes (esbuild can't resolve it).
+- [Pump-to-pompiste assignment enforcement](pump-assignment-enforcement-design.md) — verify router is mounted + server re-validates, not just the frontend filter, before trusting an "already built" restriction feature.
