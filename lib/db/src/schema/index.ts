@@ -5,6 +5,7 @@ export * from "./clients";
 export * from "./missions";
 export * from "./checklist-items";
 export * from "./documents";
+export * from "./document-folders";
 export * from "./accounting";
 export * from "./caisse";
 export * from "./audit-logs";

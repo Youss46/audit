@@ -6,6 +6,7 @@ import { clientsTable } from "./clients";
 import { missionsTable } from "./missions";
 import { checklistItemsTable } from "./checklist-items";
 import { documentsTable } from "./documents";
+import { documentFoldersTable } from "./document-folders";
 import { auditLogsTable } from "./audit-logs";
 import { transactionsTable, journalLinesTable } from "./accounting";
 import { cashRegistersTable, dailyClosuresTable } from "./caisse";
@@ -77,6 +78,24 @@ export const documentsRelations = relations(documentsTable, ({ one }) => ({
     fields: [documentsTable.uploadedById],
     references: [usersTable.id],
   }),
+  folder: one(documentFoldersTable, {
+    fields: [documentsTable.folderId],
+    references: [documentFoldersTable.id],
+  }),
+}));
+
+// Module M6 (GED) — Archive fiscale: self-referencing folder tree (root
+// "Exercice YYYY" folders and their 4 fixed sub-folders).
+export const documentFoldersRelations = relations(documentFoldersTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [documentFoldersTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [documentFoldersTable.clientId], references: [clientsTable.id] }),
+  parentFolder: one(documentFoldersTable, {
+    fields: [documentFoldersTable.parentFolderId],
+    references: [documentFoldersTable.id],
+    relationName: "folderChildren",
+  }),
+  children: many(documentFoldersTable, { relationName: "folderChildren" }),
+  documents: many(documentsTable),
 }));
 
 export const auditLogsRelations = relations(auditLogsTable, ({ one }) => ({
