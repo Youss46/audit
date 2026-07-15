@@ -14,10 +14,14 @@ import {
   useSetJournalLineAllocations,
   getListAnalyticalAxesQueryKey,
   getListAnalyticalCodesQueryKey,
+  useListStations,
+  getListStationsQueryKey,
   TransactionStatus,
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
+import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
+import { StationSelector, shouldShowStationSelector } from "@/components/stations/station-selector"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
 import { formatDate, formatDateTime, cn } from "@/lib/utils"
 import {
@@ -269,12 +273,29 @@ function VentilerDialog({ lineId, lineLabel, lineAmount, clientId, open, onClose
 // accountant only has to review and click -- never re-key an operation.
 export default function ComptabiliteCabinet() {
   const { toast } = useToast()
+  const { user } = useAuth()
   const queryClient = useQueryClient()
   // This page doubles as the unscoped "all clients" queue (/comptabilite)
   // and the per-client Flux de Saisie tab (/comptabilite/:clientId/saisie).
   const [, scopedParams] = useRoute<{ clientId: string }>("/comptabilite/:clientId/saisie")
   const clientId = scopedParams?.clientId ? Number(scopedParams.clientId) : null
   const [statusFilter, setStatusFilter] = useState<TransactionStatus | "ALL">("a_valider")
+  // Multi-station (P8): only meaningful once the queue is scoped to a
+  // single client (stations belong to a client) -- the unscoped "all
+  // clients" queue has no single station list to offer.
+  const userStationId = (user as any)?.stationId as number | null | undefined
+  const [selectedStationId, setSelectedStationId] = useState<number | "all">("all")
+  const { data: stations = [] } = useListStations(
+    { clientId: clientId ?? 0 },
+    {
+      query: {
+        enabled: !!clientId && !userStationId,
+        queryKey: getListStationsQueryKey({ clientId: clientId ?? 0 }),
+      },
+    },
+  )
+  const effectiveStationId =
+    userStationId ?? (selectedStationId === "all" ? undefined : selectedStationId)
   // Module M32: the global "Révision Dépenses" / "Révision Recettes" nav
   // links land here with a `?type=` query param so the unscoped "all
   // clients" queue opens pre-filtered to just that operation type.
@@ -308,6 +329,7 @@ export default function ComptabiliteCabinet() {
   const { data: transactions, isLoading } = useListTransactions({
     ...(statusFilter === "ALL" ? {} : { status: statusFilter }),
     ...(clientId ? { clientId } : {}),
+    ...(effectiveStationId ? { stationId: effectiveStationId } : {}),
   })
 
   // Module M21 VAT-exemption guard: a transaction's serialized shape only
@@ -455,6 +477,14 @@ export default function ComptabiliteCabinet() {
       </div>
 
       <ClientAccountingNav activeTab="saisie" />
+
+      {shouldShowStationSelector(userStationId, stations.length) && (
+        <StationSelector
+          stations={stations}
+          value={selectedStationId}
+          onChange={setSelectedStationId}
+        />
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex gap-2 overflow-x-auto pb-2">

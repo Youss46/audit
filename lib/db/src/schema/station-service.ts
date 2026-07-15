@@ -99,11 +99,12 @@ export const pumpsTable = pgTable("pumps", {
   clientId: integer("client_id")
     .notNull()
     .references(() => clientsTable.id, { onDelete: "cascade" }),
-  // Multi-station (P8): every pump belongs to one physical station.
-  // Nullable for backward compatibility with pre-multi-station pumps.
-  stationId: integer("station_id").references(() => stationsTable.id, {
-    onDelete: "set null",
-  }),
+  // Multi-station (P8): every pump belongs to exactly one physical
+  // station. A station cannot itself be deleted while it still has pumps
+  // attached (see routes/stations.ts), so "restrict" is purely defensive.
+  stationId: integer("station_id")
+    .notNull()
+    .references(() => stationsTable.id, { onDelete: "restrict" }),
   label: text("label").notNull(),
   fuelType: text("fuel_type").notNull().$type<FuelType>(),
   // Physical meter reading at the moment this pump was registered on the

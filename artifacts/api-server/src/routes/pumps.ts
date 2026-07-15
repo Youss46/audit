@@ -66,31 +66,29 @@ router.get("/pumps", async (req, res) => {
   res.json(pumps.map(serializePump));
 });
 
-// POST /pumps — register a new pump, optionally linking it to a station.
+// POST /pumps — register a new pump. Multi-station (P8): every pump must
+// belong to a physical station, so stationId is required.
 router.post("/pumps", async (req, res) => {
   if (!requirePmeOwner(req, res)) return;
   const body = CreatePumpBody.parse(req.body);
   if (!requireOwnClient(req, res, body.clientId)) return;
 
-  // Validate stationId belongs to this client when supplied.
-  if (body.stationId) {
-    const station = await db.query.stationsTable.findFirst({
-      where: and(
-        eq(stationsTable.id, body.stationId),
-        eq(stationsTable.clientId, body.clientId),
-      ),
-    });
-    if (!station) {
-      res.status(404).json({ error: "Station introuvable ou n'appartient pas à ce dossier." });
-      return;
-    }
+  const station = await db.query.stationsTable.findFirst({
+    where: and(
+      eq(stationsTable.id, body.stationId),
+      eq(stationsTable.clientId, body.clientId),
+    ),
+  });
+  if (!station) {
+    res.status(404).json({ error: "Station introuvable ou n'appartient pas à ce dossier." });
+    return;
   }
 
   const [pump] = await db
     .insert(pumpsTable)
     .values({
       clientId: body.clientId,
-      stationId: body.stationId ?? null,
+      stationId: body.stationId,
       label: body.label,
       fuelType: body.fuelType,
       initialIndex: body.initialIndex ?? 0,

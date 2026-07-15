@@ -50,6 +50,13 @@ export interface Transaction {
      * @nullable
      */
   cashRegisterAccountNumber?: string | null;
+  /**
+     * Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet/PME-owner entry.
+     * @nullable
+     */
+  stationId?: number | null;
+  /** @nullable */
+  stationName?: string | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */

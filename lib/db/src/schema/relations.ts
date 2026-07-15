@@ -137,6 +137,10 @@ export const transactionsRelations = relations(transactionsTable, ({ one, many }
     fields: [transactionsTable.cashRegisterId],
     references: [cashRegistersTable.id],
   }),
+  station: one(stationsTable, {
+    fields: [transactionsTable.stationId],
+    references: [stationsTable.id],
+  }),
 }));
 
 export const journalLinesRelations = relations(journalLinesTable, ({ one }) => ({

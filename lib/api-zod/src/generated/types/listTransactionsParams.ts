@@ -10,4 +10,8 @@ import type { TransactionStatus } from './transactionStatus';
 export type ListTransactionsParams = {
 clientId?: number;
 status?: TransactionStatus;
+/**
+ * Multi-station (P8): filter to entries tagged with this station. Forced to the caller's own station when their JWT carries one.
+ */
+stationId?: number;
 };

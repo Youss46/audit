@@ -16,6 +16,7 @@ import { clientsTable } from "./clients";
 import { usersTable } from "./users";
 import { documentsTable } from "./documents";
 import { cashRegistersTable } from "./caisse";
+import { stationsTable } from "./stations";
 
 // Module P3/M3 (Comptabilité Simplifiée & Comptabilité et Travaux): a
 // double-entry ledger bridging plain-language PME cash entries and the
@@ -162,6 +163,15 @@ export const transactionsTable = pgTable(
     cashRegisterId: integer("cash_register_id").references(() => cashRegistersTable.id, {
       onDelete: "set null",
     }),
+    // Multi-station (P8): which physical station this entry belongs to.
+    // Null for a cross-station cabinet/PME-owner manual entry (e.g. a head-
+    // office expense not tied to any single site). Set automatically from
+    // the acting user's own stationId when they're station-scoped (a
+    // pompiste's fuel sale, a station manager's cash entry), so the
+    // cabinet can later filter every report per station.
+    stationId: integer("station_id").references(() => stationsTable.id, {
+      onDelete: "set null",
+    }),
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),
@@ -198,6 +208,7 @@ export const transactionsTable = pgTable(
     index("transactions_client_id_idx").on(table.clientId),
     index("transactions_status_idx").on(table.status),
     index("transactions_cash_register_id_idx").on(table.cashRegisterId),
+    index("transactions_station_id_idx").on(table.stationId),
   ],
 );
 

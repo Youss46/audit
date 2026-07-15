@@ -9,4 +9,8 @@
 export type GetCompteDeResultatParams = {
 clientId: number;
 year: number;
+/**
+ * Multi-station (P8): restrict the report to one physical station.
+ */
+stationId?: number;
 };

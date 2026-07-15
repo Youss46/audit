@@ -1,7 +1,13 @@
 import { useMemo, useState } from "react"
 import { useRoute } from "wouter"
-import { useGetPilotageDashboard, getGetPilotageDashboardQueryKey } from "@workspace/api-client-react"
+import {
+  useGetPilotageDashboard,
+  getGetPilotageDashboardQueryKey,
+  useListStations,
+  getListStationsQueryKey,
+} from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
+import { StationSelector, shouldShowStationSelector } from "@/components/stations/station-selector"
 import { formatFcfa } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import {
@@ -110,12 +116,30 @@ export default function Pilotage() {
   // most recent month with any booked activity in the selected year.
   const [month, setMonth] = useState<number | undefined>(undefined)
 
+  // Multi-station (P8): a station-scoped caller (pompiste, station manager)
+  // is auto-scoped server-side via their JWT stationId; a cross-station
+  // admin (client_pme owner, cabinet) gets a manual station selector so
+  // this "Tableau de bord dirigeant" can be viewed per site.
+  const userStationId = (user as any)?.stationId as number | null | undefined
+  const [selectedStationId, setSelectedStationId] = useState<number | "all">("all")
+  const { data: stations = [] } = useListStations(
+    { clientId },
+    {
+      query: {
+        enabled: !!clientId && !userStationId,
+        queryKey: getListStationsQueryKey({ clientId }),
+      },
+    },
+  )
+  const effectiveStationId =
+    userStationId ?? (selectedStationId === "all" ? undefined : selectedStationId)
+
   const { data, isLoading } = useGetPilotageDashboard(
-    { clientId, year, basis, month },
+    { clientId, year, basis, month, stationId: effectiveStationId },
     {
       query: {
         enabled: !!clientId,
-        queryKey: getGetPilotageDashboardQueryKey({ clientId, year, basis, month }),
+        queryKey: getGetPilotageDashboardQueryKey({ clientId, year, basis, month, stationId: effectiveStationId }),
       },
     },
   )
@@ -153,6 +177,13 @@ export default function Pilotage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+          {shouldShowStationSelector(userStationId, stations.length) && (
+            <StationSelector
+              stations={stations}
+              value={selectedStationId}
+              onChange={setSelectedStationId}
+            />
+          )}
           <div className="flex items-center gap-2">
             <Label htmlFor="basis-toggle" className="text-sm text-muted-foreground whitespace-nowrap">
               Trésorerie (encaissements réels)

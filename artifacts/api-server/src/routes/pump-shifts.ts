@@ -329,6 +329,7 @@ async function bookDiscrepancy(input: {
   pumpLabel: string;
   discrepancyAmount: number;
   createdById: number;
+  stationId?: number | null;
 }) {
   const isGain = input.discrepancyAmount > 0;
   const category = isGain ? "ecart_caisse_gain" : "ecart_caisse_perte";
@@ -364,6 +365,9 @@ async function bookDiscrepancy(input: {
       paymentType: "cash",
       paymentMethod: "especes",
       cashRegisterId: input.cashRegisterId,
+      // Multi-station (P8): tag the écart with the same station as the
+      // sale it corrects, so cabinet reports stay per-site accurate.
+      stationId: input.stationId ?? null,
       status: "a_valider",
       source: "caisse_closure",
       createdById: input.createdById,
@@ -521,6 +525,9 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
       paymentType: "cash",
       paymentMethod: txPaymentMethod,
       cashRegisterId: cashAmount > 0 ? cashRegisterId : null,
+      // Multi-station (P8): denormalized from the shift so the sale
+      // shows up in that station's reports.
+      stationId: shift.stationId ?? null,
       status: "a_valider",
       source: isPortalRole(req.user!.role) ? "pme_entry" : "manual_cabinet",
       createdById: req.user!.id,
@@ -563,6 +570,7 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
       pumpLabel: shift.pumpLabel,
       discrepancyAmount,
       createdById: req.user!.id,
+      stationId: shift.stationId,
     });
     await db
       .update(cashRegistersTable)

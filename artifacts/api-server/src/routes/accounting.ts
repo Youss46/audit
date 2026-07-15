@@ -9,6 +9,7 @@ import {
   usersTable,
   cashRegistersTable,
   fixedAssetsTable,
+  stationsTable,
   isPortalRole,
 } from "@workspace/db";
 import { broadcastPendingCounts, notifyPmeTransactionSubmitted } from "../lib/pending-counts";
@@ -65,6 +66,7 @@ export function serializeTransaction(
     validatedByName?: string | null;
     cashRegisterName?: string | null;
     cashRegisterAccountNumber?: string | null;
+    stationName?: string | null;
   } = {},
 ) {
   return {
@@ -95,6 +97,10 @@ export function serializeTransaction(
     // reconciliation view can show it next to the pompiste's name without
     // an extra lookup.
     cashRegisterAccountNumber: extra.cashRegisterAccountNumber ?? null,
+    // Multi-station (P8): the physical station this entry belongs to, so
+    // the cabinet's review queue and reports can be filtered per site.
+    stationId: tx.stationId ?? null,
+    stationName: extra.stationName ?? null,
     createdByName: extra.createdByName ?? null,
     validatedByName: extra.validatedByName ?? null,
     validatedAt: tx.validatedAt ?? null,
@@ -240,6 +246,24 @@ export async function createTransactionEntry(
     }
   }
 
+  // Multi-station (P8): a station-scoped caller (pompiste, station
+  // manager) always gets their own station stamped on the entry --
+  // whatever the request body said, exactly like the cash-register
+  // override above. A cross-station caller (cabinet, PME owner) may pick a
+  // station explicitly; otherwise the entry has no station (head-office /
+  // shared expense).
+  let stationId: number | null = null;
+  let stationName: string | null = null;
+  const requestedStationId = req.user!.stationId ?? body.stationId ?? null;
+  if (requestedStationId != null) {
+    const station = await db.query.stationsTable.findFirst({
+      where: and(eq(stationsTable.id, requestedStationId), eq(stationsTable.clientId, body.clientId)),
+    });
+    if (!station) throw new HttpError(404, "Station introuvable pour ce client.");
+    stationId = station.id;
+    stationName = station.name;
+  }
+
   let journalLines: ReturnType<typeof computeJournalLines>;
   try {
     journalLines = computeJournalLines({
@@ -306,6 +330,7 @@ export async function createTransactionEntry(
       dueDate: body.paymentType === "credit" ? body.dueDate : null,
       documentId: body.documentId ?? null,
       cashRegisterId,
+      stationId,
       status: "a_valider",
       source,
       anomalies,
@@ -357,7 +382,7 @@ export async function createTransactionEntry(
     });
   }
 
-  return { tx, client, cashRegisterName, cashRegisterAccountNumber };
+  return { tx, client, cashRegisterName, cashRegisterAccountNumber, stationName };
 }
 
 // Module P3: the plain-language category menu the PME picks from, scoped to
@@ -372,7 +397,7 @@ router.get("/accounting/categories", (req, res) => {
 // the firm (optionally filtered to one client), which is what drives the
 // M3 "à valider" review queue.
 router.get("/transactions", requirePermission("operations.view", "caisse.view"), async (req, res) => {
-  const { clientId, status } = ListTransactionsQueryParams.parse(req.query);
+  const { clientId, status, stationId } = ListTransactionsQueryParams.parse(req.query);
 
   if (isPortalRole(req.user!.role)) {
     if (!req.user!.clientId || (clientId && clientId !== req.user!.clientId)) {
@@ -385,6 +410,11 @@ router.get("/transactions", requirePermission("operations.view", "caisse.view"),
   const conditions = [eq(transactionsTable.firmId, req.user!.firmId)];
   if (effectiveClientId) conditions.push(eq(transactionsTable.clientId, effectiveClientId));
   if (status) conditions.push(eq(transactionsTable.status, status));
+  // Multi-station (P8): a station-scoped caller only ever sees their own
+  // station's entries, regardless of what was requested; a cross-station
+  // caller (cabinet, PME owner) can optionally filter to one station.
+  const effectiveStationId = req.user!.stationId ?? stationId ?? null;
+  if (effectiveStationId != null) conditions.push(eq(transactionsTable.stationId, effectiveStationId));
 
   const transactions = await db.query.transactionsTable.findMany({
     where: and(...conditions),
@@ -396,6 +426,7 @@ router.get("/transactions", requirePermission("operations.view", "caisse.view"),
       validatedBy: true,
       journalLines: true,
       cashRegister: true,
+      station: true,
     },
   });
 
@@ -409,6 +440,7 @@ router.get("/transactions", requirePermission("operations.view", "caisse.view"),
           validatedByName: t.validatedBy?.fullName,
           cashRegisterName: t.cashRegister?.name,
           cashRegisterAccountNumber: t.cashRegister?.syscohadaAccount,
+          stationName: t.station?.name,
         }),
         journalLines: t.journalLines,
       })),
@@ -424,7 +456,10 @@ router.post("/transactions", requirePermission("operations.create", "caisse.crea
   const body = CreateTransactionBody.parse(req.body);
 
   try {
-    const { tx, client, cashRegisterName, cashRegisterAccountNumber } = await createTransactionEntry(req, body);
+    const { tx, client, cashRegisterName, cashRegisterAccountNumber, stationName } = await createTransactionEntry(
+      req,
+      body,
+    );
     res
       .status(201)
       .json(
@@ -434,6 +469,7 @@ router.post("/transactions", requirePermission("operations.create", "caisse.crea
             createdByName: req.user!.fullName,
             cashRegisterName,
             cashRegisterAccountNumber,
+            stationName,
           }),
         ),
       );
@@ -458,7 +494,7 @@ router.post("/transactions/batch", requirePermission("operations.create", "caiss
 
   for (let index = 0; index < body.entries.length; index++) {
     try {
-      const { tx, client, cashRegisterName, cashRegisterAccountNumber } = await createTransactionEntry(
+      const { tx, client, cashRegisterName, cashRegisterAccountNumber, stationName } = await createTransactionEntry(
         req,
         body.entries[index],
       );
@@ -468,6 +504,7 @@ router.post("/transactions/batch", requirePermission("operations.create", "caiss
           createdByName: req.user!.fullName,
           cashRegisterName,
           cashRegisterAccountNumber,
+          stationName,
         }),
       );
     } catch (err) {
@@ -500,7 +537,7 @@ router.get("/transactions/:id", requirePermission("operations.view", "caisse.vie
 
   const tx = await db.query.transactionsTable.findFirst({
     where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
-    with: { client: true, document: true, createdBy: true, validatedBy: true, cashRegister: true },
+    with: { client: true, document: true, createdBy: true, validatedBy: true, cashRegister: true, station: true },
   });
   if (!tx) {
     res.status(404).json({ error: "Opération introuvable." });
@@ -517,6 +554,7 @@ router.get("/transactions/:id", requirePermission("operations.view", "caisse.vie
         validatedByName: tx.validatedBy?.fullName,
         cashRegisterName: tx.cashRegister?.name,
         cashRegisterAccountNumber: tx.cashRegister?.syscohadaAccount,
+        stationName: (tx as any).station?.name,
       }),
     ),
   );

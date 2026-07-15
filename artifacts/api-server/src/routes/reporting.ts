@@ -65,7 +65,20 @@ const MOIS_FR = [
 // client (not just the selected year) so the aggregation functions can
 // correctly split "solde initial" (before the fiscal year) from "mouvements
 // de l'exercice" (within it).
-async function fetchValidatedLedgerLines(clientId: number, firmId: number): Promise<LedgerLine[]> {
+async function fetchValidatedLedgerLines(
+  clientId: number,
+  firmId: number,
+  stationId?: number | null,
+): Promise<LedgerLine[]> {
+  const conditions = [
+    eq(transactionsTable.clientId, clientId),
+    eq(transactionsTable.firmId, firmId),
+    eq(transactionsTable.status, "valide"),
+  ];
+  // Multi-station (P8): lets the cabinet view a Balance/Grand Livre/Bilan
+  // scoped to a single physical station instead of the whole client.
+  if (stationId != null) conditions.push(eq(transactionsTable.stationId, stationId));
+
   const rows = await db
     .select({
       accountNumber: journalLinesTable.accountNumber,
@@ -83,13 +96,7 @@ async function fetchValidatedLedgerLines(clientId: number, firmId: number): Prom
     })
     .from(journalLinesTable)
     .innerJoin(transactionsTable, eq(journalLinesTable.transactionId, transactionsTable.id))
-    .where(
-      and(
-        eq(transactionsTable.clientId, clientId),
-        eq(transactionsTable.firmId, firmId),
-        eq(transactionsTable.status, "valide"),
-      ),
-    );
+    .where(and(...conditions));
 
   const accountNumbers = Array.from(new Set(rows.map((r) => r.accountNumber)));
   const accounts =
@@ -126,7 +133,7 @@ async function findAuthorizedClient(req: Parameters<typeof requireOwnClient>[0],
 
 // Module M3 reporting: "La Balance des Comptes".
 router.get("/reports/balance", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year } = GetBalanceDesComptesQueryParams.parse(req.query);
+  const { clientId, year, stationId } = GetBalanceDesComptesQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -135,7 +142,7 @@ router.get("/reports/balance", requirePermission("pilotage.view"), async (req, r
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const rows = computeBalanceDesComptes(lines, yearStart, yearEndExclusive);
@@ -145,7 +152,7 @@ router.get("/reports/balance", requirePermission("pilotage.view"), async (req, r
 
 // Module M3 reporting: "Le Bilan Simplifié".
 router.get("/reports/bilan", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year } = GetBilanSimplifieQueryParams.parse(req.query);
+  const { clientId, year, stationId } = GetBilanSimplifieQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -154,7 +161,7 @@ router.get("/reports/bilan", requirePermission("pilotage.view"), async (req, res
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const bilan = computeBilanSimplifie(lines, yearStart, yearEndExclusive);
@@ -164,7 +171,7 @@ router.get("/reports/bilan", requirePermission("pilotage.view"), async (req, res
 
 // Module M3 reporting: "Le Compte de Résultat Simplifié".
 router.get("/reports/compte-resultat", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year } = GetCompteDeResultatQueryParams.parse(req.query);
+  const { clientId, year, stationId } = GetCompteDeResultatQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -173,7 +180,7 @@ router.get("/reports/compte-resultat", requirePermission("pilotage.view"), async
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const compteResultat = computeCompteDeResultat(lines, yearStart, yearEndExclusive);
@@ -184,7 +191,7 @@ router.get("/reports/compte-resultat", requirePermission("pilotage.view"), async
 // Module M3 reporting: "Le Grand Livre" -- every SYSCOHADA account grouped
 // with its chronological movements and running balance.
 router.get("/reports/grand-livre", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year } = GetGrandLivreQueryParams.parse(req.query);
+  const { clientId, year, stationId } = GetGrandLivreQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -193,7 +200,7 @@ router.get("/reports/grand-livre", requirePermission("pilotage.view"), async (re
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const accounts = computeGrandLivre(lines, yearStart, yearEndExclusive);
@@ -205,7 +212,7 @@ router.get("/reports/grand-livre", requirePermission("pilotage.view"), async (re
 // the PME director, plus the richer executive KPIs (marge, trésorerie
 // mensuelle, seuil de rentabilité, répartition par nature) added by M21.
 router.get("/reports/pilotage", requirePermission("pilotage.view"), async (req, res) => {
-  const { clientId, year, basis, month } = GetPilotageDashboardQueryParams.parse(req.query);
+  const { clientId, year, basis, month, stationId } = GetPilotageDashboardQueryParams.parse(req.query);
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -214,7 +221,7 @@ router.get("/reports/pilotage", requirePermission("pilotage.view"), async (req, 
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const aggregates = computePilotageAggregates(
@@ -285,12 +292,16 @@ function parseExportParams(query: Record<string, unknown>): {
   clientId: number;
   year: number;
   format: ExportFormat;
+  stationId: number | null;
 } | null {
   const clientId = parseInt(String(query.clientId));
   const year = parseInt(String(query.year));
   const format = String(query.format ?? "pdf");
   if (isNaN(clientId) || isNaN(year) || !EXPORT_FORMAT.includes(format as ExportFormat)) return null;
-  return { clientId, year, format: format as ExportFormat };
+  // Multi-station (P8): optional, lets the cabinet export a station-scoped document.
+  const stationIdRaw = parseInt(String(query.stationId));
+  const stationId = isNaN(stationIdRaw) ? null : stationIdRaw;
+  return { clientId, year, format: format as ExportFormat, stationId };
 }
 
 function sendFile(
@@ -321,7 +332,7 @@ router.get("/reports/exports/balance", requirePermission("pilotage.view"), async
     res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
     return;
   }
-  const { clientId, year, format } = params;
+  const { clientId, year, format, stationId } = params;
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -330,7 +341,7 @@ router.get("/reports/exports/balance", requirePermission("pilotage.view"), async
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const rows = computeBalanceDesComptes(lines, yearStart, yearEndExclusive);
@@ -365,7 +376,7 @@ router.get("/reports/exports/financial-statements", requirePermission("pilotage.
     res.status(400).json({ error: "Paramètres invalides (clientId, year, format requis)." });
     return;
   }
-  const { clientId, year, format } = params;
+  const { clientId, year, format, stationId } = params;
   if (!requireOwnClient(req, res, clientId)) return;
 
   const client = await findAuthorizedClient(req, clientId);
@@ -374,7 +385,7 @@ router.get("/reports/exports/financial-statements", requirePermission("pilotage.
     return;
   }
 
-  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId);
+  const lines = await fetchValidatedLedgerLines(clientId, req.user!.firmId, stationId);
   const yearStart = new Date(Date.UTC(year, 0, 1));
   const yearEndExclusive = new Date(Date.UTC(year + 1, 0, 1));
   const bilan = computeBilanSimplifie(lines, yearStart, yearEndExclusive);

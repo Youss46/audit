@@ -20,4 +20,8 @@ basis?: GetPilotageDashboardBasis;
  * @maximum 12
  */
 month?: number;
+/**
+ * Multi-station (P8): restrict the dashboard to one physical station.
+ */
+stationId?: number;
 };

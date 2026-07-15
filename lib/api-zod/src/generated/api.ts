@@ -1033,7 +1033,8 @@ export const UpdatePayrollSettingResponse = zod.object({
  */
 export const ListTransactionsQueryParams = zod.object({
   "clientId": zod.coerce.number().optional(),
-  "status": zod.enum(['a_valider', 'valide', 'anomalie']).optional()
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']).optional(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): filter to entries tagged with this station. Forced to the caller\'s own station when their JWT carries one.')
 })
 
 export const ListTransactionsResponseItem = zod.object({
@@ -1060,6 +1061,8 @@ export const ListTransactionsResponseItem = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1098,7 +1101,8 @@ export const CreateTransactionBody = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional().describe('Required when paymentType is \"cash\"; ignored for \"credit\".'),
   "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
   "documentId": zod.number().nullish(),
-  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).')
+  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet\/PME-owner staff picking a station manually.')
 })
 
 export const CreateTransactionResponse = zod.object({
@@ -1125,6 +1129,8 @@ export const CreateTransactionResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1174,6 +1180,8 @@ export const GetTransactionResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1223,6 +1231,8 @@ export const ApproveTransactionResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1286,6 +1296,8 @@ export const RejectTransactionResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1340,6 +1352,8 @@ export const SettleTransactionResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1400,6 +1414,8 @@ export const UpdateTransactionJournalLinesResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1439,7 +1455,8 @@ export const BatchCreateTransactionsBody = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional().describe('Required when paymentType is \"cash\"; ignored for \"credit\".'),
   "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
   "documentId": zod.number().nullish(),
-  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).')
+  "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet\/PME-owner staff picking a station manually.')
 })).min(1)
 })
 
@@ -1468,6 +1485,8 @@ export const BatchCreateTransactionsResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1680,6 +1699,8 @@ export const CloseDailyClosureResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1917,6 +1938,8 @@ export const ValidatePumpShiftResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -1957,6 +1980,8 @@ export const ValidatePumpShiftResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -2018,6 +2043,8 @@ export const CreateMobileMoneyTransferResponse = zod.object({
   "cashRegisterId": zod.number().nullish(),
   "cashRegisterName": zod.string().nullish(),
   "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
   "createdByName": zod.string().nullish(),
   "validatedByName": zod.string().nullish(),
   "validatedAt": zod.coerce.date().nullish(),
@@ -2146,7 +2173,7 @@ export const createPumpBodyInitialIndexMin = 0;
 
 export const CreatePumpBody = zod.object({
   "clientId": zod.number(),
-  "stationId": zod.number().optional().describe('Multi-station (P8): station this pump belongs to.'),
+  "stationId": zod.number().describe('Multi-station (P8): station this pump belongs to. Required -- every pump must be assigned to one physical station.'),
   "label": zod.string().min(1),
   "fuelType": zod.enum(['super', 'gasoil']),
   "initialIndex": zod.number().min(createPumpBodyInitialIndexMin).default(createPumpBodyInitialIndexDefault)
@@ -2322,7 +2349,8 @@ export const UpsertFuelPriceResponse = zod.object({
  */
 export const GetBalanceDesComptesQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "year": zod.coerce.number()
+  "year": zod.coerce.number(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): restrict the report to one physical station.')
 })
 
 export const GetBalanceDesComptesResponse = zod.object({
@@ -2346,7 +2374,8 @@ export const GetBalanceDesComptesResponse = zod.object({
  */
 export const GetBilanSimplifieQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "year": zod.coerce.number()
+  "year": zod.coerce.number(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): restrict the report to one physical station.')
 })
 
 export const GetBilanSimplifieResponse = zod.object({
@@ -2372,7 +2401,8 @@ export const GetBilanSimplifieResponse = zod.object({
  */
 export const GetCompteDeResultatQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "year": zod.coerce.number()
+  "year": zod.coerce.number(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): restrict the report to one physical station.')
 })
 
 export const GetCompteDeResultatResponse = zod.object({
@@ -2399,7 +2429,8 @@ export const GetCompteDeResultatResponse = zod.object({
  */
 export const GetGrandLivreQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "year": zod.coerce.number()
+  "year": zod.coerce.number(),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): restrict the report to one physical station.')
 })
 
 export const GetGrandLivreResponse = zod.object({
@@ -2438,7 +2469,8 @@ export const GetPilotageDashboardQueryParams = zod.object({
   "clientId": zod.coerce.number(),
   "year": zod.coerce.number(),
   "basis": zod.enum(['engagement', 'tresorerie']).optional().describe('Module M21: \'engagement\' (comptabilité d\'engagement, default) or \'tresorerie\' (comptabilité de trésorerie -- credit operations count only once settled)'),
-  "month": zod.coerce.number().min(1).max(getPilotageDashboardQueryMonthMax).optional().describe('Filters the KPI cards (chiffre d\'affaires, marge brute, trésorerie) to a specific month (1-12) within the selected year, compared against the month right before it. Omit to default to the most recent month with activity.')
+  "month": zod.coerce.number().min(1).max(getPilotageDashboardQueryMonthMax).optional().describe('Filters the KPI cards (chiffre d\'affaires, marge brute, trésorerie) to a specific month (1-12) within the selected year, compared against the month right before it. Omit to default to the most recent month with activity.'),
+  "stationId": zod.coerce.number().optional().describe('Multi-station (P8): restrict the dashboard to one physical station.')
 })
 
 export const getPilotageDashboardResponseChiffreAffairesParMoisItemMonthMax = 12;

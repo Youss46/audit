@@ -989,6 +989,12 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/TransactionStatus"
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): filter to entries tagged with this station. Forced to the caller's own station when their JWT carries one."
+          schema:
+            type: integer
       responses:
         "200":
           description: List of transactions
@@ -1877,6 +1883,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): restrict the report to one physical station."
+          schema:
+            type: integer
       responses:
         "200":
           description: Balance des comptes
@@ -1905,6 +1917,12 @@ paths:
         - name: year
           in: query
           required: true
+          schema:
+            type: integer
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): restrict the report to one physical station."
           schema:
             type: integer
       responses:
@@ -1937,6 +1955,12 @@ paths:
           required: true
           schema:
             type: integer
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): restrict the report to one physical station."
+          schema:
+            type: integer
       responses:
         "200":
           description: Compte de résultat simplifié
@@ -1965,6 +1989,12 @@ paths:
         - name: year
           in: query
           required: true
+          schema:
+            type: integer
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): restrict the report to one physical station."
           schema:
             type: integer
       responses:
@@ -2012,6 +2042,12 @@ paths:
             type: integer
             minimum: 1
             maximum: 12
+        - name: stationId
+          in: query
+          required: false
+          description: "Multi-station (P8): restrict the dashboard to one physical station."
+          schema:
+            type: integer
       responses:
         "200":
           description: Pilotage dashboard aggregates
@@ -4894,6 +4930,10 @@ components:
         cashRegisterAccountNumber:
           type: ["string", "null"]
           description: Module P6 (Un Pompiste = Une Caisse) - the register's personal SYSCOHADA sub-account (e.g. "571101"), so the cabinet reconciliation view can show it next to the pompiste's name.
+        stationId:
+          type: ["integer", "null"]
+          description: "Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet/PME-owner entry."
+        stationName: { type: ["string", "null"] }
         createdByName: { type: ["string", "null"] }
         validatedByName: { type: ["string", "null"] }
         validatedAt: { type: ["string", "null"], format: date-time }
@@ -4974,6 +5014,9 @@ components:
         documentId: { type: ["integer", "null"] }
         cashRegisterId:
           description: Required when paymentMethod is "especes" (module P5 Caisse Terrain).
+          type: ["integer", "null"]
+        stationId:
+          description: "Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually."
           type: ["integer", "null"]
 
     TransactionRejectInput:
@@ -5178,12 +5221,12 @@ components:
 
     CreatePumpInput:
       type: object
-      required: [clientId, label, fuelType]
+      required: [clientId, stationId, label, fuelType]
       properties:
         clientId: { type: integer }
         stationId:
           type: integer
-          description: "Multi-station (P8): station this pump belongs to."
+          description: "Multi-station (P8): station this pump belongs to. Required -- every pump must be assigned to one physical station."
         label:
           type: string
           minLength: 1

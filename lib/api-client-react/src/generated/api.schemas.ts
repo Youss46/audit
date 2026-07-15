@@ -608,6 +608,13 @@ export interface Transaction {
      * @nullable
      */
   cashRegisterAccountNumber?: string | null;
+  /**
+     * Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet/PME-owner entry.
+     * @nullable
+     */
+  stationId?: number | null;
+  /** @nullable */
+  stationName?: string | null;
   /** @nullable */
   createdByName?: string | null;
   /** @nullable */
@@ -661,6 +668,11 @@ export interface TransactionInput {
      * @nullable
      */
   cashRegisterId?: number | null;
+  /**
+     * Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually.
+     * @nullable
+     */
+  stationId?: number | null;
 }
 
 export interface TransactionRejectInput {
@@ -840,8 +852,8 @@ export interface Pump {
 
 export interface CreatePumpInput {
   clientId: number;
-  /** Multi-station (P8): station this pump belongs to. */
-  stationId?: number;
+  /** Multi-station (P8): station this pump belongs to. Required -- every pump must be assigned to one physical station. */
+  stationId: number;
   /** @minLength 1 */
   label: string;
   fuelType: FuelType;
@@ -2552,6 +2564,10 @@ type: TransactionType;
 export type ListTransactionsParams = {
 clientId?: number;
 status?: TransactionStatus;
+/**
+ * Multi-station (P8): filter to entries tagged with this station. Forced to the caller's own station when their JWT carries one.
+ */
+stationId?: number;
 };
 
 export type ListCashRegistersParams = {
@@ -2600,21 +2616,37 @@ clientId: number;
 export type GetBalanceDesComptesParams = {
 clientId: number;
 year: number;
+/**
+ * Multi-station (P8): restrict the report to one physical station.
+ */
+stationId?: number;
 };
 
 export type GetBilanSimplifieParams = {
 clientId: number;
 year: number;
+/**
+ * Multi-station (P8): restrict the report to one physical station.
+ */
+stationId?: number;
 };
 
 export type GetCompteDeResultatParams = {
 clientId: number;
 year: number;
+/**
+ * Multi-station (P8): restrict the report to one physical station.
+ */
+stationId?: number;
 };
 
 export type GetGrandLivreParams = {
 clientId: number;
 year: number;
+/**
+ * Multi-station (P8): restrict the report to one physical station.
+ */
+stationId?: number;
 };
 
 export type GetPilotageDashboardParams = {
@@ -2630,6 +2662,10 @@ basis?: GetPilotageDashboardBasis;
  * @maximum 12
  */
 month?: number;
+/**
+ * Multi-station (P8): restrict the dashboard to one physical station.
+ */
+stationId?: number;
 };
 
 export type GetPilotageDashboardBasis = typeof GetPilotageDashboardBasis[keyof typeof GetPilotageDashboardBasis];

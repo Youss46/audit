@@ -34,4 +34,9 @@ export interface TransactionInput {
      * @nullable
      */
   cashRegisterId?: number | null;
+  /**
+     * Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually.
+     * @nullable
+     */
+  stationId?: number | null;
 }

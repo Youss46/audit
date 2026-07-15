@@ -32,3 +32,4 @@
 - [Mobile Money pump-shift split-payment design](mobile-money-pump-shift-design.md) — split-payment fuel sales bypass createTransactionEntry; computeFuelSaleJournalLines + direct insert; discrepancy against cashAmount only; /mobile-money/transfers for Cabinet virements.
 - [Pump initial calibration design](pump-calibration-design.md) — pumpsTable + two-priority last-index fallback; never import bare `zod` in api-server routes (esbuild can't resolve it).
 - [Pump-to-pompiste assignment enforcement](pump-assignment-enforcement-design.md) — verify router is mounted + server re-validates, not just the frontend filter, before trusting an "already built" restriction feature.
+- [M15-AUDIT multi-station (P8) rollout](m15-audit-p8-multi-station.md) — transactions.stationId + report filtering + selector on Pilotage/Révision; check for prior "P8" groundwork before assuming greenfield.
