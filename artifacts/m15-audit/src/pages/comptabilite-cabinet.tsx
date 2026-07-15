@@ -544,7 +544,7 @@ export default function ComptabiliteCabinet() {
               )}
               data-testid={`card-transaction-${t.id}`}
             >
-              <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+              <CardHeader className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-3">
                 <div>
                   <CardTitle className="text-base flex items-center gap-2 flex-wrap">
                     {t.clientName}
@@ -589,11 +589,11 @@ export default function ComptabiliteCabinet() {
                   </p>
                 </div>
                 {t.status !== "valide" && (
-                  <div className="flex gap-2 shrink-0">
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto sm:shrink-0">
                     <Button
                       size="sm"
                       variant="outline"
-                      className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400"
+                      className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 w-full sm:w-auto"
                       onClick={() => {
                         setRejectTarget(t.id)
                         setClarificationNote("")
@@ -607,6 +607,7 @@ export default function ComptabiliteCabinet() {
                     <Button
                       size="sm"
                       variant={hasAnomalies ? "destructive" : "default"}
+                      className="w-full sm:w-auto"
                       onClick={() => approveMutation.mutate({ id: t.id })}
                       disabled={approveMutation.isPending}
                       data-testid={`button-approve-${t.id}`}
