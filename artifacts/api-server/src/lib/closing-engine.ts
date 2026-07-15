@@ -32,8 +32,8 @@ export interface ClosingStep1Result {
 export interface ClosingStep2Result {
   totalClass6Debits: number;
   totalClass7Credits: number;
-  netResult: number; // positive = bénéfice (131), negative = perte (139)
-  resultAccount: "131" | "139";
+  netResult: number; // positive = bénéfice (1301), negative = perte (1309)
+  resultAccount: "1301" | "1309";
   closingTransactionId: number;
 }
 
@@ -422,13 +422,13 @@ async function computeAndPostNetResult(
   }
 
   const netResult = totalClass7Credits - totalClass6Debits;
-  const resultAccount: "131" | "139" = netResult >= 0 ? "131" : "139";
+  const resultAccount: "1301" | "1309" = netResult >= 0 ? "1301" : "1309";
   const absNet = Math.abs(netResult);
 
   // Build the balanced closing entry:
   //   Dr each Class 7 account (clearing revenues to zero)
   //   Cr each Class 6 account (clearing expenses to zero)
-  //   Cr 131 if bénéfice, or Dr 139 if perte
+  //   Cr 1301 if bénéfice, or Dr 1309 if perte
   const closingLines: Array<{
     accountNumber: string;
     label: string;
@@ -454,15 +454,15 @@ async function computeAndPostNetResult(
   }
   if (netResult >= 0) {
     closingLines.push({
-      accountNumber: "131",
-      label: `Résultat net bénéfice — Exercice ${year}`,
+      accountNumber: "1301",
+      label: `Résultat net de l'exercice — Bénéfice — Exercice ${year}`,
       debitAmount: 0,
       creditAmount: absNet,
     });
   } else {
     closingLines.push({
-      accountNumber: "139",
-      label: `Résultat net perte — Exercice ${year}`,
+      accountNumber: "1309",
+      label: `Résultat net de l'exercice — Perte — Exercice ${year}`,
       debitAmount: absNet,
       creditAmount: 0,
     });
@@ -478,7 +478,7 @@ async function computeAndPostNetResult(
       firmId,
       clientId,
       date: new Date(`${year}-12-31T23:59:00.000Z`),
-      label: `Clôture de l'exercice ${year} — Virement au compte de résultat`,
+      label: `Clôture annuelle et virement du résultat — Exercice ${year}`,
       amount: totalAmount,
       type: "depense",
       category: null,

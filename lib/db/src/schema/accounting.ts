@@ -82,6 +82,10 @@ export const TRANSACTION_SOURCES = [
   "a_nouveaux",
   "vat_liquidation",
   "depreciation_closing",
+  // Écriture de constitution du capital social (Débit 5211 / Crédit 1013),
+  // générée automatiquement lors de la création ou du premier renseignement
+  // du capital social d'un client.
+  "capital_constitution",
 ] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 

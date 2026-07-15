@@ -53,6 +53,7 @@ const clientSchema = z.object({
   email: z.string().email("Email invalide").optional().or(z.literal("")),
   contactName: z.string().optional(),
   annualTurnover: z.coerce.number().min(0, "Le chiffre d'affaires doit être positif").optional(),
+  capitalSocial: z.coerce.number().min(0, "Le capital social doit être positif").optional(),
   taxRegime: z.enum(TAX_REGIME_VALUES, { required_error: "Le régime fiscal est requis" }),
   isVatRegistered: z.boolean(),
 })
@@ -74,6 +75,7 @@ export default function ClientNew() {
       email: "",
       contactName: "",
       annualTurnover: 0,
+      capitalSocial: 0,
       taxRegime: TaxRegime.REEL_NORMAL,
       isVatRegistered: true,
     }
@@ -82,7 +84,13 @@ export default function ClientNew() {
   const createMutation = useCreateClient({
     mutation: {
       onSuccess: (data) => {
-        toast({ title: "Client créé avec succès" })
+        const capitalSocial = form.getValues("capitalSocial") ?? 0
+        toast({
+          title: "Client créé avec succès",
+          description: capitalSocial > 0
+            ? "Écriture de constitution du capital social générée automatiquement (Journal OD — Débit 5211 / Crédit 1013)."
+            : undefined,
+        })
         setLocation(`/clients/${data.id}`)
       },
       onError: (error) => {
@@ -300,6 +308,23 @@ export default function ClientNew() {
                       </FormControl>
                       <FormDescription>
                         Servira à déterminer automatiquement le système comptable.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="capitalSocial"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Capital Social (FCFA)</FormLabel>
+                      <FormControl>
+                        <AmountInput placeholder="0" {...field} />
+                      </FormControl>
+                      <FormDescription>
+                        Si renseigné, une écriture de constitution sera automatiquement
+                        générée dans le Journal OD (Débit 5211 / Crédit 1013).
                       </FormDescription>
                       <FormMessage />
                     </FormItem>

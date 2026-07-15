@@ -232,6 +232,7 @@ export default function ClientDetail() {
   const [isEditingProfile, setIsEditingProfile] = useState(false)
   const [editSector, setEditSector] = useState<Sector>(Sector.services)
   const [editTurnover, setEditTurnover] = useState<number>(0)
+  const [editCapitalSocial, setEditCapitalSocial] = useState<number>(0)
   const [editTaxRegime, setEditTaxRegime] = useState<TaxRegime>(TaxRegime.REEL_NORMAL)
   const [editIsVatRegistered, setEditIsVatRegistered] = useState<boolean>(true)
   
@@ -315,6 +316,7 @@ export default function ClientDetail() {
     if (!client) return
     setEditSector(client.sector)
     setEditTurnover(client.annualTurnover ?? 0)
+    setEditCapitalSocial(client.capitalSocial ?? 0)
     setEditTaxRegime(client.taxRegime ?? TaxRegime.REEL_NORMAL)
     setEditIsVatRegistered(client.isVatRegistered ?? true)
     setIsEditingProfile(true)
@@ -327,6 +329,7 @@ export default function ClientDetail() {
       data: {
         sector: editSector,
         annualTurnover: editTurnover,
+        capitalSocial: editCapitalSocial,
         taxRegime: editTaxRegime,
         isVatRegistered: editIsVatRegistered,
       }
@@ -554,6 +557,23 @@ export default function ClientDetail() {
                     <div>
                       <div className="text-muted-foreground mb-1">Chiffre d'Affaires</div>
                       <div className="font-medium">{client.annualTurnover ? formatCurrency(client.annualTurnover) : '-'}</div>
+                    </div>
+                    <div>
+                      <div className="text-muted-foreground mb-1">Capital Social</div>
+                      <div className="font-medium flex items-center gap-2">
+                        {client.capitalSocial > 0 ? formatCurrency(client.capitalSocial) : '-'}
+                        {client.capitalSocial > 0 && (
+                          client.isCapitalInitialized ? (
+                            <Badge variant="secondary" className="text-xs font-normal text-green-700 border-green-300 dark:text-green-400">
+                              OD comptabilisée
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-xs font-normal text-amber-700 border-amber-300 dark:text-amber-400">
+                              En attente
+                            </Badge>
+                          )
+                        )}
+                      </div>
                     </div>
                     <div>
                       <div className="text-muted-foreground mb-1">Système SYSCOHADA</div>

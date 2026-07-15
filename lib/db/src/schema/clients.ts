@@ -75,6 +75,14 @@ export const clientsTable = pgTable(
     // dossier as exempt/non-assujetti.
     taxRegime: text("tax_regime").notNull().default("REEL_NORMAL").$type<TaxRegime>(),
     isVatRegistered: boolean("is_vat_registered").notNull().default(true),
+    // Capital social de la société (FCFA). Champ déclaratif ; le montant sert
+    // de base à l'écriture automatique d'apport de constitution (Débit 5211 /
+    // Crédit 1013) générée une seule fois lors de la création ou du premier
+    // renseignement du capital.
+    capitalSocial: integer("capital_social").notNull().default(0),
+    // Marqueur d'idempotence : true dès que l'écriture de constitution a été
+    // comptabilisée, pour éviter toute double-comptabilisation.
+    isCapitalInitialized: boolean("is_capital_initialized").notNull().default(false),
     // Denormalized cache of the client's most recent mission status, kept in
     // sync by the missions routes. Null means no mission has ever been
     // opened for this client -- do NOT default this to "en_attente", or the

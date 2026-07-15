@@ -614,7 +614,7 @@ export default function ClotureAnnuelle() {
                             : "border-red-400 text-red-700",
                         )}
                       >
-                        {netResult >= 0 ? "→ Compte 131" : "→ Compte 139"}
+                        {netResult >= 0 ? "→ Compte 1301" : "→ Compte 1309"}
                       </Badge>
                     </div>
                   </div>
@@ -691,7 +691,7 @@ export default function ClotureAnnuelle() {
                   </p>
                   <p>
                     ② Le résultat net sera calculé et affecté au compte{" "}
-                    <strong>131</strong> (bénéfice) ou <strong>139</strong> (perte).
+                    <strong>1301</strong> (bénéfice) ou <strong>1309</strong> (perte).
                   </p>
                   <p>
                     ③ L'exercice sera verrouillé — toute tentative d'ajout

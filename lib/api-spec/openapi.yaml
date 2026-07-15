@@ -35,7 +35,7 @@ tags:
   - name: assets
     description: Fixed assets & depreciation engine (M17) - SYSCOHADA Class 2 asset registry, straight-line and declining-balance schedules, year-end dotation entries
   - name: closing
-    description: Fiscal year-end closing (M19) — official period lock, net result computation (Résultat net 131/139), and Journal des À-nouveaux generation for year+1
+    description: Fiscal year-end closing (M19) — official period lock, net result computation (Résultat net 1301/1309), and Journal des À-nouveaux generation for year+1
   - name: payroll
     description: Ivorian payroll (M20) - CNPS, IS, CN, ITS and aggregated ledger posting
   - name: tax
@@ -2679,7 +2679,7 @@ paths:
       description: >
         Runs the full 4-step SYSCOHADA year-end closing routine:
         (1) generate and auto-validate pending depreciation dotations and financial installments,
-        (2) compute net result from Class 6/7 balances and post the clearing entry to account 131 or 139,
+        (2) compute net result from Class 6/7 balances and post the clearing entry to account 1301 (bénéfice) or 1309 (perte),
         (3) lock the period so no further ledger entries are accepted for this client/year,
         (4) generate the Journal des À-nouveaux carrying forward Class 1-5 balances to year+1.
         Restricted to expert_comptable.
@@ -4556,6 +4556,8 @@ components:
           name,
           legalForm,
           sector,
+          capitalSocial,
+          isCapitalInitialized,
           createdAt,
           updatedAt,
         ]
@@ -4573,6 +4575,10 @@ components:
         email: { type: ["string", "null"] }
         contactName: { type: ["string", "null"] }
         annualTurnover: { type: ["number", "null"] }
+        # Capital social déclaré (FCFA). Base de l'écriture de constitution (Cr 1013).
+        capitalSocial: { type: integer, description: "Montant du capital social en FCFA (entier). Déclenche automatiquement l'écriture de constitution Débit 5211 / Crédit 1013 lors du premier renseignement." }
+        # true dès que l'écriture de constitution a été comptabilisée.
+        isCapitalInitialized: { type: boolean, description: "Indique si l'écriture de constitution du capital social a déjà été générée dans le Grand Livre. Sert de garde d'idempotence." }
         accountingSystem:
           oneOf:
             - $ref: "#/components/schemas/AccountingSystem"
@@ -4603,6 +4609,7 @@ components:
         email: { type: string }
         contactName: { type: string }
         annualTurnover: { type: number }
+        capitalSocial: { type: integer, description: "Capital social initial en FCFA. Si > 0, une écriture de constitution (Dr 5211 / Cr 1013) est générée automatiquement." }
         taxRegime:
           $ref: "#/components/schemas/TaxRegime"
         isVatRegistered: { type: boolean }
@@ -4621,6 +4628,7 @@ components:
         email: { type: string }
         contactName: { type: string }
         annualTurnover: { type: number }
+        capitalSocial: { type: integer, description: "Capital social en FCFA. Si > 0 et que l'écriture de constitution n'a pas encore été générée, elle le sera automatiquement." }
         taxRegime:
           $ref: "#/components/schemas/TaxRegime"
         isVatRegistered: { type: boolean }

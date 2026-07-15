@@ -16,6 +16,10 @@ import {
 import { requireAuth, requireOwnClient, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { determineAccountingSystem } from "../lib/visa-engine";
+import {
+  postCapitalContribution,
+  CapitalAlreadyInitializedError,
+} from "../lib/capital-engine";
 
 const router: IRouter = Router();
 
@@ -74,7 +78,44 @@ router.post("/clients", requireRole("expert_comptable", "collaborateur"), async 
     ipAddress: req.ip,
   });
 
-  res.status(201).json(CreateClientResponse.parse(client));
+  // Génération automatique de l'écriture de constitution du capital social
+  // si un capital > 0 a été renseigné à la création du dossier.
+  if (client.capitalSocial > 0 && !client.isCapitalInitialized) {
+    try {
+      await postCapitalContribution(
+        client.firmId,
+        client.id,
+        req.user!.id,
+        client.name,
+        client.capitalSocial,
+        client.createdAt,
+      );
+      await logAudit({
+        firmId: req.user!.firmId,
+        userId: req.user!.id,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: AuditAction.CAPITAL_INIT,
+        entityType: "client",
+        entityId: client.id,
+        details: `Écriture de constitution du capital social générée (${client.capitalSocial.toLocaleString("fr")} FCFA) — Débit 5211 / Crédit 1013 — "${client.name}"`,
+        ipAddress: req.ip,
+      });
+    } catch (err) {
+      // La constitution est non-bloquante : le dossier est créé même si
+      // l'écriture échoue (l'expert-comptable peut la saisir manuellement).
+      if (!(err instanceof CapitalAlreadyInitializedError)) {
+        console.error("[capital-engine] Erreur lors de la génération de l'écriture de constitution :", err);
+      }
+    }
+  }
+
+  // Re-fetch the client after potential isCapitalInitialized flag update
+  const finalClient = await db.query.clientsTable.findFirst({
+    where: eq(clientsTable.id, client.id),
+  }) ?? client;
+
+  res.status(201).json(CreateClientResponse.parse(finalClient));
 });
 
 router.get("/clients/:id", async (req, res) => {
@@ -132,6 +173,48 @@ router.patch(
     entityId: id,
     ipAddress: req.ip,
   });
+
+  // Génération automatique de l'écriture de constitution si le capital social
+  // vient d'être renseigné pour la première fois (n'avait jamais été initialisé).
+  if (
+    updated.capitalSocial > 0 &&
+    !existing.isCapitalInitialized &&
+    !updated.isCapitalInitialized
+  ) {
+    try {
+      await postCapitalContribution(
+        req.user!.firmId,
+        id,
+        req.user!.id,
+        updated.name,
+        updated.capitalSocial,
+        updated.createdAt,
+      );
+      await logAudit({
+        firmId: req.user!.firmId,
+        userId: req.user!.id,
+        userName: req.user!.fullName,
+        userRole: req.user!.role,
+        action: AuditAction.CAPITAL_INIT,
+        entityType: "client",
+        entityId: id,
+        details: `Écriture de constitution du capital social générée (${updated.capitalSocial.toLocaleString("fr")} FCFA) — Débit 5211 / Crédit 1013 — "${updated.name}"`,
+        ipAddress: req.ip,
+      });
+      // Re-fetch to get the latest isCapitalInitialized = true
+      const refreshed = await db.query.clientsTable.findFirst({
+        where: eq(clientsTable.id, id),
+      });
+      if (refreshed) {
+        res.json(UpdateClientResponse.parse(refreshed));
+        return;
+      }
+    } catch (err) {
+      if (!(err instanceof CapitalAlreadyInitializedError)) {
+        console.error("[capital-engine] Erreur lors de la génération de l'écriture de constitution :", err);
+      }
+    }
+  }
 
   res.json(UpdateClientResponse.parse(updated));
 });
