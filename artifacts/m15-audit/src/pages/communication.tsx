@@ -38,6 +38,7 @@ import {
   Paperclip,
   Users,
   UserCircle2,
+  ChevronLeft,
 } from "lucide-react"
 
 const MAX_ATTACHMENT_BYTES = 4 * 1024 * 1024
@@ -191,8 +192,10 @@ export default function Communication() {
       </div>
 
       <div className="flex h-[calc(100vh-14rem)] min-h-[500px] rounded-lg border bg-card overflow-hidden shadow-sm">
-        {/* Sidebar */}
-        <div className="w-72 shrink-0 border-r flex flex-col">
+        {/* Sidebar — full width on mobile, hidden once a conversation is
+            active so the chat view gets the whole screen (WhatsApp-style
+            master/detail); always visible side-by-side from md up. */}
+        <div className={cn("w-full md:w-72 shrink-0 border-r flex-col", active ? "hidden md:flex" : "flex")}>
           <ScrollArea className="flex-1">
             <div className="p-3 space-y-4">
               <div>
@@ -274,10 +277,11 @@ export default function Communication() {
           </ScrollArea>
         </div>
 
-        {/* Main panel */}
-        <div className="flex-1 flex flex-col min-w-0">
+        {/* Main panel — hidden on mobile until a conversation is picked, so
+            the two panes never fight for the same narrow viewport. */}
+        <div className={cn("flex-1 flex-col min-w-0", active ? "flex" : "hidden md:flex")}>
           {!active ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground text-center px-4">
               <MessagesSquare className="h-8 w-8 mb-2 opacity-20" />
               <p>Créez un salon ou choisissez un collègue pour démarrer une conversation.</p>
             </div>
@@ -286,6 +290,15 @@ export default function Communication() {
               <div className="border-b p-3 flex items-center justify-between gap-2 shrink-0">
                 {active.type === "channel" ? (
                   <div className="flex items-center gap-2 min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 -ml-1 shrink-0 md:hidden"
+                      onClick={() => setActive(null)}
+                      data-testid="button-back-to-list"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     {channelDetail?.isPrivate ? <Lock className="h-4 w-4 shrink-0" /> : <Hash className="h-4 w-4 shrink-0" />}
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{channelDetail?.name}</p>
@@ -296,6 +309,15 @@ export default function Communication() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 min-w-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 -ml-1 shrink-0 md:hidden"
+                      onClick={() => setActive(null)}
+                      data-testid="button-back-to-list"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
                     <UserCircle2 className="h-4 w-4 shrink-0" />
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{activeColleague?.fullName}</p>
