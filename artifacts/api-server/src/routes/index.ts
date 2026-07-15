@@ -29,6 +29,7 @@ import payrollSettingsRouter from "./payroll-settings";
 import vatSettingsRouter from "./vat-settings";
 import pumpShiftsRouter from "./pump-shifts";
 import pumpsRouter from "./pumps";
+import pumpAssignmentsRouter from "./pump-assignments";
 import mobileMoneyRouter from "./mobile-money";
 
 const router: IRouter = Router();

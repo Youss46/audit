@@ -69,6 +69,7 @@ import type {
   CompteDeResultatResult,
   ContextualComment,
   ContextualCommentInput,
+  CreatePumpAssignmentInput,
   CreatePumpInput,
   CreditNoteInput,
   DailyClosure,
@@ -102,6 +103,7 @@ import type {
   GetCompteDeResultatParams,
   GetGrandLivreParams,
   GetLastPumpIndexParams,
+  GetMyPumpAssignmentsParams,
   GetPilotageDashboardParams,
   GrandLivreResult,
   HealthStatus,
@@ -125,6 +127,7 @@ import type {
   ListInvoicesParams,
   ListMissionsParams,
   ListPayslipsParams,
+  ListPumpAssignmentsParams,
   ListPumpShiftsParams,
   ListPumpsParams,
   ListThreadsParams,
@@ -138,6 +141,7 @@ import type {
   MissionUpdate,
   MobileMoneyVirementInput,
   MobileMoneyVirementResult,
+  MyPumpAssignment,
   NewGeneratedDocumentInput,
   NotificationItem,
   PayrollSetting,
@@ -149,6 +153,7 @@ import type {
   PostVatLiquidationResult,
   ProfitabilityReport,
   Pump,
+  PumpAssignmentItem,
   PumpShift,
   PumpShiftCreateInput,
   PumpShiftValidateInput,
@@ -4801,6 +4806,316 @@ export const useDeletePump = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeletePumpMutationOptions(options));
+    }
+
+export const getListPumpAssignmentsUrl = (params: ListPumpAssignmentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pump-assignments?${stringifiedParams}` : `/api/pump-assignments`
+}
+
+/**
+ * @summary List pump assignments for a given date (default: today). PME owner only.
+ */
+export const listPumpAssignments = async (params: ListPumpAssignmentsParams, options?: RequestInit): Promise<PumpAssignmentItem[]> => {
+
+  return customFetch<PumpAssignmentItem[]>(getListPumpAssignmentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPumpAssignmentsQueryKey = (params?: ListPumpAssignmentsParams,) => {
+    return [
+    `/api/pump-assignments`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPumpAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof listPumpAssignments>>, TError = ErrorType<unknown>>(params: ListPumpAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumpAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPumpAssignmentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPumpAssignments>>> = ({ signal }) => listPumpAssignments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPumpAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPumpAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof listPumpAssignments>>>
+export type ListPumpAssignmentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List pump assignments for a given date (default: today). PME owner only.
+ */
+
+export function useListPumpAssignments<TData = Awaited<ReturnType<typeof listPumpAssignments>>, TError = ErrorType<unknown>>(
+ params: ListPumpAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPumpAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPumpAssignmentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePumpAssignmentUrl = () => {
+
+
+
+
+  return `/api/pump-assignments`
+}
+
+/**
+ * @summary Assign a pompiste to a pump for a given date. PME owner only.
+ */
+export const createPumpAssignment = async (createPumpAssignmentInput: CreatePumpAssignmentInput, options?: RequestInit): Promise<PumpAssignmentItem> => {
+
+  return customFetch<PumpAssignmentItem>(getCreatePumpAssignmentUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPumpAssignmentInput)
+  }
+);}
+
+
+
+
+
+export const getCreatePumpAssignmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPumpAssignment>>, TError,{data: BodyType<CreatePumpAssignmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPumpAssignment>>, TError,{data: BodyType<CreatePumpAssignmentInput>}, TContext> => {
+
+const mutationKey = ['createPumpAssignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPumpAssignment>>, {data: BodyType<CreatePumpAssignmentInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPumpAssignment(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePumpAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof createPumpAssignment>>>
+    export type CreatePumpAssignmentMutationBody = BodyType<CreatePumpAssignmentInput>
+    export type CreatePumpAssignmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Assign a pompiste to a pump for a given date. PME owner only.
+ */
+export const useCreatePumpAssignment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPumpAssignment>>, TError,{data: BodyType<CreatePumpAssignmentInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPumpAssignment>>,
+        TError,
+        {data: BodyType<CreatePumpAssignmentInput>},
+        TContext
+      > => {
+      return useMutation(getCreatePumpAssignmentMutationOptions(options));
+    }
+
+export const getGetMyPumpAssignmentsUrl = (params: GetMyPumpAssignmentsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/pump-assignments/my?${stringifiedParams}` : `/api/pump-assignments/my`
+}
+
+/**
+ * @summary Get the pumps assigned to the currently logged-in pompiste for today.
+ */
+export const getMyPumpAssignments = async (params: GetMyPumpAssignmentsParams, options?: RequestInit): Promise<MyPumpAssignment[]> => {
+
+  return customFetch<MyPumpAssignment[]>(getGetMyPumpAssignmentsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetMyPumpAssignmentsQueryKey = (params?: GetMyPumpAssignmentsParams,) => {
+    return [
+    `/api/pump-assignments/my`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetMyPumpAssignmentsQueryOptions = <TData = Awaited<ReturnType<typeof getMyPumpAssignments>>, TError = ErrorType<unknown>>(params: GetMyPumpAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPumpAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetMyPumpAssignmentsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyPumpAssignments>>> = ({ signal }) => getMyPumpAssignments(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getMyPumpAssignments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetMyPumpAssignmentsQueryResult = NonNullable<Awaited<ReturnType<typeof getMyPumpAssignments>>>
+export type GetMyPumpAssignmentsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Get the pumps assigned to the currently logged-in pompiste for today.
+ */
+
+export function useGetMyPumpAssignments<TData = Awaited<ReturnType<typeof getMyPumpAssignments>>, TError = ErrorType<unknown>>(
+ params: GetMyPumpAssignmentsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getMyPumpAssignments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetMyPumpAssignmentsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getDeletePumpAssignmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/pump-assignments/${id}`
+}
+
+/**
+ * @summary Remove a pump assignment. PME owner only.
+ */
+export const deletePumpAssignment = async (id: number, options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeletePumpAssignmentUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePumpAssignmentMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePumpAssignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePumpAssignment>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deletePumpAssignment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePumpAssignment>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePumpAssignment(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePumpAssignmentMutationResult = NonNullable<Awaited<ReturnType<typeof deletePumpAssignment>>>
+
+    export type DeletePumpAssignmentMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Remove a pump assignment. PME owner only.
+ */
+export const useDeletePumpAssignment = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePumpAssignment>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deletePumpAssignment>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeletePumpAssignmentMutationOptions(options));
     }
 
 export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {

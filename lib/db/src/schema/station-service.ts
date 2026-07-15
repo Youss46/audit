@@ -106,3 +106,25 @@ export const insertPumpSchema = createInsertSchema(pumpsTable).omit({
 });
 export type InsertPump = z.infer<typeof insertPumpSchema>;
 export type Pump = typeof pumpsTable.$inferSelect;
+
+// Module P7 (Attributions de pompes): one row per pompiste-pump pair for a
+// given service day.  The PME owner creates these before each shift so that
+// each pompiste can only enter readings for the pump(s) assigned to them.
+// shiftDate is stored as a plain "YYYY-MM-DD" text string (server-side local
+// date) — no timezone issues, always matches the date the manager intended.
+export const pumpAssignmentsTable = pgTable("pump_assignments", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clientsTable.id, { onDelete: "cascade" }),
+  pumpId: integer("pump_id")
+    .notNull()
+    .references(() => pumpsTable.id, { onDelete: "cascade" }),
+  staffUserId: integer("staff_user_id")
+    .notNull()
+    .references(() => usersTable.id, { onDelete: "cascade" }),
+  // ISO date string YYYY-MM-DD — the day this assignment covers.
+  shiftDate: text("shift_date").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+export type PumpAssignment = typeof pumpAssignmentsTable.$inferSelect;

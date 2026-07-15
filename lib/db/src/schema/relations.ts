@@ -23,7 +23,7 @@ import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
-import { pumpsTable, pumpShiftsTable } from "./station-service";
+import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable } from "./station-service";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -424,8 +424,16 @@ export const vatSettingsRelations = relations(vatSettingsTable, ({ one }) => ({
 }));
 
 // Module P7 (Calibration initiale): pump registration with initial index.
-export const pumpsRelations = relations(pumpsTable, ({ one }) => ({
+export const pumpsRelations = relations(pumpsTable, ({ one, many }) => ({
   client: one(clientsTable, { fields: [pumpsTable.clientId], references: [clientsTable.id] }),
+  assignments: many(pumpAssignmentsTable),
+}));
+
+// Module P7 (Attributions de pompes): links a pompiste to a pump for one day.
+export const pumpAssignmentsRelations = relations(pumpAssignmentsTable, ({ one }) => ({
+  client: one(clientsTable, { fields: [pumpAssignmentsTable.clientId], references: [clientsTable.id] }),
+  pump: one(pumpsTable, { fields: [pumpAssignmentsTable.pumpId], references: [pumpsTable.id] }),
+  staffUser: one(usersTable, { fields: [pumpAssignmentsTable.staffUserId], references: [usersTable.id] }),
 }));
 
 // Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant).

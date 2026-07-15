@@ -1579,6 +1579,82 @@ paths:
         "204":
           description: Pump deleted
 
+  /pump-assignments:
+    get:
+      operationId: listPumpAssignments
+      tags: [station-service]
+      summary: "List pump assignments for a given date (default: today). PME owner only."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: date
+          in: query
+          required: false
+          description: "ISO date YYYY-MM-DD. Defaults to today (server time)."
+          schema: { type: string, format: date }
+      responses:
+        "200":
+          description: List of pump assignments
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PumpAssignmentItem"
+    post:
+      operationId: createPumpAssignment
+      tags: [station-service]
+      summary: "Assign a pompiste to a pump for a given date. PME owner only."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePumpAssignmentInput"
+      responses:
+        "201":
+          description: Assignment created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PumpAssignmentItem"
+
+  /pump-assignments/my:
+    get:
+      operationId: getMyPumpAssignments
+      tags: [station-service]
+      summary: "Get the pumps assigned to the currently logged-in pompiste for today."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of assigned pumps for today
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MyPumpAssignment"
+
+  /pump-assignments/{id}:
+    delete:
+      operationId: deletePumpAssignment
+      tags: [station-service]
+      summary: "Remove a pump assignment. PME owner only."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "204":
+          description: Assignment deleted
+
   /reports/balance:
     get:
       operationId: getBalanceDesComptes
@@ -4844,6 +4920,44 @@ components:
         initialIndex:
           type: number
           minimum: 0
+
+    PumpAssignmentItem:
+      type: object
+      required: [id, clientId, pumpId, pumpLabel, fuelType, staffUserId, staffName, shiftDate, createdAt]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        pumpId: { type: integer }
+        pumpLabel: { type: string }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        staffUserId: { type: integer }
+        staffName: { type: string }
+        shiftDate: { type: string, format: date }
+        createdAt: { type: string, format: date-time }
+
+    MyPumpAssignment:
+      type: object
+      required: [id, pumpId, label, fuelType, shiftDate]
+      properties:
+        id: { type: integer }
+        pumpId: { type: integer }
+        label: { type: string }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        shiftDate: { type: string, format: date }
+
+    CreatePumpAssignmentInput:
+      type: object
+      required: [clientId, pumpId, staffUserId, shiftDate]
+      properties:
+        clientId: { type: integer }
+        pumpId: { type: integer }
+        staffUserId: { type: integer }
+        shiftDate:
+          type: string
+          format: date
+          description: "ISO date YYYY-MM-DD for which this assignment is valid."
 
     PumpShift:
       type: object

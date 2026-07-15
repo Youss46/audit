@@ -2027,6 +2027,78 @@ export const DeletePumpResponse = zod.void()
 
 
 /**
+ * @summary List pump assignments for a given date (default: today). PME owner only.
+ */
+export const ListPumpAssignmentsQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "date": zod.date().optional().describe('ISO date YYYY-MM-DD. Defaults to today (server time).')
+})
+
+export const ListPumpAssignmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "pumpId": zod.number(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "staffUserId": zod.number(),
+  "staffName": zod.string(),
+  "shiftDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPumpAssignmentsResponse = zod.array(ListPumpAssignmentsResponseItem)
+
+
+/**
+ * @summary Assign a pompiste to a pump for a given date. PME owner only.
+ */
+export const CreatePumpAssignmentBody = zod.object({
+  "clientId": zod.number(),
+  "pumpId": zod.number(),
+  "staffUserId": zod.number(),
+  "shiftDate": zod.coerce.date().describe('ISO date YYYY-MM-DD for which this assignment is valid.')
+})
+
+export const CreatePumpAssignmentResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "pumpId": zod.number(),
+  "pumpLabel": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "staffUserId": zod.number(),
+  "staffName": zod.string(),
+  "shiftDate": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get the pumps assigned to the currently logged-in pompiste for today.
+ */
+export const GetMyPumpAssignmentsQueryParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const GetMyPumpAssignmentsResponseItem = zod.object({
+  "id": zod.number(),
+  "pumpId": zod.number(),
+  "label": zod.string(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "shiftDate": zod.coerce.date()
+})
+export const GetMyPumpAssignmentsResponse = zod.array(GetMyPumpAssignmentsResponseItem)
+
+
+/**
+ * @summary Remove a pump assignment. PME owner only.
+ */
+export const DeletePumpAssignmentParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeletePumpAssignmentResponse = zod.void()
+
+
+/**
  * @summary La Balance des Comptes: one row per SYSCOHADA account for the given client/fiscal year, with opening balance, movements and closing balance
  */
 export const GetBalanceDesComptesQueryParams = zod.object({

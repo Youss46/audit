@@ -775,6 +775,34 @@ export interface UpdatePumpInput {
   initialIndex?: number;
 }
 
+export interface PumpAssignmentItem {
+  id: number;
+  clientId: number;
+  pumpId: number;
+  pumpLabel: string;
+  fuelType: FuelType;
+  staffUserId: number;
+  staffName: string;
+  shiftDate: string;
+  createdAt: string;
+}
+
+export interface MyPumpAssignment {
+  id: number;
+  pumpId: number;
+  label: string;
+  fuelType: FuelType;
+  shiftDate: string;
+}
+
+export interface CreatePumpAssignmentInput {
+  clientId: number;
+  pumpId: number;
+  staffUserId: number;
+  /** ISO date YYYY-MM-DD for which this assignment is valid. */
+  shiftDate: string;
+}
+
 export interface PumpShift {
   id: number;
   clientId: number;
@@ -2428,6 +2456,18 @@ status?: PumpShiftStatus;
 };
 
 export type ListPumpsParams = {
+clientId: number;
+};
+
+export type ListPumpAssignmentsParams = {
+clientId: number;
+/**
+ * ISO date YYYY-MM-DD. Defaults to today (server time).
+ */
+date?: string;
+};
+
+export type GetMyPumpAssignmentsParams = {
 clientId: number;
 };
 
