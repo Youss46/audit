@@ -23,7 +23,7 @@ import { invoicesTable, invoiceItemsTable } from "./invoicing";
 import { chatChannelsTable, chatChannelMembersTable, chatChannelMessagesTable, chatDirectMessagesTable } from "./chat";
 import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
-import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable } from "./station-service";
+import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable, fuelPricesTable } from "./station-service";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -434,6 +434,16 @@ export const pumpAssignmentsRelations = relations(pumpAssignmentsTable, ({ one }
   client: one(clientsTable, { fields: [pumpAssignmentsTable.clientId], references: [clientsTable.id] }),
   pump: one(pumpsTable, { fields: [pumpAssignmentsTable.pumpId], references: [pumpsTable.id] }),
   staffUser: one(usersTable, { fields: [pumpAssignmentsTable.staffUserId], references: [usersTable.id] }),
+}));
+
+// Module P7 (Sécurisation du prix carburant): active per-litre selling
+// price per client + fuel type, managed exclusively by the PME owner.
+export const fuelPricesRelations = relations(fuelPricesTable, ({ one }) => ({
+  client: one(clientsTable, { fields: [fuelPricesTable.clientId], references: [clientsTable.id] }),
+  updatedBy: one(usersTable, {
+    fields: [fuelPricesTable.updatedById],
+    references: [usersTable.id],
+  }),
 }));
 
 // Module P7 (Un Pompiste = Un Shift — Relevé d'Index & Ventes de Carburant).

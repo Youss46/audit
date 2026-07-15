@@ -1645,7 +1645,7 @@ export const ListPumpShiftsResponseItem = zod.object({
   "indexEnd": zod.number(),
   "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
   "status": zod.enum(['OPEN', 'VALIDATED']),
-  "unitPrice": zod.number().nullish(),
+  "unitPrice": zod.number().nullish().describe('FCFA price per litre applied at validation, resolved server-side from the client\'s active FuelPrice for this fuel type.'),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
@@ -1689,7 +1689,7 @@ export const CreatePumpShiftResponse = zod.object({
   "indexEnd": zod.number(),
   "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
   "status": zod.enum(['OPEN', 'VALIDATED']),
-  "unitPrice": zod.number().nullish(),
+  "unitPrice": zod.number().nullish().describe('FCFA price per litre applied at validation, resolved server-side from the client\'s active FuelPrice for this fuel type.'),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
@@ -1724,7 +1724,7 @@ export const GetPumpShiftResponse = zod.object({
   "indexEnd": zod.number(),
   "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
   "status": zod.enum(['OPEN', 'VALIDATED']),
-  "unitPrice": zod.number().nullish(),
+  "unitPrice": zod.number().nullish().describe('FCFA price per litre applied at validation, resolved server-side from the client\'s active FuelPrice for this fuel type.'),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
@@ -1749,7 +1749,6 @@ export const ValidatePumpShiftParams = zod.object({
   "id": zod.coerce.number()
 })
 
-
 export const validatePumpShiftBodyCashAmountDefault = 0;
 export const validatePumpShiftBodyCashAmountMin = 0;
 
@@ -1765,7 +1764,6 @@ export const validatePumpShiftBodyMtnMomoAmountMin = 0;
 
 
 export const ValidatePumpShiftBody = zod.object({
-  "unitPrice": zod.number().min(1),
   "cashAmount": zod.number().min(validatePumpShiftBodyCashAmountMin).default(validatePumpShiftBodyCashAmountDefault).describe('FCFA collected in cash (Espèces). Maps to the pompiste\'s personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.'),
   "waveAmount": zod.number().min(validatePumpShiftBodyWaveAmountMin).default(validatePumpShiftBodyWaveAmountDefault).describe('FCFA collected via Wave. Maps to account 552200.'),
   "orangeMoneyAmount": zod.number().min(validatePumpShiftBodyOrangeMoneyAmountMin).default(validatePumpShiftBodyOrangeMoneyAmountDefault).describe('FCFA collected via Orange Money. Maps to account 552100.'),
@@ -1784,7 +1782,7 @@ export const ValidatePumpShiftResponse = zod.object({
   "indexEnd": zod.number(),
   "volumeLiters": zod.number().describe('Computed as indexEnd - indexStart.'),
   "status": zod.enum(['OPEN', 'VALIDATED']),
-  "unitPrice": zod.number().nullish(),
+  "unitPrice": zod.number().nullish().describe('FCFA price per litre applied at validation, resolved server-side from the client\'s active FuelPrice for this fuel type.'),
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "expectedAmount": zod.number().nullish().describe('unitPrice x volumeLiters, rounded to the nearest FCFA.'),
   "declaredPhysicalAmount": zod.number().nullish(),
@@ -2096,6 +2094,47 @@ export const DeletePumpAssignmentParams = zod.object({
 })
 
 export const DeletePumpAssignmentResponse = zod.void()
+
+
+/**
+ * @summary Module P7 (Sécurisation du prix carburant): the current active selling price per litre for each fuel type registered by this client. Readable by any authenticated member of the client (owner, staff, cabinet) so the 'Ventes de carburant' form can display the locked price.
+ */
+export const ListFuelPricesQueryParams = zod.object({
+  "clientId": zod.coerce.number()
+})
+
+export const ListFuelPricesResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "unitPrice": zod.number().describe('Active FCFA selling price per litre for this fuel type.'),
+  "updatedByName": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListFuelPricesResponse = zod.array(ListFuelPricesResponseItem)
+
+
+/**
+ * @summary Set (create or update) the active selling price per litre for a fuel type. Restricted to the PME owner ('client_pme') -- this is the only way the price can ever change, so a pompiste can never influence it.
+ */
+export const upsertFuelPriceBodyUnitPriceMin = 0.01;
+
+
+
+export const UpsertFuelPriceBody = zod.object({
+  "clientId": zod.number(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "unitPrice": zod.number().min(upsertFuelPriceBodyUnitPriceMin).describe('New FCFA selling price per litre. Replaces the previous price for this fuel type.')
+})
+
+export const UpsertFuelPriceResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "fuelType": zod.enum(['super', 'gasoil']),
+  "unitPrice": zod.number().describe('Active FCFA selling price per litre for this fuel type.'),
+  "updatedByName": zod.string().nullish(),
+  "updatedAt": zod.coerce.date()
+})
 
 
 /**

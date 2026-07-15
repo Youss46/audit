@@ -45,8 +45,9 @@ export const pumpShiftsTable = pgTable("pump_shifts", {
   indexStart: doublePrecision("index_start").notNull(),
   indexEnd: doublePrecision("index_end").notNull(),
   status: text("status").notNull().$type<PumpShiftStatus>().default("OPEN"),
-  // Filled in at validation ("Ventes de carburant").
-  unitPrice: integer("unit_price"),
+  // Filled in at validation ("Ventes de carburant"), copied server-side from
+  // fuelPricesTable at that moment -- never accepted from the client.
+  unitPrice: doublePrecision("unit_price"),
   // Legacy single-method field kept for records created before the split-payment
   // upgrade. Null for new multi-provider shifts; derived on read as needed.
   paymentMethod: text("payment_method").$type<PaymentMethod>(),
@@ -128,3 +129,29 @@ export const pumpAssignmentsTable = pgTable("pump_assignments", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 export type PumpAssignment = typeof pumpAssignmentsTable.$inferSelect;
+
+// Module P7 (Sécurisation du prix carburant): one row per client + fuel
+// type, holding the currently active selling price per litre. Writable
+// exclusively by the PME owner ("client_pme") from the "Prix du carburant"
+// settings screen. The "Ventes de carburant" validation form reads this
+// value server-side to compute the expected sale amount -- it is never
+// accepted from the client, so a pompiste can neither see an editable price
+// field nor influence "Montant attendu" by tampering with the request body.
+export const fuelPricesTable = pgTable("fuel_prices", {
+  id: serial("id").primaryKey(),
+  clientId: integer("client_id")
+    .notNull()
+    .references(() => clientsTable.id, { onDelete: "cascade" }),
+  fuelType: text("fuel_type").notNull().$type<FuelType>(),
+  // Decimal FCFA price per litre (e.g. 810.50).
+  unitPrice: doublePrecision("unit_price").notNull(),
+  updatedById: integer("updated_by_id").references(() => usersTable.id, { onDelete: "set null" }),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const insertFuelPriceSchema = createInsertSchema(fuelPricesTable).omit({
+  id: true,
+  updatedAt: true,
+});
+export type InsertFuelPrice = z.infer<typeof insertFuelPriceSchema>;
+export type FuelPrice = typeof fuelPricesTable.$inferSelect;

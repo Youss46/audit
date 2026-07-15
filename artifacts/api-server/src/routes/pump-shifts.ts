@@ -6,6 +6,7 @@ import {
   pumpsTable,
   pumpShiftsTable,
   pumpAssignmentsTable,
+  fuelPricesTable,
   cashRegistersTable,
   transactionsTable,
   journalLinesTable,
@@ -371,8 +372,27 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     return;
   }
 
+  // SECURITY: the unit price is never accepted from the client. It is
+  // always resolved server-side from the active FuelPrice row the PME
+  // owner configured for this client + fuel type -- the "Prix unitaire au
+  // litre" field on "Ventes de carburant" is display-only. A shift can't
+  // be validated until the owner has set a price for that fuel type.
+  const fuelPrice = await db.query.fuelPricesTable.findFirst({
+    where: and(
+      eq(fuelPricesTable.clientId, shift.clientId),
+      eq(fuelPricesTable.fuelType, shift.fuelType),
+    ),
+  });
+  if (!fuelPrice) {
+    res.status(400).json({
+      error: `Aucun prix carburant n'a été configuré pour "${shift.fuelType === "super" ? "Super" : "Gasoil"}". Contactez le propriétaire du dossier PME pour définir le prix avant de valider ce shift.`,
+    });
+    return;
+  }
+  const unitPrice = fuelPrice.unitPrice;
+
   const volumeLiters = Math.round((shift.indexEnd - shift.indexStart) * 100) / 100;
-  const expectedAmount = Math.round(volumeLiters * body.unitPrice);
+  const expectedAmount = Math.round(volumeLiters * unitPrice);
   const fuelLabel = shift.fuelType === "super" ? "Super" : "Gasoil";
 
   // Payment breakdown (default to 0 for each channel).
@@ -523,7 +543,7 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     .update(pumpShiftsTable)
     .set({
       status: "VALIDATED",
-      unitPrice: body.unitPrice,
+      unitPrice,
       paymentMethod: txPaymentMethod,
       expectedAmount,
       cashAmount,
@@ -549,7 +569,7 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
     action: AuditAction.TRANSACTION_CREATE,
     entityType: "pump_shift",
     entityId: id,
-    details: `Validation shift "${shift.pumpLabel}" (${fuelLabel}) : ${volumeLiters} L × ${body.unitPrice} FCFA = ${expectedAmount} FCFA | Espèces: ${cashAmount} | Wave: ${waveAmount} | Orange Money: ${orangeMoneyAmount} | MTN MoMo: ${mtnMomoAmount}`,
+    details: `Validation shift "${shift.pumpLabel}" (${fuelLabel}) : ${volumeLiters} L × ${unitPrice} FCFA = ${expectedAmount} FCFA | Espèces: ${cashAmount} | Wave: ${waveAmount} | Orange Money: ${orangeMoneyAmount} | MTN MoMo: ${mtnMomoAmount}`,
     ipAddress: req.ip,
   });
 

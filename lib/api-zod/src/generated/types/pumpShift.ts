@@ -21,7 +21,10 @@ export interface PumpShift {
   /** Computed as indexEnd - indexStart. */
   volumeLiters: number;
   status: PumpShiftStatus;
-  /** @nullable */
+  /**
+     * FCFA price per litre applied at validation, resolved server-side from the client's active FuelPrice for this fuel type.
+     * @nullable
+     */
   unitPrice?: number | null;
   paymentMethod?: PaymentMethod | null;
   /**

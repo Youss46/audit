@@ -92,6 +92,7 @@ import type {
   FixedAsset,
   FixedAssetInput,
   FixedAssetUpdate,
+  FuelPrice,
   GenerateClosingsResult,
   GenerateFinanceJournalEntriesResult,
   GeneratedDocumentDetail,
@@ -123,6 +124,7 @@ import type {
   ListDocumentsParams,
   ListEmployeesParams,
   ListFinancialItemsParams,
+  ListFuelPricesParams,
   ListGeneratedDocumentsParams,
   ListInvoicesParams,
   ListMissionsParams,
@@ -177,6 +179,7 @@ import type {
   TransactionSettleInput,
   UpdateJournalLinesInput,
   UpdatePumpInput,
+  UpsertFuelPriceInput,
   User,
   UserInput,
   UserRateInput,
@@ -5116,6 +5119,161 @@ export const useDeletePumpAssignment = <TError = ErrorType<unknown>,
         TContext
       > => {
       return useMutation(getDeletePumpAssignmentMutationOptions(options));
+    }
+
+export const getListFuelPricesUrl = (params: ListFuelPricesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/fuel-prices?${stringifiedParams}` : `/api/fuel-prices`
+}
+
+/**
+ * @summary Module P7 (Sécurisation du prix carburant): the current active selling price per litre for each fuel type registered by this client. Readable by any authenticated member of the client (owner, staff, cabinet) so the 'Ventes de carburant' form can display the locked price.
+ */
+export const listFuelPrices = async (params: ListFuelPricesParams, options?: RequestInit): Promise<FuelPrice[]> => {
+
+  return customFetch<FuelPrice[]>(getListFuelPricesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFuelPricesQueryKey = (params?: ListFuelPricesParams,) => {
+    return [
+    `/api/fuel-prices`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListFuelPricesQueryOptions = <TData = Awaited<ReturnType<typeof listFuelPrices>>, TError = ErrorType<unknown>>(params: ListFuelPricesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFuelPrices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFuelPricesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFuelPrices>>> = ({ signal }) => listFuelPrices(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFuelPrices>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFuelPricesQueryResult = NonNullable<Awaited<ReturnType<typeof listFuelPrices>>>
+export type ListFuelPricesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Module P7 (Sécurisation du prix carburant): the current active selling price per litre for each fuel type registered by this client. Readable by any authenticated member of the client (owner, staff, cabinet) so the 'Ventes de carburant' form can display the locked price.
+ */
+
+export function useListFuelPrices<TData = Awaited<ReturnType<typeof listFuelPrices>>, TError = ErrorType<unknown>>(
+ params: ListFuelPricesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFuelPrices>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFuelPricesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUpsertFuelPriceUrl = () => {
+
+
+
+
+  return `/api/fuel-prices`
+}
+
+/**
+ * @summary Set (create or update) the active selling price per litre for a fuel type. Restricted to the PME owner ('client_pme') -- this is the only way the price can ever change, so a pompiste can never influence it.
+ */
+export const upsertFuelPrice = async (upsertFuelPriceInput: UpsertFuelPriceInput, options?: RequestInit): Promise<FuelPrice> => {
+
+  return customFetch<FuelPrice>(getUpsertFuelPriceUrl(),
+  {
+    ...options,
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(upsertFuelPriceInput)
+  }
+);}
+
+
+
+
+
+export const getUpsertFuelPriceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertFuelPrice>>, TError,{data: BodyType<UpsertFuelPriceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof upsertFuelPrice>>, TError,{data: BodyType<UpsertFuelPriceInput>}, TContext> => {
+
+const mutationKey = ['upsertFuelPrice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof upsertFuelPrice>>, {data: BodyType<UpsertFuelPriceInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  upsertFuelPrice(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpsertFuelPriceMutationResult = NonNullable<Awaited<ReturnType<typeof upsertFuelPrice>>>
+    export type UpsertFuelPriceMutationBody = BodyType<UpsertFuelPriceInput>
+    export type UpsertFuelPriceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Set (create or update) the active selling price per litre for a fuel type. Restricted to the PME owner ('client_pme') -- this is the only way the price can ever change, so a pompiste can never influence it.
+ */
+export const useUpsertFuelPrice = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof upsertFuelPrice>>, TError,{data: BodyType<UpsertFuelPriceInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof upsertFuelPrice>>,
+        TError,
+        {data: BodyType<UpsertFuelPriceInput>},
+        TContext
+      > => {
+      return useMutation(getUpsertFuelPriceMutationOptions(options));
     }
 
 export const getGetBalanceDesComptesUrl = (params: GetBalanceDesComptesParams,) => {

@@ -7,8 +7,6 @@
  */
 
 export interface PumpShiftValidateInput {
-  /** @minimum 1 */
-  unitPrice: number;
   /**
      * FCFA collected in cash (Espèces). Maps to the pompiste's personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.
      * @minimum 0

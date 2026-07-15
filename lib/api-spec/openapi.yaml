@@ -1655,6 +1655,49 @@ paths:
         "204":
           description: Assignment deleted
 
+  /fuel-prices:
+    get:
+      operationId: listFuelPrices
+      tags: [station-service]
+      summary: "Module P7 (Sécurisation du prix carburant): the current active selling price per litre for each fuel type registered by this client. Readable by any authenticated member of the client (owner, staff, cabinet) so the 'Ventes de carburant' form can display the locked price."
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: List of fuel prices (one per fuel type currently configured)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FuelPrice"
+    put:
+      operationId: upsertFuelPrice
+      tags: [station-service]
+      summary: "Set (create or update) the active selling price per litre for a fuel type. Restricted to the PME owner ('client_pme') -- this is the only way the price can ever change, so a pompiste can never influence it."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpsertFuelPriceInput"
+      responses:
+        "200":
+          description: Fuel price created or updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FuelPrice"
+        "403":
+          description: Restricted to the PME owner
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /reports/balance:
     get:
       operationId: getBalanceDesComptes
@@ -4947,6 +4990,32 @@ components:
           $ref: "#/components/schemas/FuelType"
         shiftDate: { type: string, format: date }
 
+    FuelPrice:
+      type: object
+      required: [id, clientId, fuelType, unitPrice, updatedAt]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        unitPrice:
+          type: number
+          description: Active FCFA selling price per litre for this fuel type.
+        updatedByName: { type: ["string", "null"] }
+        updatedAt: { type: string, format: date-time }
+
+    UpsertFuelPriceInput:
+      type: object
+      required: [clientId, fuelType, unitPrice]
+      properties:
+        clientId: { type: integer }
+        fuelType:
+          $ref: "#/components/schemas/FuelType"
+        unitPrice:
+          type: number
+          minimum: 0.01
+          description: New FCFA selling price per litre. Replaces the previous price for this fuel type.
+
     CreatePumpAssignmentInput:
       type: object
       required: [clientId, pumpId, staffUserId, shiftDate]
@@ -4987,7 +5056,9 @@ components:
           description: Computed as indexEnd - indexStart.
         status:
           $ref: "#/components/schemas/PumpShiftStatus"
-        unitPrice: { type: ["integer", "null"] }
+        unitPrice:
+          type: ["number", "null"]
+          description: FCFA price per litre applied at validation, resolved server-side from the client's active FuelPrice for this fuel type.
         paymentMethod:
           anyOf:
             - $ref: "#/components/schemas/PaymentMethod"
@@ -5032,11 +5103,7 @@ components:
 
     PumpShiftValidateInput:
       type: object
-      required: [unitPrice]
       properties:
-        unitPrice:
-          type: integer
-          minimum: 1
         cashAmount:
           type: integer
           minimum: 0

@@ -795,6 +795,27 @@ export interface MyPumpAssignment {
   shiftDate: string;
 }
 
+export interface FuelPrice {
+  id: number;
+  clientId: number;
+  fuelType: FuelType;
+  /** Active FCFA selling price per litre for this fuel type. */
+  unitPrice: number;
+  /** @nullable */
+  updatedByName?: string | null;
+  updatedAt: string;
+}
+
+export interface UpsertFuelPriceInput {
+  clientId: number;
+  fuelType: FuelType;
+  /**
+     * New FCFA selling price per litre. Replaces the previous price for this fuel type.
+     * @minimum 0.01
+     */
+  unitPrice: number;
+}
+
 export interface CreatePumpAssignmentInput {
   clientId: number;
   pumpId: number;
@@ -815,7 +836,10 @@ export interface PumpShift {
   /** Computed as indexEnd - indexStart. */
   volumeLiters: number;
   status: PumpShiftStatus;
-  /** @nullable */
+  /**
+     * FCFA price per litre applied at validation, resolved server-side from the client's active FuelPrice for this fuel type.
+     * @nullable
+     */
   unitPrice?: number | null;
   paymentMethod?: PaymentMethod | null;
   /**
@@ -870,8 +894,6 @@ export interface PumpShiftCreateInput {
 }
 
 export interface PumpShiftValidateInput {
-  /** @minimum 1 */
-  unitPrice: number;
   /**
      * FCFA collected in cash (Espèces). Maps to the pompiste's personal 5711xx sub-account. The sum cashAmount + waveAmount + orangeMoneyAmount + mtnMomoAmount must equal the computed expectedAmount.
      * @minimum 0
@@ -2468,6 +2490,10 @@ date?: string;
 };
 
 export type GetMyPumpAssignmentsParams = {
+clientId: number;
+};
+
+export type ListFuelPricesParams = {
 clientId: number;
 };
 

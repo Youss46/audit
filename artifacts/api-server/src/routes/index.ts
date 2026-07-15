@@ -30,6 +30,7 @@ import vatSettingsRouter from "./vat-settings";
 import pumpShiftsRouter from "./pump-shifts";
 import pumpsRouter from "./pumps";
 import pumpAssignmentsRouter from "./pump-assignments";
+import fuelPricesRouter from "./fuel-prices";
 import mobileMoneyRouter from "./mobile-money";
 
 const router: IRouter = Router();
@@ -65,6 +66,7 @@ router.use(vatSettingsRouter);
 router.use(pumpShiftsRouter);
 router.use(pumpsRouter);
 router.use(pumpAssignmentsRouter);
+router.use(fuelPricesRouter);
 router.use(mobileMoneyRouter);
 
 export default router;
