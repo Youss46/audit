@@ -61,12 +61,15 @@ function getPrinter() {
   return _printer!;
 }
 
-/** Format a number as French accounting notation (space-separated thousands). */
+/** Format a number as French accounting notation (space-separated thousands).
+ *  Note: Intl.NumberFormat("fr-FR") uses \u202F (narrow no-break space) as the
+ *  thousand separator. pdfmake cannot render that character and outputs "/" instead.
+ *  We replace it with a regular space so PDF output is correct. */
 function fmtNum(n: number): string {
   return new Intl.NumberFormat("fr-FR", {
     minimumFractionDigits: 0,
     maximumFractionDigits: 0,
-  }).format(n);
+  }).format(n).replace(/\u202f/g, " ");
 }
 
 /** Render a pdfmake document definition to a Node.js Buffer. */
@@ -1478,7 +1481,7 @@ export async function generateInvoicePdf(inv: InvoiceForPdf): Promise<Buffer> {
     new Intl.NumberFormat("fr-FR", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(n);
+    }).format(n).replace(/\u202f/g, " ");
 
   const fmtDate = (d: Date | string) =>
     new Date(d).toLocaleDateString("fr-FR", { day: "2-digit", month: "long", year: "numeric" });

@@ -13,7 +13,12 @@
 import { computeCompteDeResultat, computeBilanSimplifie, type LedgerLine } from "./reporting-engine";
 
 function fmtFcfa(amount: number): string {
-  return `${new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(Math.round(amount))} FCFA`;
+  // Intl.NumberFormat("fr-FR") uses \u202F (narrow no-break space) as the
+  // thousand separator; pdfmake renders it as "/" — replace with a plain space.
+  const formatted = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 })
+    .format(Math.round(amount))
+    .replace(/\u202f/g, " ");
+  return `${formatted} FCFA`;
 }
 
 // The exhaustive, authoritative list of placeholders a template may use.
