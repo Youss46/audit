@@ -2029,7 +2029,7 @@ export const DeletePumpResponse = zod.void()
  */
 export const ListPumpAssignmentsQueryParams = zod.object({
   "clientId": zod.coerce.number(),
-  "date": zod.date().optional().describe('ISO date YYYY-MM-DD. Defaults to today (server time).')
+  "date": zod.coerce.date().optional().describe('ISO date YYYY-MM-DD. Defaults to today (server time).')
 })
 
 export const ListPumpAssignmentsResponseItem = zod.object({
