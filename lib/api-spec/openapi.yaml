@@ -2712,6 +2712,118 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /accounts:
+    get:
+      operationId: listAccounts
+      tags: [accounts]
+      summary: Search the SYSCOHADA chart of accounts (Plan Comptable)
+      description: >
+        Read-only lookup over the shared Plan Comptable, used by account-number
+        autocomplete inputs (e.g. the Balance d'Entrée entry grid). Not
+        tenant-scoped -- the chart of accounts itself is standardized.
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+          description: "Filtre par préfixe de numéro de compte ou sous-chaîne de l'intitulé (insensible à la casse)."
+      responses:
+        "200":
+          description: Matching accounts (capped to 50 results)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/PlanComptableAccount"
+
+  /clients/{id}/opening-balance-eligibility:
+    get:
+      operationId: getOpeningBalanceEligibility
+      tags: [clients]
+      summary: Check whether a client can enter its manual opening balance (Reprise de dossier)
+      description: >
+        True only if the client's dossier is marked "Reprise de dossier"
+        (isReprise), its capital has not yet been initialized, and the target
+        fiscal year has no other transaction booked yet.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: query
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Eligibility check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpeningBalanceEligibility"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clients/{id}/opening-balance:
+    post:
+      operationId: createOpeningBalance
+      tags: [clients]
+      summary: Post the manual opening balance (Balance d'Entrée / À-nouveaux) for a Reprise de dossier client
+      description: >
+        Books a single balanced journal entry (Journal AN/OD) dated January 1st
+        of the given fiscal year, from the accountant-entered lines, then marks
+        the client's capital as initialized so this can only ever be done once.
+        Restricted to expert_comptable and collaborateur.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [year, lines]
+              properties:
+                year: { type: integer }
+                lines:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/OpeningBalanceLineInput"
+      responses:
+        "201":
+          description: Opening balance posted successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OpeningBalanceResult"
+        "400":
+          description: Balance not equilibrated, empty, or invalid account
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Client not eligible (not a Reprise de dossier, already initialized, or fiscal year already has entries)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /tax/vat-declaration/{clientId}/{period}:
     get:
       operationId: getVatDeclaration
@@ -6159,6 +6271,49 @@ components:
           properties:
             accountsCarriedForward: { type: integer }
             openingTransactionId: { type: ["integer", "null"] }
+
+    # -------------------------------------------------------------------------
+    # Plan Comptable (SYSCOHADA chart of accounts) — read-only lookup used by
+    # account-autocomplete inputs (e.g. Balance d'Entrée grid below).
+    # -------------------------------------------------------------------------
+
+    PlanComptableAccount:
+      type: object
+      required: [accountNumber, name, accountClass]
+      properties:
+        accountNumber: { type: string }
+        name: { type: string }
+        accountClass: { type: integer, description: "Classe SYSCOHADA (1 à 9), déduite du premier chiffre du numéro de compte." }
+
+    # -------------------------------------------------------------------------
+    # Reprise de dossier — Saisie de la Balance d'Entrée (À-nouveaux manuels)
+    # -------------------------------------------------------------------------
+
+    OpeningBalanceEligibility:
+      type: object
+      required: [eligible]
+      properties:
+        eligible: { type: boolean }
+        reason:
+          type: ["string", "null"]
+          description: "Motif d'inéligibilité en français, à afficher tel quel à l'utilisateur (null si eligible)."
+
+    OpeningBalanceLineInput:
+      type: object
+      required: [accountNumber, debitAmount, creditAmount]
+      properties:
+        accountNumber: { type: string, minLength: 1 }
+        debitAmount: { type: integer, minimum: 0 }
+        creditAmount: { type: integer, minimum: 0 }
+
+    OpeningBalanceResult:
+      type: object
+      required: [transactionId, year, totalAmount, accountsCount]
+      properties:
+        transactionId: { type: integer }
+        year: { type: integer }
+        totalAmount: { type: integer, description: "Somme des débits (= somme des crédits) de la balance d'entrée, en FCFA." }
+        accountsCount: { type: integer }
 
     # -------------------------------------------------------------------------
     # Module M20 — Gestion de la Paie, ITS & CNPS

@@ -57,6 +57,12 @@ export const AuditAction = {
   // existant est marqué comme initialisé SANS générer d'écriture de
   // constitution (le solde historique sera repris via la Balance d'Entrée).
   CAPITAL_REPRISE: "CAPITAL_REPRISE",
+  // Reprise de dossier — Saisie de la Balance d'Entrée (À-nouveaux manuels) :
+  // l'expert-comptable saisit la balance historique complète (Classes 1-5)
+  // d'un client repris, comptabilisée en une seule écriture équilibrée au
+  // 1er janvier de l'exercice. Ne peut être posé qu'une seule fois par
+  // dossier (même garde d'idempotence que CAPITAL_INIT/CAPITAL_REPRISE).
+  OPENING_BALANCE_POST: "OPENING_BALANCE_POST",
   // Module M19 (Clôture d'Exercice Comptable): official year-end closing.
   // The LOCKED status is permanent and cannot be reversed through the UI.
   PERIOD_CLOSE: "PERIOD_CLOSE",
