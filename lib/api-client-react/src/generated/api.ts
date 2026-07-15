@@ -69,6 +69,7 @@ import type {
   CompteDeResultatResult,
   ContextualComment,
   ContextualCommentInput,
+  CreateOpeningBalanceBody,
   CreatePumpAssignmentInput,
   CreatePumpInput,
   CreateStationInput,
@@ -107,6 +108,7 @@ import type {
   GetGrandLivreParams,
   GetLastPumpIndexParams,
   GetMyPumpAssignmentsParams,
+  GetOpeningBalanceEligibilityParams,
   GetPilotageDashboardParams,
   GrandLivreResult,
   HealthStatus,
@@ -115,6 +117,7 @@ import type {
   InvoiceInput,
   InvoicePdfResponse,
   LastPumpIndexResult,
+  ListAccountsParams,
   ListAnalyticalAllocationsParams,
   ListAnalyticalAxesParams,
   ListAnalyticalCodesParams,
@@ -149,11 +152,14 @@ import type {
   MyPumpAssignment,
   NewGeneratedDocumentInput,
   NotificationItem,
+  OpeningBalanceEligibility,
+  OpeningBalanceResult,
   PayrollSetting,
   PayrollSettingUpdate,
   Payslip,
   PendingCounts,
   PilotageDashboardResult,
+  PlanComptableAccount,
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
   ProfitabilityReport,
@@ -7818,6 +7824,254 @@ export const useClosePeriod = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getClosePeriodMutationOptions(options));
+    }
+
+export const getListAccountsUrl = (params?: ListAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/accounts?${stringifiedParams}` : `/api/accounts`
+}
+
+/**
+ * Read-only lookup over the shared Plan Comptable, used by account-number autocomplete inputs (e.g. the Balance d'Entrée entry grid). Not tenant-scoped -- the chart of accounts itself is standardized.
+ * @summary Search the SYSCOHADA chart of accounts (Plan Comptable)
+ */
+export const listAccounts = async (params?: ListAccountsParams, options?: RequestInit): Promise<PlanComptableAccount[]> => {
+
+  return customFetch<PlanComptableAccount[]>(getListAccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListAccountsQueryKey = (params?: ListAccountsParams,) => {
+    return [
+    `/api/accounts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listAccounts>>, TError = ErrorType<unknown>>(params?: ListAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListAccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listAccounts>>> = ({ signal }) => listAccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listAccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listAccounts>>>
+export type ListAccountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Search the SYSCOHADA chart of accounts (Plan Comptable)
+ */
+
+export function useListAccounts<TData = Awaited<ReturnType<typeof listAccounts>>, TError = ErrorType<unknown>>(
+ params?: ListAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListAccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getGetOpeningBalanceEligibilityUrl = (id: number,
+    params: GetOpeningBalanceEligibilityParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/clients/${id}/opening-balance-eligibility?${stringifiedParams}` : `/api/clients/${id}/opening-balance-eligibility`
+}
+
+/**
+ * True only if the client's dossier is marked "Reprise de dossier" (isReprise), its capital has not yet been initialized, and the target fiscal year has no other transaction booked yet.
+ * @summary Check whether a client can enter its manual opening balance (Reprise de dossier)
+ */
+export const getOpeningBalanceEligibility = async (id: number,
+    params: GetOpeningBalanceEligibilityParams, options?: RequestInit): Promise<OpeningBalanceEligibility> => {
+
+  return customFetch<OpeningBalanceEligibility>(getGetOpeningBalanceEligibilityUrl(id,params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetOpeningBalanceEligibilityQueryKey = (id: number,
+    params?: GetOpeningBalanceEligibilityParams,) => {
+    return [
+    `/api/clients/${id}/opening-balance-eligibility`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetOpeningBalanceEligibilityQueryOptions = <TData = Awaited<ReturnType<typeof getOpeningBalanceEligibility>>, TError = ErrorType<ErrorResponse>>(id: number,
+    params: GetOpeningBalanceEligibilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOpeningBalanceEligibility>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetOpeningBalanceEligibilityQueryKey(id,params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getOpeningBalanceEligibility>>> = ({ signal }) => getOpeningBalanceEligibility(id,params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getOpeningBalanceEligibility>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetOpeningBalanceEligibilityQueryResult = NonNullable<Awaited<ReturnType<typeof getOpeningBalanceEligibility>>>
+export type GetOpeningBalanceEligibilityQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Check whether a client can enter its manual opening balance (Reprise de dossier)
+ */
+
+export function useGetOpeningBalanceEligibility<TData = Awaited<ReturnType<typeof getOpeningBalanceEligibility>>, TError = ErrorType<ErrorResponse>>(
+ id: number,
+    params: GetOpeningBalanceEligibilityParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getOpeningBalanceEligibility>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetOpeningBalanceEligibilityQueryOptions(id,params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateOpeningBalanceUrl = (id: number,) => {
+
+
+
+
+  return `/api/clients/${id}/opening-balance`
+}
+
+/**
+ * Books a single balanced journal entry (Journal AN/OD) dated January 1st of the given fiscal year, from the accountant-entered lines, then marks the client's capital as initialized so this can only ever be done once. Restricted to expert_comptable and collaborateur.
+ * @summary Post the manual opening balance (Balance d'Entrée / À-nouveaux) for a Reprise de dossier client
+ */
+export const createOpeningBalance = async (id: number,
+    createOpeningBalanceBody: CreateOpeningBalanceBody, options?: RequestInit): Promise<OpeningBalanceResult> => {
+
+  return customFetch<OpeningBalanceResult>(getCreateOpeningBalanceUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createOpeningBalanceBody)
+  }
+);}
+
+
+
+
+
+export const getCreateOpeningBalanceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOpeningBalance>>, TError,{id: number;data: BodyType<CreateOpeningBalanceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createOpeningBalance>>, TError,{id: number;data: BodyType<CreateOpeningBalanceBody>}, TContext> => {
+
+const mutationKey = ['createOpeningBalance'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createOpeningBalance>>, {id: number;data: BodyType<CreateOpeningBalanceBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createOpeningBalance(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateOpeningBalanceMutationResult = NonNullable<Awaited<ReturnType<typeof createOpeningBalance>>>
+    export type CreateOpeningBalanceMutationBody = BodyType<CreateOpeningBalanceBody>
+    export type CreateOpeningBalanceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Post the manual opening balance (Balance d'Entrée / À-nouveaux) for a Reprise de dossier client
+ */
+export const useCreateOpeningBalance = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createOpeningBalance>>, TError,{id: number;data: BodyType<CreateOpeningBalanceBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createOpeningBalance>>,
+        TError,
+        {id: number;data: BodyType<CreateOpeningBalanceBody>},
+        TContext
+      > => {
+      return useMutation(getCreateOpeningBalanceMutationOptions(options));
     }
 
 export const getGetVatDeclarationUrl = (clientId: number,

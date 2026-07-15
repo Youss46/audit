@@ -3317,6 +3317,73 @@ export const ClosePeriodResponse = zod.object({
 
 
 /**
+ * Read-only lookup over the shared Plan Comptable, used by account-number autocomplete inputs (e.g. the Balance d'Entrée entry grid). Not tenant-scoped -- the chart of accounts itself is standardized.
+ * @summary Search the SYSCOHADA chart of accounts (Plan Comptable)
+ */
+export const ListAccountsQueryParams = zod.object({
+  "search": zod.coerce.string().optional().describe('Filtre par préfixe de numéro de compte ou sous-chaîne de l\'intitulé (insensible à la casse).')
+})
+
+export const ListAccountsResponseItem = zod.object({
+  "accountNumber": zod.string(),
+  "name": zod.string(),
+  "accountClass": zod.number().describe('Classe SYSCOHADA (1 à 9), déduite du premier chiffre du numéro de compte.')
+})
+export const ListAccountsResponse = zod.array(ListAccountsResponseItem)
+
+
+/**
+ * True only if the client's dossier is marked "Reprise de dossier" (isReprise), its capital has not yet been initialized, and the target fiscal year has no other transaction booked yet.
+ * @summary Check whether a client can enter its manual opening balance (Reprise de dossier)
+ */
+export const GetOpeningBalanceEligibilityParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetOpeningBalanceEligibilityQueryParams = zod.object({
+  "year": zod.coerce.number()
+})
+
+export const GetOpeningBalanceEligibilityResponse = zod.object({
+  "eligible": zod.boolean(),
+  "reason": zod.string().nullish().describe('Motif d\'inéligibilité en français, à afficher tel quel à l\'utilisateur (null si eligible).')
+})
+
+
+/**
+ * Books a single balanced journal entry (Journal AN/OD) dated January 1st of the given fiscal year, from the accountant-entered lines, then marks the client's capital as initialized so this can only ever be done once. Restricted to expert_comptable and collaborateur.
+ * @summary Post the manual opening balance (Balance d'Entrée / À-nouveaux) for a Reprise de dossier client
+ */
+export const CreateOpeningBalanceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+export const createOpeningBalanceBodyLinesItemDebitAmountMin = 0;
+
+export const createOpeningBalanceBodyLinesItemCreditAmountMin = 0;
+
+
+
+
+export const CreateOpeningBalanceBody = zod.object({
+  "year": zod.number(),
+  "lines": zod.array(zod.object({
+  "accountNumber": zod.string().min(1),
+  "debitAmount": zod.number().min(createOpeningBalanceBodyLinesItemDebitAmountMin),
+  "creditAmount": zod.number().min(createOpeningBalanceBodyLinesItemCreditAmountMin)
+})).min(1)
+})
+
+export const CreateOpeningBalanceResponse = zod.object({
+  "transactionId": zod.number(),
+  "year": zod.number(),
+  "totalAmount": zod.number().describe('Somme des débits (= somme des crédits) de la balance d\'entrée, en FCFA.'),
+  "accountsCount": zod.number()
+})
+
+
+/**
  * @summary Compute the D-201/VA VAT declaration (Sections A/B/C) live from the validated ledger (M21)
  */
 export const GetVatDeclarationParams = zod.object({

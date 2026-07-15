@@ -1532,6 +1532,39 @@ export interface ClosePeriodResult {
   step4: ClosePeriodResultStep4;
 }
 
+export interface PlanComptableAccount {
+  accountNumber: string;
+  name: string;
+  /** Classe SYSCOHADA (1 à 9), déduite du premier chiffre du numéro de compte. */
+  accountClass: number;
+}
+
+export interface OpeningBalanceEligibility {
+  eligible: boolean;
+  /**
+     * Motif d'inéligibilité en français, à afficher tel quel à l'utilisateur (null si eligible).
+     * @nullable
+     */
+  reason?: string | null;
+}
+
+export interface OpeningBalanceLineInput {
+  /** @minLength 1 */
+  accountNumber: string;
+  /** @minimum 0 */
+  debitAmount: number;
+  /** @minimum 0 */
+  creditAmount: number;
+}
+
+export interface OpeningBalanceResult {
+  transactionId: number;
+  year: number;
+  /** Somme des débits (= somme des crédits) de la balance d'entrée, en FCFA. */
+  totalAmount: number;
+  accountsCount: number;
+}
+
 export type MaritalStatus = typeof MaritalStatus[keyof typeof MaritalStatus];
 
 
@@ -2734,6 +2767,23 @@ clientId: number;
  * Pay period, format YYYY-MM
  */
 period?: string;
+};
+
+export type ListAccountsParams = {
+/**
+ * Filtre par préfixe de numéro de compte ou sous-chaîne de l'intitulé (insensible à la casse).
+ */
+search?: string;
+};
+
+export type GetOpeningBalanceEligibilityParams = {
+year: number;
+};
+
+export type CreateOpeningBalanceBody = {
+  year: number;
+  /** @minItems 1 */
+  lines: OpeningBalanceLineInput[];
 };
 
 export type ListClientContractsParams = {

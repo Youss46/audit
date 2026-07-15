@@ -1,4 +1,5 @@
 - [Orval/zod/OpenAPI codegen gotchas](orval-zod-openapi-gotchas.md) — avoid format:email, path+query param mixing, and multipart file uploads in this template's pipeline.
+- [Orval codegen duplicate exports](orval-codegen-duplicate-exports.md) — orval regenerates index barrels with duplicate export * lines on every run; manually dedup after codegen; esbuild/Vite builds are unaffected.
 - [Sector-restricted staff roles (POMPISTE / AGENT_TERRAIN)](sector-restricted-roles.md) — GET /roles filters by client sector; roleCode added to JWT/User for dashboard branching.
 - [React+Vite scaffold missing CSS import](react-vite-scaffold-css-import.md) — unstyled app despite correct theme means main.tsx is missing `import "./index.css"`; always screenshot after a design pass.
 - [Client-portal ownership scoping](client-portal-ownership-scoping.md) — tenant-id filtering alone isn't enough for a client-facing portal role; every endpoint needs an explicit owner-id check too.

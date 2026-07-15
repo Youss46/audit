@@ -23,6 +23,7 @@ import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { StationSelector, shouldShowStationSelector } from "@/components/stations/station-selector"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
+import { OpeningBalanceEntry } from "@/components/comptabilite/OpeningBalanceEntry"
 import { formatDate, formatDateTime, cn } from "@/lib/utils"
 import {
   getTransactionStatusColor,
@@ -339,6 +340,11 @@ export default function ComptabiliteCabinet() {
   // PATCH /transactions/:id/journal-lines).
   const { data: clients } = useListClients({})
   const vatRegisteredByClientId = new Map((clients ?? []).map((c) => [c.id, c.isVatRegistered]))
+  // Client name for the OpeningBalanceEntry component — looked up from the
+  // already-loaded client list so we don't need an extra useGetClient fetch.
+  const selectedClientName = clientId
+    ? (clients ?? []).find((c) => c.id === clientId)?.name ?? ""
+    : ""
 
   const invalidateList = () =>
     queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() })
@@ -477,6 +483,13 @@ export default function ComptabiliteCabinet() {
       </div>
 
       <ClientAccountingNav activeTab="saisie" />
+
+      {/* Reprise de dossier — Saisie de la Balance d'Entrée (À-nouveaux).
+          Rendered only when a client is selected; the component itself
+          checks eligibility and hides silently if not applicable. */}
+      {!!clientId && (
+        <OpeningBalanceEntry clientId={clientId} clientName={selectedClientName} />
+      )}
 
       {shouldShowStationSelector(userStationId, stations.length) && (
         <StationSelector
