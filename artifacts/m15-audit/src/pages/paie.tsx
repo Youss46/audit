@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast"
 import { getMaritalStatusLabel, getEmployeeStatusLabel, getEmployeeStatusColor } from "@/lib/status"
 import { cn } from "@/lib/utils"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
+import { useAuth } from "@/hooks/use-auth"
 import {
   Users,
   Plus,
@@ -25,6 +26,8 @@ import {
   AlertTriangle,
   Wallet,
   Landmark,
+  TrendingDown,
+  Receipt,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -128,6 +131,7 @@ function formFromEmployee(e: Employee): EmployeeFormState {
 export default function Paie() {
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
 
   const [, params] = useRoute<{ clientId: string }>("/cabinet/client/:clientId/paie")
   const clientId = params?.clientId ? Number(params.clientId) : null
@@ -217,8 +221,8 @@ export default function Paie() {
     mutation: {
       onSuccess: (data) => {
         toast({
-          title: "Paie comptabilisée",
-          description: `Écriture #${data.transactionId} générée pour ${data.payslipsPosted} bulletin(s).`,
+          title: "Paie comptabilisée dans le journal OD",
+          description: `La paie du mois a été calculée et comptabilisée dans le journal OD. Écriture #${data.transactionId} — ${data.payslipsPosted} bulletin(s).`,
         })
         invalidatePayslips()
         queryClient.invalidateQueries({ queryKey: ["transactions"] })
@@ -238,23 +242,39 @@ export default function Paie() {
   // -------------------------------------------------------------------------
 
   const activeEmployees = employees?.filter((e) => e.status === "ACTIF") ?? []
-  const totalNet = (payslips ?? []).reduce((s, p) => s + p.netSalary, 0)
-  const totalEmployerCost = (payslips ?? []).reduce((s, p) => s + p.totalEmployerCost, 0)
-  const totalCnps = (payslips ?? []).reduce(
+  const slip = payslips ?? []
+
+  // Summary totals for the consolidated bulletin
+  const totalGross = slip.reduce((s, p) => s + p.grossSalary, 0)
+  const totalGrossTaxable = slip.reduce((s, p) => s + p.grossTaxable, 0)
+  const totalNet = slip.reduce((s, p) => s + p.netSalary, 0)
+  const totalCnpsEmployee = slip.reduce((s, p) => s + p.cnpsEmployeeAmount, 0)
+  const totalCnpsEmployer = slip.reduce(
     (s, p) =>
       s +
-      p.cnpsEmployeeAmount +
       p.cnpsEmployerRetraite +
       p.cnpsEmployerPrestationsFamiliales +
       p.cnpsEmployerAccidentTravail,
     0,
   )
-  const totalTaxes = (payslips ?? []).reduce(
-    (s, p) => s + p.isAmount + p.cnAmount + p.itsAmount + p.taxeApprentissage + p.taxeFormationContinue,
+  const totalCnps = totalCnpsEmployee + totalCnpsEmployer
+  const totalIts = slip.reduce((s, p) => s + p.itsAmount, 0)
+  const totalFdfp = slip.reduce((s, p) => s + p.taxeApprentissage + p.taxeFormationContinue, 0)
+  const totalTaxes = totalIts + totalFdfp                // → crédit 4471
+  const totalEmployerCharges = slip.reduce(            // → débit 664
+    (s, p) =>
+      s +
+      p.cnpsEmployerRetraite +
+      p.cnpsEmployerPrestationsFamiliales +
+      p.cnpsEmployerAccidentTravail +
+      p.taxeApprentissage +
+      p.taxeFormationContinue,
     0,
   )
-  const allPosted = (payslips ?? []).length > 0 && (payslips ?? []).every((p) => p.postedTransactionId)
-  const anyPosted = (payslips ?? []).some((p) => p.postedTransactionId)
+
+  const allPosted = slip.length > 0 && slip.every((p) => p.postedTransactionId)
+  const anyPosted = slip.some((p) => p.postedTransactionId)
+  const isExpertComptable = user?.role === "expert_comptable"
 
   // -------------------------------------------------------------------------
   // Handlers
@@ -500,47 +520,79 @@ export default function Paie() {
                   <Loader2 className="h-5 w-5 animate-spin" />
                   Chargement…
                 </div>
-              ) : payslips && payslips.length > 0 ? (
+              ) : slip.length > 0 ? (
                 <>
+                  {/* ---- KPI summary cards ---- */}
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <Card>
                       <CardContent className="pt-4 pb-4">
-                        <p className="text-xs text-muted-foreground">Bulletins</p>
-                        <p className="text-2xl font-bold mt-1">{payslips.length}</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Bulletins</p>
+                        <p className="text-2xl font-bold mt-1">{slip.length}</p>
+                        <p className="text-xs text-muted-foreground">{activeEmployees.length} employé(s) actif(s)</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="pt-4 pb-4">
-                        <p className="text-xs text-muted-foreground">Total net à payer</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Salaire brut total</p>
+                        <p className="text-xl font-bold mt-1 tabular-nums">{fcfa(totalGross)}</p>
+                        <p className="text-xs text-muted-foreground">dont brut imposable {fcfa(totalGrossTaxable)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card>
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Net à payer</p>
                         <p className="text-xl font-bold mt-1 tabular-nums text-primary">{fcfa(totalNet)}</p>
-                        <p className="text-xs text-muted-foreground">FCFA</p>
+                        <p className="text-xs text-muted-foreground">FCFA — Cpte 422</p>
                       </CardContent>
                     </Card>
                     <Card>
                       <CardContent className="pt-4 pb-4">
-                        <p className="text-xs text-muted-foreground">CNPS (salarié + employeur)</p>
-                        <p className="text-xl font-bold mt-1 tabular-nums">{fcfa(totalCnps)}</p>
-                        <p className="text-xs text-muted-foreground">FCFA</p>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardContent className="pt-4 pb-4">
-                        <p className="text-xs text-muted-foreground">Coût total employeur</p>
-                        <p className="text-xl font-bold mt-1 tabular-nums text-orange-600">{fcfa(totalEmployerCost)}</p>
-                        <p className="text-xs text-muted-foreground">FCFA</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">Charges patronales</p>
+                        <p className="text-xl font-bold mt-1 tabular-nums text-orange-600">{fcfa(totalEmployerCharges)}</p>
+                        <p className="text-xs text-muted-foreground">FCFA — Cpte 664</p>
                       </CardContent>
                     </Card>
                   </div>
 
+                  {/* ---- Récapitulatif fiscal & social ---- */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <Card className="border-dashed">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">CNPS salarié (6,3 %)</p>
+                        <p className="text-lg font-semibold mt-1 tabular-nums">{fcfa(totalCnpsEmployee)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-dashed">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">CNPS patronale (AT + retraite + PF)</p>
+                        <p className="text-lg font-semibold mt-1 tabular-nums">{fcfa(totalCnpsEmployer)}</p>
+                        <p className="text-xs text-muted-foreground">Total CNPS à reverser : {fcfa(totalCnps)}</p>
+                      </CardContent>
+                    </Card>
+                    <Card className="border-dashed">
+                      <CardContent className="pt-4 pb-4">
+                        <p className="text-xs text-muted-foreground uppercase tracking-wide">ITS / IGR (État)</p>
+                        <p className="text-lg font-semibold mt-1 tabular-nums">{fcfa(totalIts)}</p>
+                        <p className="text-xs text-muted-foreground">+ FDFP {fcfa(totalFdfp)} → Cpte 4471</p>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* ---- Tableau des bulletins individuels ---- */}
                   <Card>
-                    <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                      <CardTitle className="text-base">Aperçu des bulletins — {period}</CardTitle>
+                    <CardHeader className="pb-3 flex flex-row items-center justify-between gap-4 flex-wrap">
+                      <div>
+                        <CardTitle className="text-base">Récapitulatif des bulletins — {period}</CardTitle>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Centralisation de la paie — Journal OD
+                        </p>
+                      </div>
                       {allPosted ? (
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 border-transparent">
                           <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                          Comptabilisé
+                          Comptabilisé dans le journal OD
                         </Badge>
-                      ) : (
+                      ) : isExpertComptable ? (
                         <AlertDialog>
                           <AlertDialogTrigger asChild>
                             <Button disabled={postLedgerMutation.isPending}>
@@ -549,53 +601,94 @@ export default function Paie() {
                               ) : (
                                 <Landmark className="h-4 w-4 mr-2" />
                               )}
-                              Valider et Générer les Écritures Comptables
+                              Générer les écritures de paie
                             </Button>
                           </AlertDialogTrigger>
                           <AlertDialogContent>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Comptabiliser la paie de {period} ?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Une écriture unique et équilibrée sera générée&nbsp;:
-                                débit 661 (salaires bruts) et 664 (charges patronales), crédit
-                                422 (net à payer), 431 (CNPS) et 447 (ITS/FDFP), pour un
-                                total de {fcfa(totalTaxes)} FCFA d&apos;impôts et {fcfa(totalCnps)} FCFA de
-                                CNPS. Cette écriture est directement validée et ne peut plus être
-                                modifiée.
+                              <AlertDialogTitle>
+                                Comptabiliser la paie de {period} dans le journal OD ?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription asChild>
+                                <div className="space-y-3 text-sm">
+                                  <p>
+                                    Une écriture OD unique et équilibrée sera générée pour{" "}
+                                    <strong>{slip.length} bulletin(s)</strong> :
+                                  </p>
+                                  <div className="rounded-md border text-xs font-mono divide-y">
+                                    <div className="flex justify-between px-3 py-1.5">
+                                      <span className="text-muted-foreground">Débit 6611 — Salaires bruts</span>
+                                      <span className="font-semibold">{fcfa(totalGross)} FCFA</span>
+                                    </div>
+                                    <div className="flex justify-between px-3 py-1.5">
+                                      <span className="text-muted-foreground">Débit 664 — Charges patronales</span>
+                                      <span className="font-semibold">{fcfa(totalEmployerCharges)} FCFA</span>
+                                    </div>
+                                    <div className="flex justify-between px-3 py-1.5 bg-muted/40">
+                                      <span className="text-muted-foreground">Crédit 422 — Net à payer</span>
+                                      <span>{fcfa(totalNet)} FCFA</span>
+                                    </div>
+                                    <div className="flex justify-between px-3 py-1.5 bg-muted/40">
+                                      <span className="text-muted-foreground">Crédit 4311 — CNPS à reverser</span>
+                                      <span>{fcfa(totalCnps)} FCFA</span>
+                                    </div>
+                                    <div className="flex justify-between px-3 py-1.5 bg-muted/40">
+                                      <span className="text-muted-foreground">Crédit 4471 — ITS &amp; Taxes</span>
+                                      <span>{fcfa(totalTaxes)} FCFA</span>
+                                    </div>
+                                  </div>
+                                  <p className="text-muted-foreground">
+                                    Cette écriture est directement validée dans le Grand Livre et
+                                    ne peut plus être modifiée.
+                                  </p>
+                                </div>
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
                               <AlertDialogCancel>Annuler</AlertDialogCancel>
-                              <AlertDialogAction onClick={handlePostLedger}>Valider</AlertDialogAction>
+                              <AlertDialogAction onClick={handlePostLedger}>
+                                Valider et comptabiliser
+                              </AlertDialogAction>
                             </AlertDialogFooter>
                           </AlertDialogContent>
                         </AlertDialog>
+                      ) : (
+                        <Badge variant="outline" className="text-xs text-muted-foreground">
+                          <Receipt className="h-3.5 w-3.5 mr-1" />
+                          Comptabilisation réservée à l&apos;expert-comptable
+                        </Badge>
                       )}
                     </CardHeader>
                     <CardContent className="p-0">
                       <div className="overflow-x-auto">
                         <Table>
                           <TableHeader>
-                            <TableRow>
+                            <TableRow className="text-xs">
                               <TableHead className="pl-6">Employé</TableHead>
-                              <TableHead className="text-right">Brut</TableHead>
-                              <TableHead className="text-right">CNPS (sal.)</TableHead>
+                              <TableHead className="text-right">Brut imposable</TableHead>
+                              <TableHead className="text-right">Brut total</TableHead>
+                              <TableHead className="text-right">CNPS sal.</TableHead>
                               <TableHead className="text-right">ITS</TableHead>
                               <TableHead className="text-right font-semibold">Net à payer</TableHead>
-                              <TableHead className="text-right">Charges patronales</TableHead>
+                              <TableHead className="text-right">CNPS pat.</TableHead>
+                              <TableHead className="text-right">FDFP</TableHead>
                               <TableHead className="pr-6">Statut</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {payslips.map((p) => (
+                            {slip.map((p) => (
                               <TableRow key={p.id}>
-                                <TableCell className="pl-6 font-medium">{p.employeeName}</TableCell>
+                                <TableCell className="pl-6 font-medium text-sm">{p.employeeName}</TableCell>
+                                <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">{fcfa(p.grossTaxable)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.grossSalary)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.cnpsEmployeeAmount)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.itsAmount)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm font-semibold text-primary">{fcfa(p.netSalary)}</TableCell>
-                                <TableCell className="text-right tabular-nums font-mono text-sm text-muted-foreground">
-                                  {fcfa(p.totalEmployerCost - p.grossSalary)}
+                                <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">
+                                  {fcfa(p.cnpsEmployerRetraite + p.cnpsEmployerPrestationsFamiliales + p.cnpsEmployerAccidentTravail)}
+                                </TableCell>
+                                <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">
+                                  {fcfa(p.taxeApprentissage + p.taxeFormationContinue)}
                                 </TableCell>
                                 <TableCell className="pr-6">
                                   {p.postedTransactionId ? (
@@ -609,6 +702,25 @@ export default function Paie() {
                               </TableRow>
                             ))}
                           </TableBody>
+                          {/* Totals row */}
+                          <tfoot>
+                            <TableRow className="bg-muted/50 font-semibold text-sm border-t-2">
+                              <TableCell className="pl-6">
+                                <span className="flex items-center gap-1.5">
+                                  <TrendingDown className="h-3.5 w-3.5 text-muted-foreground" />
+                                  Total ({slip.length})
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">{fcfa(totalGrossTaxable)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono">{fcfa(totalGross)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono">{fcfa(totalCnpsEmployee)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono">{fcfa(totalIts)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono text-primary">{fcfa(totalNet)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono text-xs">{fcfa(totalCnpsEmployer)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono text-xs">{fcfa(totalFdfp)}</TableCell>
+                              <TableCell className="pr-6" />
+                            </TableRow>
+                          </tfoot>
                         </Table>
                       </div>
                     </CardContent>

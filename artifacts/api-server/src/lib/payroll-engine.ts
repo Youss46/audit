@@ -306,11 +306,11 @@ export interface PostPayrollLedgerResult {
   transactionId: number;
   period: string;
   payslipsPosted: number;
-  totalDebit661: number; // Charges de personnel (salaires bruts)
-  totalDebit664: number; // Charges sociales (part employeur)
-  totalCredit422: number; // Personnel, rémunérations dues (net à payer)
-  totalCredit431: number; // CNPS (part salarié + part employeur)
-  totalCredit447: number; // État, impôts sur salaires (ITS unifié)
+  totalDebit6611: number;  // Charges de personnel (salaires bruts)
+  totalDebit664: number;   // Charges sociales (part employeur + FDFP)
+  totalCredit422: number;  // Personnel, rémunérations dues (net à payer)
+  totalCredit4311: number; // CNPS (part salarié + part employeur)
+  totalCredit4471: number; // État, impôts sur salaires (ITS unifié + FDFP)
 }
 
 /**
@@ -369,6 +369,10 @@ export async function postPayrollLedger(
   const [year, month] = period.split("-").map(Number);
   const date = new Date(Date.UTC(year, month - 1, 28));
 
+  // Label: "Centralisation de la paie - MM/YYYY"
+  const monthStr = String(month).padStart(2, "0");
+  const label = `Centralisation de la paie - ${monthStr}/${year}`;
+
   return await db.transaction(async (tx) => {
     const [transaction] = await tx
       .insert(transactionsTable)
@@ -376,7 +380,7 @@ export async function postPayrollLedger(
         firmId,
         clientId,
         date,
-        label: `Paie du mois ${period} — ${unposted.length} bulletin(s)`,
+        label,
         amount: totalGross + totalEmployerCharges,
         type: "depense",
         paymentType: "credit",
@@ -389,20 +393,37 @@ export async function postPayrollLedger(
       .returning();
 
     await tx.insert(journalLinesTable).values([
-      { transactionId: transaction.id, accountNumber: "661", debitAmount: totalGross, label: "Salaires bruts" },
+      // Débits — charges de l'exercice
+      {
+        transactionId: transaction.id,
+        accountNumber: "6611",
+        debitAmount: totalGross,
+        label: "Personnel national — salaires bruts",
+      },
       {
         transactionId: transaction.id,
         accountNumber: "664",
         debitAmount: totalEmployerCharges,
-        label: "Charges sociales (part employeur)",
+        label: "Charges sociales patronales (CNPS + FDFP)",
       },
-      { transactionId: transaction.id, accountNumber: "422", creditAmount: totalNet, label: "Personnel, net à payer" },
-      { transactionId: transaction.id, accountNumber: "431", creditAmount: totalCnps, label: "CNPS à décaisser" },
+      // Crédits — dettes envers le personnel et l'État
       {
         transactionId: transaction.id,
-        accountNumber: "447",
+        accountNumber: "422",
+        creditAmount: totalNet,
+        label: "Personnel, rémunérations dues (net à payer)",
+      },
+      {
+        transactionId: transaction.id,
+        accountNumber: "4311",
+        creditAmount: totalCnps,
+        label: "CNPS — cotisations à reverser",
+      },
+      {
+        transactionId: transaction.id,
+        accountNumber: "4471",
         creditAmount: totalTaxes,
-        label: "État, impôts sur salaires (ITS/FDFP)",
+        label: "État — ITS, Taxe d'apprentissage et FDFP",
       },
     ]);
 
@@ -417,11 +438,11 @@ export async function postPayrollLedger(
       transactionId: transaction.id,
       period,
       payslipsPosted: unposted.length,
-      totalDebit661: totalGross,
+      totalDebit6611: totalGross,
       totalDebit664: totalEmployerCharges,
       totalCredit422: totalNet,
-      totalCredit431: totalCnps,
-      totalCredit447: totalTaxes,
+      totalCredit4311: totalCnps,
+      totalCredit4471: totalTaxes,
     };
   });
 }

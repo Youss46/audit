@@ -3245,11 +3245,11 @@ export const PostPayrollLedgerResponse = zod.object({
   "transactionId": zod.number(),
   "period": zod.string(),
   "payslipsPosted": zod.number(),
-  "totalDebit661": zod.number(),
+  "totalDebit6611": zod.number(),
   "totalDebit664": zod.number(),
   "totalCredit422": zod.number(),
-  "totalCredit431": zod.number(),
-  "totalCredit447": zod.number()
+  "totalCredit4311": zod.number(),
+  "totalCredit4471": zod.number()
 })
 
 

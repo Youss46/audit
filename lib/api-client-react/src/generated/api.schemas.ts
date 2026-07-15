@@ -1637,11 +1637,11 @@ export interface PostPayrollLedgerResult {
   transactionId: number;
   period: string;
   payslipsPosted: number;
-  totalDebit661: number;
+  totalDebit6611: number;
   totalDebit664: number;
   totalCredit422: number;
-  totalCredit431: number;
-  totalCredit447: number;
+  totalCredit4311: number;
+  totalCredit4471: number;
 }
 
 export interface VatSectionA {

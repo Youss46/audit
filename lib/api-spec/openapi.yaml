@@ -6274,18 +6274,18 @@ components:
       type: object
       required:
         [
-          transactionId, period, payslipsPosted, totalDebit661, totalDebit664,
-          totalCredit422, totalCredit431, totalCredit447,
+          transactionId, period, payslipsPosted, totalDebit6611, totalDebit664,
+          totalCredit422, totalCredit4311, totalCredit4471,
         ]
       properties:
         transactionId: { type: integer }
         period: { type: string }
         payslipsPosted: { type: integer }
-        totalDebit661: { type: integer }
+        totalDebit6611: { type: integer }
         totalDebit664: { type: integer }
         totalCredit422: { type: integer }
-        totalCredit431: { type: integer }
-        totalCredit447: { type: integer }
+        totalCredit4311: { type: integer }
+        totalCredit4471: { type: integer }
 
     # -------------------------------------------------------------------------
     # Module M21 — Télédéclaration TVA (Formulaire D-201/VA)
