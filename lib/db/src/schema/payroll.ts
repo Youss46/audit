@@ -1,4 +1,5 @@
 import {
+  date,
   doublePrecision,
   index,
   integer,
@@ -63,6 +64,10 @@ export const employeesTable = pgTable(
     // (ex: 2 pour 2%). Varie selon le secteur d'activité (2% à 5%) -- 2%
     // est le taux par défaut pour les activités à risque standard.
     workAccidentRate: doublePrecision("work_accident_rate").notNull().default(2),
+    // Date d'embauche (AAAA-MM-JJ). Nullable pour la compatibilité des
+    // enregistrements antérieurs — les employés sans date d'embauche obtiennent
+    // automatiquement 0 % de prime d'ancienneté lors du calcul de la paie.
+    hireDate: date("hire_date"),
     status: text("status").notNull().$type<EmployeeStatus>().default("ACTIF"),
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
@@ -127,6 +132,10 @@ export const payslipsTable = pgTable(
     taxeFormationContinue: integer("taxe_formation_continue").notNull(),
     // Coût total employeur = grossSalary + toutes les charges patronales.
     totalEmployerCost: integer("total_employer_cost").notNull(),
+    // Prime d'ancienneté calculée automatiquement (barème légal ivoirien,
+    // 0 % avant 2 ans, 2 % à 2 ans, +1 %/an jusqu'à 25 %). Incluse dans le
+    // salaire brut imposable.
+    primeAnciennete: integer("prime_anciennete").notNull().default(0),
     // Nombre de parts fiscales retenu pour le calcul de l'ITS/IGR (traçabilité).
     fiscalParts: doublePrecision("fiscal_parts").notNull(),
     // Set once this payslip has been folded into a posted OD ledger entry

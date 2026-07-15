@@ -16,6 +16,8 @@ export interface Payslip {
   period: string;
   grossSalary: number;
   grossTaxable: number;
+  /** Prime d'ancienneté calculée automatiquement (barème légal ivoirien). */
+  primeAnciennete: number;
   cnpsEmployeeAmount: number;
   isAmount: number;
   cnAmount: number;

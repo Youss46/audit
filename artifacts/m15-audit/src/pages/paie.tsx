@@ -92,6 +92,7 @@ interface EmployeeFormState {
   firstName: string
   lastName: string
   cnpsNumber: string
+  hireDate: string
   maritalStatus: MaritalStatus
   dependentChildren: string
   baseSalary: string
@@ -105,6 +106,7 @@ function emptyEmployeeForm(): EmployeeFormState {
     firstName: "",
     lastName: "",
     cnpsNumber: "",
+    hireDate: "",
     maritalStatus: "CELIBATAIRE",
     dependentChildren: "0",
     baseSalary: "",
@@ -119,6 +121,7 @@ function formFromEmployee(e: Employee): EmployeeFormState {
     firstName: e.firstName,
     lastName: e.lastName,
     cnpsNumber: e.cnpsNumber ?? "",
+    hireDate: e.hireDate ?? "",
     maritalStatus: e.maritalStatus,
     dependentChildren: String(e.dependentChildren),
     baseSalary: String(e.baseSalary),
@@ -247,6 +250,7 @@ export default function Paie() {
   // Summary totals for the consolidated bulletin
   const totalGross = slip.reduce((s, p) => s + p.grossSalary, 0)
   const totalGrossTaxable = slip.reduce((s, p) => s + p.grossTaxable, 0)
+  const totalPrimeAnciennete = slip.reduce((s, p) => s + p.primeAnciennete, 0)
   const totalNet = slip.reduce((s, p) => s + p.netSalary, 0)
   const totalCnpsEmployee = slip.reduce((s, p) => s + p.cnpsEmployeeAmount, 0)
   const totalCnpsEmployer = slip.reduce(
@@ -301,6 +305,10 @@ export default function Paie() {
       setEmployeeError("Le prénom et le nom sont requis.")
       return
     }
+    if (!employeeForm.hireDate) {
+      setEmployeeError("La date d'embauche est obligatoire.")
+      return
+    }
     const baseSalary = parseInt(employeeForm.baseSalary, 10)
     if (!baseSalary || baseSalary <= 0) {
       setEmployeeError("Le salaire de base doit être un entier positif.")
@@ -311,6 +319,7 @@ export default function Paie() {
       firstName: employeeForm.firstName.trim(),
       lastName: employeeForm.lastName.trim(),
       cnpsNumber: employeeForm.cnpsNumber.trim() || null,
+      hireDate: employeeForm.hireDate,
       maritalStatus: employeeForm.maritalStatus,
       dependentChildren: parseInt(employeeForm.dependentChildren, 10) || 0,
       baseSalary,
@@ -418,7 +427,7 @@ export default function Paie() {
                             <TableHead className="pl-6">Nom</TableHead>
                             <TableHead>N° CNPS</TableHead>
                             <TableHead>Situation</TableHead>
-                            <TableHead className="text-right">Enfants</TableHead>
+                            <TableHead>Date d&apos;embauche</TableHead>
                             <TableHead className="text-right">Salaire de base</TableHead>
                             <TableHead className="text-right">Prime transport</TableHead>
                             <TableHead>Statut</TableHead>
@@ -437,8 +446,10 @@ export default function Paie() {
                               <TableCell className="text-sm">
                                 {getMaritalStatusLabel(employee.maritalStatus)}
                               </TableCell>
-                              <TableCell className="text-right tabular-nums">
-                                {employee.dependentChildren}
+                              <TableCell className="text-sm tabular-nums">
+                                {employee.hireDate
+                                  ? new Date(employee.hireDate).toLocaleDateString("fr-FR")
+                                  : <span className="text-muted-foreground italic text-xs">Non renseignée</span>}
                               </TableCell>
                               <TableCell className="text-right tabular-nums font-mono text-sm">
                                 {fcfa(employee.baseSalary)}
@@ -666,6 +677,7 @@ export default function Paie() {
                             <TableRow className="text-xs">
                               <TableHead className="pl-6">Employé</TableHead>
                               <TableHead className="text-right">Brut imposable</TableHead>
+                              <TableHead className="text-right">Ancienneté</TableHead>
                               <TableHead className="text-right">Brut total</TableHead>
                               <TableHead className="text-right">CNPS sal.</TableHead>
                               <TableHead className="text-right">ITS</TableHead>
@@ -680,6 +692,13 @@ export default function Paie() {
                               <TableRow key={p.id}>
                                 <TableCell className="pl-6 font-medium text-sm">{p.employeeName}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">{fcfa(p.grossTaxable)}</TableCell>
+                                <TableCell className="text-right tabular-nums font-mono text-xs">
+                                  {p.primeAnciennete > 0 ? (
+                                    <span className="text-amber-600 dark:text-amber-400 font-medium">{fcfa(p.primeAnciennete)}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground">—</span>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.grossSalary)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.cnpsEmployeeAmount)}</TableCell>
                                 <TableCell className="text-right tabular-nums font-mono text-sm">{fcfa(p.itsAmount)}</TableCell>
@@ -712,6 +731,9 @@ export default function Paie() {
                                 </span>
                               </TableCell>
                               <TableCell className="text-right tabular-nums font-mono text-xs text-muted-foreground">{fcfa(totalGrossTaxable)}</TableCell>
+                              <TableCell className="text-right tabular-nums font-mono text-xs text-amber-600 dark:text-amber-400">
+                                {totalPrimeAnciennete > 0 ? fcfa(totalPrimeAnciennete) : "—"}
+                              </TableCell>
                               <TableCell className="text-right tabular-nums font-mono">{fcfa(totalGross)}</TableCell>
                               <TableCell className="text-right tabular-nums font-mono">{fcfa(totalCnpsEmployee)}</TableCell>
                               <TableCell className="text-right tabular-nums font-mono">{fcfa(totalIts)}</TableCell>
@@ -757,8 +779,8 @@ export default function Paie() {
           <DialogHeader>
             <DialogTitle>{editingEmployeeId ? "Modifier l'employé" : "Ajouter un employé"}</DialogTitle>
             <DialogDescription>
-              Les cotisations CNPS et l&apos;impôt sur salaire (ITS) seront calculés
-              automatiquement lors du traitement de la paie.
+              Les cotisations CNPS, l&apos;impôt sur salaire (ITS) et la prime d&apos;ancienneté
+              seront calculés automatiquement lors du traitement de la paie.
             </DialogDescription>
           </DialogHeader>
 
@@ -780,12 +802,28 @@ export default function Paie() {
               </div>
             </div>
 
-            <div className="col-span-2">
+            <div>
               <Label>N° d&apos;immatriculation CNPS (optionnel)</Label>
               <Input
                 value={employeeForm.cnpsNumber}
                 onChange={(e) => setEmployeeForm((f) => ({ ...f, cnpsNumber: e.target.value }))}
               />
+            </div>
+
+            <div>
+              <Label>
+                Date d&apos;embauche <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                type="date"
+                value={employeeForm.hireDate}
+                max={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setEmployeeForm((f) => ({ ...f, hireDate: e.target.value }))}
+                className={!employeeForm.hireDate ? "border-muted" : ""}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Sert au calcul automatique de la prime d&apos;ancienneté.
+              </p>
             </div>
 
             <div>

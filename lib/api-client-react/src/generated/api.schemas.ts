@@ -1538,6 +1538,11 @@ export interface Employee {
   lastName: string;
   /** @nullable */
   cnpsNumber?: string | null;
+  /**
+     * Date d'embauche (AAAA-MM-JJ). Requis pour le calcul de la prime d'ancienneté.
+     * @nullable
+     */
+  hireDate?: string | null;
   maritalStatus: MaritalStatus;
   dependentChildren: number;
   baseSalary: number;
@@ -1559,6 +1564,8 @@ export interface EmployeeInput {
   lastName: string;
   /** @nullable */
   cnpsNumber?: string | null;
+  /** Date d'embauche (AAAA-MM-JJ). */
+  hireDate: string;
   maritalStatus?: MaritalStatus;
   /** @minimum 0 */
   dependentChildren?: number;
@@ -1579,6 +1586,8 @@ export interface EmployeeUpdate {
   lastName?: string;
   /** @nullable */
   cnpsNumber?: string | null;
+  /** Date d'embauche (AAAA-MM-JJ). */
+  hireDate?: string;
   maritalStatus?: MaritalStatus;
   /** @minimum 0 */
   dependentChildren?: number;
@@ -1603,6 +1612,8 @@ export interface Payslip {
   period: string;
   grossSalary: number;
   grossTaxable: number;
+  /** Prime d'ancienneté calculée automatiquement (barème légal ivoirien). */
+  primeAnciennete: number;
   cnpsEmployeeAmount: number;
   isAmount: number;
   cnAmount: number;

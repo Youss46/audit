@@ -171,16 +171,70 @@ export function computeFiscalParts(maritalStatus: MaritalStatus, dependentChildr
   return Math.min(parts, ITS_MAX_PARTS);
 }
 
+// ---------------------------------------------------------------------------
+// Prime d'ancienneté (Ivorian labour law, Art. 37 Code du Travail CI)
+// ---------------------------------------------------------------------------
+// Barème officiel :
+//   < 2 ans  → 0 %
+//   2 ans    → 2 %  (base = salaire de base)
+//   3–24 ans → +1 % par année supplémentaire (ex: 5 ans = 5 %)
+//   ≥ 25 ans → plafond de 25 %
+// La prime est incluse dans le salaire brut imposable/cotisable.
+// ---------------------------------------------------------------------------
+
+/**
+ * Nombre d'années de service complètes entre la date d'embauche et la
+ * période traitée (format "YYYY-MM"). Une année est complète quand le même
+ * mois calendaire est atteint une année plus tard.
+ */
+export function computeYearsOfService(hireDate: string, period: string): number {
+  const [periodYear, periodMonth] = period.split("-").map(Number);
+  const hireParts = hireDate.split("-").map(Number);
+  const hireYear = hireParts[0];
+  const hireMonth = hireParts[1]; // 1-based
+  const rawYears = periodYear - hireYear;
+  // Subtract 1 if the hire-month anniversary has not yet been reached this year.
+  const adjusted = periodMonth >= hireMonth ? rawYears : rawYears - 1;
+  return Math.max(0, adjusted);
+}
+
+/**
+ * Taux d'ancienneté applicable selon les années de service complètes.
+ * Retourne une fraction (ex: 0.05 pour 5 %).
+ */
+export function computeSeniorityRate(yearsOfService: number): number {
+  if (yearsOfService < 2) return 0;
+  return Math.min(yearsOfService, 25) / 100;
+}
+
+/**
+ * Calcule la prime d'ancienneté en FCFA arrondie à l'unité.
+ * Base = salaire de base de l'employé.
+ */
+export function computePrimeAnciennete(
+  baseSalary: number,
+  hireDate: string | null,
+  period: string,
+): number {
+  if (!hireDate) return 0;
+  const years = computeYearsOfService(hireDate, period);
+  const rate = computeSeniorityRate(years);
+  return Math.round(baseSalary * rate);
+}
+
 export interface PayrollCalculationInput {
   baseSalary: number;
   transportAllowance: number;
   otherTaxablePrimes: number;
+  /** Prime d'ancienneté pré-calculée via computePrimeAnciennete(). */
+  primeAnciennete: number;
   maritalStatus: MaritalStatus;
   dependentChildren: number;
   workAccidentRate: number; // percent, e.g. 2 for 2%
 }
 
 export interface PayrollCalculationResult {
+  primeAnciennete: number;
   grossSalary: number;
   grossTaxable: number;
   cnpsEmployeeAmount: number;
@@ -209,10 +263,14 @@ export function calculatePayroll(
   const r = rates ?? getDefaultPayrollRates();
   const round = Math.round;
 
+  // Prime d'ancienneté intégrée dans le brut imposable et cotisable.
+  const primeAnciennete = input.primeAnciennete;
+
   const grossSalary =
-    input.baseSalary + input.transportAllowance + input.otherTaxablePrimes;
+    input.baseSalary + primeAnciennete + input.transportAllowance + input.otherTaxablePrimes;
   const taxableTransport = Math.max(0, input.transportAllowance - r.transportAllowanceExemption);
-  const grossTaxable = input.baseSalary + taxableTransport + input.otherTaxablePrimes;
+  // Brut imposable = base + ancienneté + transport taxable + autres primes
+  const grossTaxable = input.baseSalary + primeAnciennete + taxableTransport + input.otherTaxablePrimes;
 
   // -- CNPS (plafond unique, part salariale sur le salaire brut total) ---
   const cnpsBase = Math.min(grossSalary, r.cnpsCeilingMonthly);
@@ -247,6 +305,7 @@ export function calculatePayroll(
     taxeFormationContinue;
 
   return {
+    primeAnciennete,
     grossSalary,
     grossTaxable,
     cnpsEmployeeAmount,
@@ -264,9 +323,13 @@ export function calculatePayroll(
   };
 }
 
-/** Convenience wrapper computing payroll directly from an Employee row. */
+/**
+ * Convenience wrapper computing payroll directly from an Employee row.
+ * `period` ("YYYY-MM") is required to compute the prime d'ancienneté.
+ */
 export function calculatePayrollForEmployee(
   employee: Employee,
+  period: string,
   rates?: PayrollRates,
 ): PayrollCalculationResult {
   return calculatePayroll(
@@ -274,6 +337,7 @@ export function calculatePayrollForEmployee(
       baseSalary: employee.baseSalary,
       transportAllowance: employee.transportAllowance,
       otherTaxablePrimes: employee.otherTaxablePrimes,
+      primeAnciennete: computePrimeAnciennete(employee.baseSalary, employee.hireDate ?? null, period),
       maritalStatus: employee.maritalStatus,
       dependentChildren: employee.dependentChildren,
       workAccidentRate: employee.workAccidentRate,

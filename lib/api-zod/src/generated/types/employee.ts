@@ -18,6 +18,11 @@ export interface Employee {
   lastName: string;
   /** @nullable */
   cnpsNumber?: string | null;
+  /**
+     * Date d'embauche (AAAA-MM-JJ). Requis pour le calcul de la prime d'ancienneté.
+     * @nullable
+     */
+  hireDate?: string | null;
   maritalStatus: MaritalStatus;
   dependentChildren: number;
   baseSalary: number;

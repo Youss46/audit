@@ -20,7 +20,7 @@ import {
 } from "@workspace/api-zod";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
-import { calculatePayroll, loadFirmPayrollRates, postPayrollLedger, PayrollAlreadyPostedError, NoPayslipsToPostError } from "../lib/payroll-engine";
+import { calculatePayroll, computePrimeAnciennete, loadFirmPayrollRates, postPayrollLedger, PayrollAlreadyPostedError, NoPayslipsToPostError } from "../lib/payroll-engine";
 import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
@@ -43,6 +43,7 @@ function serializeEmployee(
     firstName: employee.firstName,
     lastName: employee.lastName,
     cnpsNumber: employee.cnpsNumber ?? null,
+    hireDate: employee.hireDate ?? null,
     maritalStatus: employee.maritalStatus,
     dependentChildren: employee.dependentChildren,
     baseSalary: employee.baseSalary,
@@ -69,6 +70,7 @@ function serializePayslip(
     period: payslip.period,
     grossSalary: payslip.grossSalary,
     grossTaxable: payslip.grossTaxable,
+    primeAnciennete: payslip.primeAnciennete,
     cnpsEmployeeAmount: payslip.cnpsEmployeeAmount,
     isAmount: payslip.isAmount,
     cnAmount: payslip.cnAmount,
@@ -144,6 +146,7 @@ router.post("/employees", requireRole("expert_comptable", "collaborateur"), asyn
       firstName: body.firstName,
       lastName: body.lastName,
       cnpsNumber: body.cnpsNumber ?? null,
+      hireDate: body.hireDate,
       maritalStatus: body.maritalStatus ?? "CELIBATAIRE",
       dependentChildren: body.dependentChildren ?? 0,
       baseSalary: body.baseSalary,
@@ -232,6 +235,7 @@ router.patch("/employees/:id", requireRole("expert_comptable", "collaborateur"),
       firstName: body.firstName ?? existing.firstName,
       lastName: body.lastName ?? existing.lastName,
       cnpsNumber: body.cnpsNumber !== undefined ? body.cnpsNumber : existing.cnpsNumber,
+      hireDate: body.hireDate !== undefined ? body.hireDate : existing.hireDate,
       maritalStatus: body.maritalStatus ?? existing.maritalStatus,
       dependentChildren: body.dependentChildren ?? existing.dependentChildren,
       baseSalary: body.baseSalary ?? existing.baseSalary,
@@ -365,6 +369,7 @@ router.post(
           baseSalary: employee.baseSalary,
           transportAllowance: employee.transportAllowance,
           otherTaxablePrimes: employee.otherTaxablePrimes,
+          primeAnciennete: computePrimeAnciennete(employee.baseSalary, employee.hireDate ?? null, period),
           maritalStatus: employee.maritalStatus,
           dependentChildren: employee.dependentChildren,
           workAccidentRate: employee.workAccidentRate,

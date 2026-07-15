@@ -15,6 +15,8 @@ export interface EmployeeInput {
   lastName: string;
   /** @nullable */
   cnpsNumber?: string | null;
+  /** Date d'embauche (AAAA-MM-JJ). */
+  hireDate: string;
   maritalStatus?: MaritalStatus;
   /** @minimum 0 */
   dependentChildren?: number;

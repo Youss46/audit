@@ -6172,6 +6172,7 @@ components:
         firstName: { type: string }
         lastName: { type: string }
         cnpsNumber: { type: ["string", "null"] }
+        hireDate: { type: ["string", "null"], description: "Date d'embauche (AAAA-MM-JJ). Requis pour le calcul de la prime d'ancienneté." }
         maritalStatus:
           $ref: "#/components/schemas/MaritalStatus"
         dependentChildren: { type: integer }
@@ -6187,12 +6188,13 @@ components:
 
     EmployeeInput:
       type: object
-      required: [clientId, firstName, lastName, baseSalary]
+      required: [clientId, firstName, lastName, baseSalary, hireDate]
       properties:
         clientId: { type: integer }
         firstName: { type: string, minLength: 1 }
         lastName: { type: string, minLength: 1 }
         cnpsNumber: { type: ["string", "null"] }
+        hireDate: { type: string, description: "Date d'embauche (AAAA-MM-JJ)." }
         maritalStatus:
           $ref: "#/components/schemas/MaritalStatus"
         dependentChildren: { type: integer, minimum: 0 }
@@ -6207,6 +6209,7 @@ components:
         firstName: { type: string, minLength: 1 }
         lastName: { type: string, minLength: 1 }
         cnpsNumber: { type: ["string", "null"] }
+        hireDate: { type: string, description: "Date d'embauche (AAAA-MM-JJ)." }
         maritalStatus:
           $ref: "#/components/schemas/MaritalStatus"
         dependentChildren: { type: integer, minimum: 0 }
@@ -6222,6 +6225,7 @@ components:
       required:
         [
           id, firmId, clientId, employeeId, period, grossSalary, grossTaxable,
+          primeAnciennete,
           cnpsEmployeeAmount, isAmount, cnAmount, itsAmount, netSalary,
           cnpsEmployerRetraite, cnpsEmployerPrestationsFamiliales, cnpsEmployerAccidentTravail,
           taxeApprentissage, taxeFormationContinue, totalEmployerCost, fiscalParts, createdAt,
@@ -6235,6 +6239,7 @@ components:
         period: { type: string }
         grossSalary: { type: integer }
         grossTaxable: { type: integer }
+        primeAnciennete: { type: integer, description: "Prime d'ancienneté calculée automatiquement (barème légal ivoirien)." }
         cnpsEmployeeAmount: { type: integer }
         isAmount: { type: integer }
         cnAmount: { type: integer }
