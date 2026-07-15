@@ -270,7 +270,7 @@ router.post(
             firmId: req.user!.firmId,
             clientId,
             date: row.dueDate,
-            label: `${item.type === "EMPRUNT_BANCAIRE" ? "Échéance emprunt" : "Échéance prêt"} — ${item.label} — Échéance n°${row.installmentNumber}`,
+            label: `Échéance ${item.type === "EMPRUNT_BANCAIRE" ? "Emprunt" : "Prêt"} ${item.label} - Capital: ${row.principalAmount.toLocaleString("fr-FR")} / Intérêts: ${row.interestAmount.toLocaleString("fr-FR")}`,
             amount: total,
             type: item.type === "EMPRUNT_BANCAIRE" ? "depense" : "recette",
             category: null,

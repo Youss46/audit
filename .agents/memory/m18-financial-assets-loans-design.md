@@ -34,9 +34,21 @@ postedCount/pendingCount, progressPct, totalAnnuity, totalInterest, pendingAnnui
 Progress bar also shown inline in registry table (installmentsPosted / totalInstallments).
 
 ## Journal accounts
-EMPRUNT_BANCAIRE: Debit loan account (161x) + 671 (interest), Credit 52 (Banque).
-IMMOBILISATION_FINANCIERE: Debit 52 (Banque), Credit 27x account (principal) + 771 (interest).
-Interest line omitted when interestAmount === 0 (zero-rate deposits/advances).
+EMPRUNT_BANCAIRE: Debit loan's own account (item.accountNumber, e.g. 162xxx — dynamic per
+loan, not a hardcoded generic code) + 6711 (interest), Credit 521 (Banque, specific
+sub-account). IMMOBILISATION_FINANCIERE: Debit 521 (Banque), Credit 27x account (principal)
++ 7711 (interest). Interest line omitted when interestAmount === 0 (zero-rate deposits/advances).
+
+**Why:** the loan's own account (chosen at creation from the 161x-168x catalogue) is more
+correct than a single hardcoded "162" for every loan — different loan sub-types need their
+own SYSCOHADA account. 6711/7711/521 are specific sub-accounts, not the 671/771/52 parents.
+No per-client bank-account setup exists in the app; 521 is a fixed default until one is built.
+
+## BQ journal classification, not OD
+`paymentMethod: "virement"` is set explicitly on generated installment transactions, so the
+frontend's `getJournalCode()` (see the OD-journal-fix note above) routes them to "BQ" — correct,
+since these post a real bank movement. Only genuinely payment-method-less adjusting entries
+(closings, à-nouveaux, dotations) should fall into "OD".
 
 **How to apply:** Any new cabinet-only tab must be added to CABINET_TABS in ClientAccountingNav.
 The four-useRoute pattern is the standard detection approach for all cabinet tabs.

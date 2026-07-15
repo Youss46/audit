@@ -129,13 +129,17 @@ export function getDueUnpostedInstallments(
 /**
  * Derives the SYSCOHADA journal accounts for one installment payment.
  * - EMPRUNT_BANCAIRE (we owe the bank): Debit the loan account (capital) +
- *   671 (interest), Credit the treasury account.
+ *   6711 (interest), Credit the treasury account.
  * - IMMOBILISATION_FINANCIERE (someone owes us): Debit the treasury
- *   account, Credit the item account (capital) + 771 (interest, if any).
+ *   account, Credit the item account (capital) + 7711 (interest, if any).
+ *
+ * TREASURY_ACCOUNT is a fixed "521" default (Banques) rather than a
+ * per-client bank account, since the app has no per-client multi-bank-account
+ * setup yet — this can be swapped for a dynamic lookup once that exists.
  */
-const TREASURY_ACCOUNT = "52"; // Banques — bank transfer is the default settlement channel for M18 items.
-const INTEREST_EXPENSE_ACCOUNT = "671"; // Intérêts des emprunts.
-const INTEREST_INCOME_ACCOUNT = "771"; // Intérêts des prêts.
+const TREASURY_ACCOUNT = "521"; // Banques — specific sub-account, not the "52" class parent.
+const INTEREST_EXPENSE_ACCOUNT = "6711"; // Intérêts des emprunts (specific sub-account, not "671" parent).
+const INTEREST_INCOME_ACCOUNT = "7711"; // Intérêts des prêts (specific sub-account, not "771" parent).
 
 export function buildInstallmentJournalLines(input: {
   type: "EMPRUNT_BANCAIRE" | "IMMOBILISATION_FINANCIERE";

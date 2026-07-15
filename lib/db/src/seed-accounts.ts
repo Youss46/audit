@@ -38,6 +38,9 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
 
   // Classe 5 - Comptes de trésorerie
   { accountNumber: "52", name: "Banques", accountClass: 5 },
+  // Module M18 (Financements & Dettes) — specific bank sub-account used for
+  // loan/financial-asset installment settlements.
+  { accountNumber: "521", name: "Banques locales", accountClass: 5 },
   { accountNumber: "571", name: "Caisse", accountClass: 5 },
   // Module P6 (Un Pompiste = Une Caisse): master/collective account for a
   // STATION_SERVICE client's per-pompiste sub-accounts (571101, 571102...).
@@ -76,6 +79,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "6813", name: "Dotations aux amortissements des immobilisations corporelles", accountClass: 6 },
   // Module M18 (Immobilisations Financières & Emprunts).
   { accountNumber: "671", name: "Intérêts des emprunts", accountClass: 6 },
+  { accountNumber: "6711", name: "Intérêts des emprunts", accountClass: 6 },
 
   // Classe 7 - Comptes de produits
   { accountNumber: "701", name: "Ventes de marchandises", accountClass: 7 },
@@ -84,6 +88,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "781", name: "Reprises d'amortissements", accountClass: 7 },
   // Module M18 (Immobilisations Financières & Emprunts).
   { accountNumber: "771", name: "Intérêts des prêts", accountClass: 7 },
+  { accountNumber: "7711", name: "Intérêts des prêts", accountClass: 7 },
 
   // Classe 8 - Comptes des autres charges et produits
   { accountNumber: "831", name: "Charges HAO", accountClass: 8 },

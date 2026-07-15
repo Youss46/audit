@@ -9,6 +9,7 @@ import {
   useGetFinancialItemSchedule,
   getGetFinancialItemScheduleQueryKey,
   useGenerateFinanceJournalEntries,
+  getListTransactionsQueryKey,
 } from "@workspace/api-client-react"
 import type { FinancialItemType } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
@@ -232,13 +233,17 @@ export default function Financements() {
   const generateMutation = useGenerateFinanceJournalEntries({
     mutation: {
       onSuccess: (data) => {
-        const { generated, skipped } = data as { generated: unknown[]; skipped: unknown[] }
-        toast({
-          title: "Échéances générées",
-          description: `${generated.length} élément(s) traité(s) — écriture(s) créée(s) à valider en M3${skipped.length ? `, ${skipped.length} ignoré(s)` : ""}.`,
-        })
+        const { generated } = data as { generated: unknown[]; skipped: unknown[] }
+        if (generated.length === 0) {
+          toast({ title: "Aucune nouvelle échéance à traiter pour le moment." })
+        } else {
+          toast({
+            title: "Échéances générées",
+            description: "Les écritures d'échéances ont été générées avec succès (statut : à valider).",
+          })
+        }
         invalidateItems()
-        queryClient.invalidateQueries({ queryKey: ["transactions"] })
+        queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey() })
       },
       onError: () => toast({ title: "Erreur lors de la génération", variant: "destructive" }),
     },
