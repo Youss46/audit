@@ -77,6 +77,7 @@ import type {
   DepreciationSchedule,
   Document,
   DocumentDetail,
+  DocumentFolder,
   DocumentInput,
   DocumentTemplateListResult,
   DsfResult,
@@ -2100,7 +2101,7 @@ export const getDeleteDocumentUrl = (id: number,) => {
 }
 
 /**
- * @summary Delete a document
+ * @summary Delete a document (blocked for archived documents)
  */
 export const deleteDocument = async (id: number, options?: RequestInit): Promise<void> => {
 
@@ -2149,7 +2150,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeleteDocumentMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Delete a document
+ * @summary Delete a document (blocked for archived documents)
  */
 export const useDeleteDocument = <TError = ErrorType<ErrorResponse>,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDocument>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
@@ -2161,6 +2162,160 @@ export const useDeleteDocument = <TError = ErrorType<ErrorResponse>,
       > => {
       return useMutation(getDeleteDocumentMutationOptions(options));
     }
+
+export const getListClientDocumentFoldersUrl = (id: number,) => {
+
+
+
+
+  return `/api/clients/${id}/document-folders`
+}
+
+/**
+ * @summary List fiscal year archive folders for a client (root folders with nested sub-folders)
+ */
+export const listClientDocumentFolders = async (id: number, options?: RequestInit): Promise<DocumentFolder[]> => {
+
+  return customFetch<DocumentFolder[]>(getListClientDocumentFoldersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListClientDocumentFoldersQueryKey = (id: number,) => {
+    return [
+    `/api/clients/${id}/document-folders`
+    ] as const;
+    }
+
+
+export const getListClientDocumentFoldersQueryOptions = <TData = Awaited<ReturnType<typeof listClientDocumentFolders>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClientDocumentFolders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListClientDocumentFoldersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listClientDocumentFolders>>> = ({ signal }) => listClientDocumentFolders(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listClientDocumentFolders>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListClientDocumentFoldersQueryResult = NonNullable<Awaited<ReturnType<typeof listClientDocumentFolders>>>
+export type ListClientDocumentFoldersQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List fiscal year archive folders for a client (root folders with nested sub-folders)
+ */
+
+export function useListClientDocumentFolders<TData = Awaited<ReturnType<typeof listClientDocumentFolders>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listClientDocumentFolders>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListClientDocumentFoldersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getListFolderDocumentsUrl = (folderId: number,) => {
+
+
+
+
+  return `/api/document-folders/${folderId}/documents`
+}
+
+/**
+ * @summary List documents stored inside a specific archive sub-folder
+ */
+export const listFolderDocuments = async (folderId: number, options?: RequestInit): Promise<Document[]> => {
+
+  return customFetch<Document[]>(getListFolderDocumentsUrl(folderId),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListFolderDocumentsQueryKey = (folderId: number,) => {
+    return [
+    `/api/document-folders/${folderId}/documents`
+    ] as const;
+    }
+
+
+export const getListFolderDocumentsQueryOptions = <TData = Awaited<ReturnType<typeof listFolderDocuments>>, TError = ErrorType<ErrorResponse>>(folderId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFolderDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListFolderDocumentsQueryKey(folderId);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listFolderDocuments>>> = ({ signal }) => listFolderDocuments(folderId, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: folderId !== null && folderId !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listFolderDocuments>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListFolderDocumentsQueryResult = NonNullable<Awaited<ReturnType<typeof listFolderDocuments>>>
+export type ListFolderDocumentsQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary List documents stored inside a specific archive sub-folder
+ */
+
+export function useListFolderDocuments<TData = Awaited<ReturnType<typeof listFolderDocuments>>, TError = ErrorType<ErrorResponse>>(
+ folderId: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listFolderDocuments>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListFolderDocumentsQueryOptions(folderId,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListMissionsUrl = (params?: ListMissionsParams,) => {
   const normalizedParams = new URLSearchParams();

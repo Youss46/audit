@@ -6,26 +6,18 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface Document {
+export interface DocumentFolder {
   id: number;
   firmId: number;
   clientId: number;
   /** @nullable */
-  clientName?: string | null;
-  /** @nullable */
-  missionId?: number | null;
-  /** @nullable */
-  folderId?: number | null;
-  /** @nullable */
-  folderCategory?: string | null;
-  category: string;
-  fileName: string;
-  mimeType: string;
-  fileSize: number;
+  parentFolderId?: number | null;
+  name: string;
   isArchived: boolean;
   /** @nullable */
   fiscalYear?: number | null;
   /** @nullable */
-  uploadedByName?: string | null;
+  folderCategory?: string | null;
   createdAt: Date;
+  children?: DocumentFolder[];
 }

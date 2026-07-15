@@ -631,7 +631,7 @@ paths:
     delete:
       operationId: deleteDocument
       tags: [documents]
-      summary: Delete a document
+      summary: Delete a document (blocked for archived documents)
       parameters:
         - name: id
           in: path
@@ -641,8 +641,68 @@ paths:
       responses:
         "204":
           description: Deleted
+        "403":
+          description: Document is part of a locked fiscal archive and cannot be deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Document not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /clients/{id}/document-folders:
+    get:
+      operationId: listClientDocumentFolders
+      tags: [documents]
+      summary: List fiscal year archive folders for a client (root folders with nested sub-folders)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Archive root folders with their sub-folders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DocumentFolder"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /document-folders/{folderId}/documents:
+    get:
+      operationId: listFolderDocuments
+      tags: [documents]
+      summary: List documents stored inside a specific archive sub-folder
+      parameters:
+        - name: folderId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Documents in the archive folder (read-only)
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Document"
+        "404":
+          description: Folder not found
           content:
             application/json:
               schema:
@@ -4553,6 +4613,7 @@ components:
           fileName,
           mimeType,
           fileSize,
+          isArchived,
           createdAt,
         ]
       properties:
@@ -4561,10 +4622,14 @@ components:
         clientId: { type: integer }
         clientName: { type: ["string", "null"] }
         missionId: { type: ["integer", "null"] }
+        folderId: { type: ["integer", "null"] }
+        folderCategory: { type: ["string", "null"] }
         category: { type: string }
         fileName: { type: string }
         mimeType: { type: string }
         fileSize: { type: integer }
+        isArchived: { type: boolean }
+        fiscalYear: { type: ["integer", "null"] }
         uploadedByName: { type: ["string", "null"] }
         createdAt: { type: string, format: date-time }
 
@@ -4577,6 +4642,24 @@ components:
             fileData:
               type: string
               description: Base64-encoded file content
+
+    DocumentFolder:
+      type: object
+      required: [id, firmId, clientId, name, isArchived, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        parentFolderId: { type: ["integer", "null"] }
+        name: { type: string }
+        isArchived: { type: boolean }
+        fiscalYear: { type: ["integer", "null"] }
+        folderCategory: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+        children:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentFolder"
 
     TransactionType:
       type: string

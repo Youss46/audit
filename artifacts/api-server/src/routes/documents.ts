@@ -41,10 +41,14 @@ function serializeMetadata(
     clientId: doc.clientId,
     clientName: clientName ?? null,
     missionId: doc.missionId,
+    folderId: doc.folderId ?? null,
+    folderCategory: doc.folderCategory ?? null,
     category: doc.category,
     fileName: doc.fileName,
     mimeType: doc.mimeType,
     fileSize: doc.fileSize,
+    isArchived: doc.isArchived,
+    fiscalYear: doc.fiscalYear ?? null,
     uploadedByName,
     createdAt: doc.createdAt,
   };
@@ -246,6 +250,18 @@ router.delete(
     });
     if (!doc) {
       res.status(404).json({ error: "Document introuvable." });
+      return;
+    }
+
+    // Archive fiscale: documents belonging to a locked fiscal year are strictly
+    // read-only for every role — including expert_comptable. Only download
+    // and view are permitted on archived documents.
+    if (doc.isArchived) {
+      res.status(403).json({
+        error:
+          "Ce document fait partie d'une archive fiscale définitivement clôturée. " +
+          "Il est en lecture seule et ne peut pas être supprimé.",
+      });
       return;
     }
 

@@ -444,10 +444,17 @@ export interface Document {
   clientName?: string | null;
   /** @nullable */
   missionId?: number | null;
+  /** @nullable */
+  folderId?: number | null;
+  /** @nullable */
+  folderCategory?: string | null;
   category: string;
   fileName: string;
   mimeType: string;
   fileSize: number;
+  isArchived: boolean;
+  /** @nullable */
+  fiscalYear?: number | null;
   /** @nullable */
   uploadedByName?: string | null;
   createdAt: string;
@@ -457,6 +464,22 @@ export type DocumentDetail = Document & {
   /** Base64-encoded file content */
   fileData: string;
 };
+
+export interface DocumentFolder {
+  id: number;
+  firmId: number;
+  clientId: number;
+  /** @nullable */
+  parentFolderId?: number | null;
+  name: string;
+  isArchived: boolean;
+  /** @nullable */
+  fiscalYear?: number | null;
+  /** @nullable */
+  folderCategory?: string | null;
+  createdAt: string;
+  children?: DocumentFolder[];
+}
 
 export type TransactionType = typeof TransactionType[keyof typeof TransactionType];
 

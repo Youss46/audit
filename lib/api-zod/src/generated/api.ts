@@ -576,10 +576,14 @@ export const ListClientDocumentsResponseItem = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
+  "folderId": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
   "mimeType": zod.string(),
   "fileSize": zod.number(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
   "uploadedByName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -612,10 +616,14 @@ export const UploadClientDocumentResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
+  "folderId": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
   "mimeType": zod.string(),
   "fileSize": zod.number(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
   "uploadedByName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -634,10 +642,14 @@ export const ListDocumentsResponseItem = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
+  "folderId": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
   "mimeType": zod.string(),
   "fileSize": zod.number(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
   "uploadedByName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 })
@@ -657,10 +669,14 @@ export const GetDocumentResponse = zod.object({
   "clientId": zod.number(),
   "clientName": zod.string().nullish(),
   "missionId": zod.number().nullish(),
+  "folderId": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
   "category": zod.string(),
   "fileName": zod.string(),
   "mimeType": zod.string(),
   "fileSize": zod.number(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
   "uploadedByName": zod.string().nullish(),
   "createdAt": zod.coerce.date()
 }).and(zod.object({
@@ -669,13 +685,62 @@ export const GetDocumentResponse = zod.object({
 
 
 /**
- * @summary Delete a document
+ * @summary Delete a document (blocked for archived documents)
  */
 export const DeleteDocumentParams = zod.object({
   "id": zod.coerce.number()
 })
 
 export const DeleteDocumentResponse = zod.void()
+
+
+/**
+ * @summary List fiscal year archive folders for a client (root folders with nested sub-folders)
+ */
+export const ListClientDocumentFoldersParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ListClientDocumentFoldersResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "parentFolderId": zod.number().nullish(),
+  "name": zod.string(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "children": zod.array(zod.unknown()).optional()
+})
+export const ListClientDocumentFoldersResponse = zod.array(ListClientDocumentFoldersResponseItem)
+
+
+/**
+ * @summary List documents stored inside a specific archive sub-folder
+ */
+export const ListFolderDocumentsParams = zod.object({
+  "folderId": zod.coerce.number()
+})
+
+export const ListFolderDocumentsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "missionId": zod.number().nullish(),
+  "folderId": zod.number().nullish(),
+  "folderCategory": zod.string().nullish(),
+  "category": zod.string(),
+  "fileName": zod.string(),
+  "mimeType": zod.string(),
+  "fileSize": zod.number(),
+  "isArchived": zod.boolean(),
+  "fiscalYear": zod.number().nullish(),
+  "uploadedByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListFolderDocumentsResponse = zod.array(ListFolderDocumentsResponseItem)
 
 
 /**

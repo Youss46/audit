@@ -32,6 +32,7 @@ import pumpsRouter from "./pumps";
 import pumpAssignmentsRouter from "./pump-assignments";
 import fuelPricesRouter from "./fuel-prices";
 import mobileMoneyRouter from "./mobile-money";
+import documentFoldersRouter from "./document-folders";
 
 const router: IRouter = Router();
 
@@ -68,5 +69,6 @@ router.use(pumpsRouter);
 router.use(pumpAssignmentsRouter);
 router.use(fuelPricesRouter);
 router.use(mobileMoneyRouter);
+router.use(documentFoldersRouter);
 
 export default router;

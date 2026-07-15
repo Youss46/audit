@@ -90,6 +90,7 @@ export * from './depreciationSchedule';
 export * from './depreciationType';
 export * from './document';
 export * from './documentDetail';
+export * from './documentFolder';
 export * from './documentInput';
 export * from './documentTemplateListResult';
 export * from './documentTemplateSummary';

@@ -1,4 +1,4 @@
-import { and, eq, gte, lt } from "drizzle-orm";
+import { and, eq, gte, isNull, lt } from "drizzle-orm";
 import {
   db,
   transactionsTable,
@@ -6,6 +6,7 @@ import {
   fixedAssetsTable,
   financialAssetsLoansTable,
   fiscalYearClosingsTable,
+  documentFoldersTable,
 } from "@workspace/db";
 import {
   getAnnuityForYear,
@@ -79,6 +80,87 @@ export class PeriodLockedError extends Error {
     );
     this.name = "PeriodLockedError";
   }
+}
+
+// -------------------------------------------------------------------------
+// Fiscal archive folder tree (GED integration)
+// -------------------------------------------------------------------------
+
+// The 4 canonical sub-folders created automatically inside each locked
+// "Exercice YYYY" archive root when a fiscal year is closed (Step 3).
+// `folderCategory` is the stable machine-readable key; `name` is the
+// human-readable French label shown in the GED "Archives Fiscales" tab.
+export const ARCHIVE_SUBFOLDERS = [
+  {
+    name: "01 — États Financiers & Liasse Fiscale (DSF)",
+    folderCategory: "etats_financiers",
+  },
+  {
+    name: "02 — Journaux & Grand Livre (Légal)",
+    folderCategory: "journaux_grand_livre",
+  },
+  {
+    name: "03 — Dossier d'Audit & Rapports (Cabinet)",
+    folderCategory: "dossier_audit",
+  },
+  {
+    name: "04 — Pièces Justificatives Majeures",
+    folderCategory: "pieces_justificatives",
+  },
+] as const;
+
+/**
+ * Creates the locked GED archive tree for a closed fiscal year:
+ *   • one root folder  → "Exercice {year}"  (isArchived=true, parentFolderId=null)
+ *   • four sub-folders → the four canonical ARCHIVE_SUBFOLDERS underneath it
+ *
+ * Idempotent: skips silently if the root folder already exists so that
+ * re-running the closing routine never produces duplicates.
+ */
+async function createFiscalArchiveFolders(
+  firmId: number,
+  clientId: number,
+  year: number,
+  createdById: number,
+): Promise<void> {
+  const existing = await db.query.documentFoldersTable.findFirst({
+    where: and(
+      eq(documentFoldersTable.firmId, firmId),
+      eq(documentFoldersTable.clientId, clientId),
+      eq(documentFoldersTable.fiscalYear, year),
+      isNull(documentFoldersTable.parentFolderId),
+    ),
+  });
+  if (existing) return; // already created — nothing to do
+
+  // Root archive folder: "Exercice 2025"
+  const [root] = await db
+    .insert(documentFoldersTable)
+    .values({
+      firmId,
+      clientId,
+      parentFolderId: null,
+      name: `Exercice ${year}`,
+      isArchived: true,
+      fiscalYear: year,
+      folderCategory: null,
+      createdById,
+    })
+    .returning();
+
+  // Four fixed sub-folders underneath the root
+  await db.insert(documentFoldersTable).values(
+    ARCHIVE_SUBFOLDERS.map((sub) => ({
+      firmId,
+      clientId,
+      parentFolderId: root.id,
+      name: sub.name,
+      isArchived: true,
+      fiscalYear: year,
+      folderCategory: sub.folderCategory,
+      createdById,
+    })),
+  );
 }
 
 // -------------------------------------------------------------------------
@@ -594,6 +676,11 @@ export async function closeFiscalYear(
         eq(fiscalYearClosingsTable.year, year),
       ),
     );
+
+  // Step 5 — Create the locked GED archive folder tree for this fiscal year.
+  // Runs after the period lock so the folders are created only on a successful
+  // close. Idempotent: safe to re-run if the closing is retried.
+  await createFiscalArchiveFolders(firmId, clientId, year, createdById);
 
   return { clientId, year, step1, step2, lockedAt: now.toISOString(), step4 };
 }
