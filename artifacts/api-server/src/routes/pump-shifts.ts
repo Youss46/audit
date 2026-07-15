@@ -14,7 +14,7 @@ import {
   type PumpShift,
   type PaymentMethod,
 } from "@workspace/db";
-import { broadcastPendingCounts } from "../lib/pending-counts";
+import { broadcastPendingCounts, notifyPmeTransactionSubmitted } from "../lib/pending-counts";
 import {
   GetLastPumpIndexQueryParams,
   GetLastPumpIndexResponse,
@@ -574,6 +574,22 @@ router.post("/pump-shifts/:id/validate", requirePermission("caisse.create"), asy
   });
 
   await broadcastPendingCounts(req.user!.firmId, shift.clientId);
+
+  // Module M32: same "à valider" notification the cabinet gets for any
+  // other PME-originated entry -- without this, "Ventes de carburant"
+  // (booked here, not through the generic accounting.ts create route)
+  // silently skipped the notifications table, leaving the sidebar badge
+  // in sync while the header bell stayed empty.
+  if (isPortalRole(req.user!.role)) {
+    await notifyPmeTransactionSubmitted({
+      firmId: req.user!.firmId,
+      clientId: shift.clientId,
+      transactionId: saleTx.id,
+      clientName: shift.client?.name ?? "Client",
+      type: "recette",
+      amount: expectedAmount,
+    });
+  }
 
   const saleTransaction = await withJournalLines(saleTx, {
     clientName: shift.client?.name,
