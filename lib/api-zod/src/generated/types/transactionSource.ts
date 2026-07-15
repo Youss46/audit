@@ -14,4 +14,8 @@ export const TransactionSource = {
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
   caisse_closure: 'caisse_closure',
+  closing_result: 'closing_result',
+  a_nouveaux: 'a_nouveaux',
+  vat_liquidation: 'vat_liquidation',
+  depreciation_closing: 'depreciation_closing',
 } as const;

@@ -4847,6 +4847,10 @@ components:
         - manual_cabinet
         - settlement
         - caisse_closure
+        - closing_result
+        - a_nouveaux
+        - vat_liquidation
+        - depreciation_closing
 
     PendingCounts:
       type: object
