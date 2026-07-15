@@ -5,6 +5,8 @@ import {
   getListPumpShiftsQueryKey,
   useGetPumpShift,
   getGetPumpShiftQueryKey,
+  useListFuelPrices,
+  getListFuelPricesQueryKey,
   useValidatePumpShift,
   type PumpShiftValidateResult,
 } from "@workspace/api-client-react"
@@ -19,14 +21,6 @@ import { AmountInput } from "@/components/ui/amount-input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-
-// Module P7: default local pump price ("Ex : 875 FCFA pour le Super en Côte
-// d'Ivoire") -- a starting point the pompiste can still override before
-// validating.
-const DEFAULT_UNIT_PRICE: Record<string, number> = {
-  super: 875,
-  gasoil: 810,
-}
 
 function getFuelLabel(fuel: string) {
   return fuel === "super" ? "Super" : fuel === "gasoil" ? "Gasoil" : fuel
@@ -109,12 +103,27 @@ function PendingShiftsList() {
 function ValidateShift({ shiftId }: { shiftId: number }) {
   const { toast } = useToast()
   const [, navigate] = useLocation()
+  const { user } = useAuth()
+  const clientId = user?.clientId ?? 0
 
   const { data: shift, isLoading } = useGetPumpShift(shiftId, {
     query: { queryKey: getGetPumpShiftQueryKey(shiftId) },
   })
 
-  const [unitPrice, setUnitPrice] = useState("")
+  // Module P7 (Sécurisation du prix carburant): the price is never entered
+  // by the pompiste. It is fetched here purely for display -- based on the
+  // shift's fuel type -- and the input is always read-only. The server
+  // independently re-resolves the same value at validation time, so this
+  // fetch is a UX convenience, not a trust boundary.
+  const { data: fuelPrices, isLoading: isLoadingFuelPrice } = useListFuelPrices(
+    { clientId },
+    { query: { enabled: !!clientId, queryKey: getListFuelPricesQueryKey({ clientId }) } },
+  )
+  const activeFuelPrice = shift
+    ? fuelPrices?.find((p) => p.fuelType === shift.fuelType)
+    : undefined
+  const unitPrice = activeFuelPrice ? String(activeFuelPrice.unitPrice) : ""
+
   // Split-payment breakdown state (all in FCFA)
   const [cashAmount, setCashAmount] = useState("")
   const [waveAmount, setWaveAmount] = useState("")
@@ -122,12 +131,6 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
   const [mtnMomoAmount, setMtnMomoAmount] = useState("")
   const [declaredAmount, setDeclaredAmount] = useState("")
   const [result, setResult] = useState<PumpShiftValidateResult | null>(null)
-
-  useEffect(() => {
-    if (shift && !unitPrice) {
-      setUnitPrice(String(DEFAULT_UNIT_PRICE[shift.fuelType] ?? ""))
-    }
-  }, [shift, unitPrice])
 
   const validateMutation = useValidatePumpShift({
     mutation: {
@@ -145,10 +148,12 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
     },
   })
 
-  // Theoretical sale amount from pump readings × unit price.
+  // Theoretical sale amount from pump readings × unit price (locked, from
+  // fuelPricesTable -- see activeFuelPrice above). Decimal-safe: prices can
+  // include cents (e.g. 810.50 FCFA/L).
   const expectedAmount = useMemo(() => {
     if (!shift) return null
-    const price = parseInt(unitPrice, 10)
+    const price = parseFloat(unitPrice)
     if (isNaN(price)) return null
     return Math.round(shift.volumeLiters * price)
   }, [shift, unitPrice])
@@ -180,7 +185,10 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
     validateMutation.mutate({
       id: shift.id,
       data: {
-        unitPrice: parseInt(unitPrice, 10),
+        // Sent for shape-compatibility only -- the server ignores this
+        // field and always re-resolves the price itself from
+        // fuelPricesTable (see pump-shifts.ts validate route).
+        unitPrice: parseFloat(unitPrice),
         cashAmount: parseInt(cashAmount, 10) || 0,
         waveAmount: parseInt(waveAmount, 10) || 0,
         orangeMoneyAmount: parseInt(orangeMoneyAmount, 10) || 0,
@@ -198,12 +206,14 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
   }
 
   const isDisabled = shift.status !== "OPEN"
+  const priceNotConfigured = !isLoadingFuelPrice && !activeFuelPrice
   const canValidate =
     paymentMatchesExpected &&
     !!unitPrice &&
     (!hasCash || !!declaredAmount) &&
     !validateMutation.isPending &&
-    !isDisabled
+    !isDisabled &&
+    !priceNotConfigured
 
   const amountGap = expectedAmount != null ? totalPayments - expectedAmount : null
 
@@ -237,11 +247,26 @@ function ValidateShift({ shiftId }: { shiftId: number }) {
             <Label htmlFor="unitPrice">Prix unitaire au litre (FCFA)</Label>
             <AmountInput
               id="unitPrice"
-              value={unitPrice}
-              onChange={(e) => setUnitPrice(e.target.value)}
-              disabled={isDisabled}
+              value={isLoadingFuelPrice ? "" : unitPrice}
+              placeholder={isLoadingFuelPrice ? "Chargement…" : undefined}
+              readOnly
+              disabled
+              className="bg-muted"
               data-testid="input-unit-price"
             />
+            <p className="text-xs text-muted-foreground">
+              Prix fixé par le propriétaire du dossier — non modifiable ici.
+            </p>
+            {priceNotConfigured && (
+              <div className="flex items-center gap-1.5 text-xs text-destructive pt-0.5">
+                <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Aucun prix n'est configuré pour {getFuelLabel(shift.fuelType)}. Demandez au
+                  propriétaire du dossier de le définir dans « Prix du carburant » avant de
+                  valider ce shift.
+                </span>
+              </div>
+            )}
           </div>
 
           {/* ── Répartition des paiements ── */}

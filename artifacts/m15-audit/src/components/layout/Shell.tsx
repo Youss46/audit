@@ -29,7 +29,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
-import { UserCog, Fuel } from "lucide-react"
+import { UserCog, Fuel, CircleDollarSign } from "lucide-react"
 import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
@@ -168,6 +168,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       user.role !== "client_pme" &&
       (location.startsWith("/client/settings/staff") ||
         location.startsWith("/client/settings/pumps") ||
+        location.startsWith("/client/settings/fuel-prices") ||
         location.startsWith("/client/settings/pump-assignments"))
     ) {
       setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
@@ -223,6 +224,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
     user.role !== "client_pme" &&
     (location.startsWith("/client/settings/staff") ||
       location.startsWith("/client/settings/pumps") ||
+      location.startsWith("/client/settings/fuel-prices") ||
       location.startsWith("/client/settings/pump-assignments"))
   ) {
     return <div className="min-h-screen bg-background" />
@@ -317,6 +319,20 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-pumps">
               <Fuel className="h-5 w-5" />
               Gestion des pompes
+            </Link>
+          )}
+
+          {/* Module P7 (Sécurisation du prix carburant): active FCFA price
+              per litre for each fuel type -- PME owner only. */}
+          {user?.role === "client_pme" && (
+            <Link href="/client/settings/fuel-prices" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/client/settings/fuel-prices")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-fuel-prices">
+              <CircleDollarSign className="h-5 w-5" />
+              Prix du carburant
             </Link>
           )}
 
