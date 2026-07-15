@@ -51,8 +51,12 @@ export const AuditAction = {
   FINANCIAL_ENTRY_GENERATE: "FINANCIAL_ENTRY_GENERATE",
   // Capitaux Propres — Apport de constitution du capital social.
   // Généré automatiquement lors de la création ou du premier renseignement du
-  // capital social d'un dossier client (Débit 5211 / Crédit 1013).
+  // capital social d'un dossier client (Débit 5211/4613 / Crédit 1013).
   CAPITAL_INIT: "CAPITAL_INIT",
+  // Capitaux Propres — "Reprise de dossier" : le capital d'un client déjà
+  // existant est marqué comme initialisé SANS générer d'écriture de
+  // constitution (le solde historique sera repris via la Balance d'Entrée).
+  CAPITAL_REPRISE: "CAPITAL_REPRISE",
   // Module M19 (Clôture d'Exercice Comptable): official year-end closing.
   // The LOCKED status is permanent and cannot be reversed through the UI.
   PERIOD_CLOSE: "PERIOD_CLOSE",

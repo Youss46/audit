@@ -80,8 +80,21 @@ export const clientsTable = pgTable(
     // Crédit 1013) générée une seule fois lors de la création ou du premier
     // renseignement du capital.
     capitalSocial: integer("capital_social").notNull().default(0),
+    // true si le capital souscrit a déjà été effectivement versé/déposé en
+    // banque à la constitution (cas standard ivoirien) ; false s'il est
+    // seulement souscrit et pas encore libéré. Détermine le compte débité par
+    // l'écriture automatique de constitution : 5211 (Banques locales) si
+    // versé, sinon 4613 (Associés, capital souscrit — appelé, non versé).
+    capitalDeposited: boolean("capital_deposited").notNull().default(true),
+    // "Reprise de dossier" : true quand ce client existait déjà avant son
+    // entrée dans le cabinet (dossier repris, pas une création d'entreprise).
+    // Dans ce cas, aucune écriture de constitution automatique n'est générée
+    // — le capital historique est repris via la Balance d'Entrée globale
+    // (À-nouveaux), pas via un apport de constitution daté d'aujourd'hui.
+    isReprise: boolean("is_reprise").notNull().default(false),
     // Marqueur d'idempotence : true dès que l'écriture de constitution a été
-    // comptabilisée, pour éviter toute double-comptabilisation.
+    // comptabilisée (ou que le dossier a été marqué "repris"), pour éviter
+    // toute double-comptabilisation.
     isCapitalInitialized: boolean("is_capital_initialized").notNull().default(false),
     // Denormalized cache of the client's most recent mission status, kept in
     // sync by the missions routes. Null means no mission has ever been

@@ -86,6 +86,15 @@ router.post(
       return;
     }
 
+    // Pré-vérification explicite : un exercice déjà clôturé et verrouillé ne
+    // peut pas être re-clôturé. On distingue ce cas de tous les autres refus
+    // de mutation basés sur PeriodLockedError (qui gardent leur message
+    // générique) pour renvoyer un message dédié à l'action de clôture.
+    if (await isPeriodLocked(req.user!.firmId, clientId, year)) {
+      res.status(409).json({ error: "Cet exercice est déjà clôturé et verrouillé." });
+      return;
+    }
+
     try {
       const result = await closeFiscalYear(
         req.user!.firmId,

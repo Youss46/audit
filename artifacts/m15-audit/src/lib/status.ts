@@ -227,6 +227,9 @@ const OD_JOURNAL_SOURCES = new Set<TransactionSource | string>([
   "a_nouveaux",
   "vat_liquidation",
   "depreciation_closing",
+  // Écriture de constitution du capital social (Débit 5211/4613 / Crédit 1013) :
+  // toujours comptabilisée dans le Journal OD, jamais en BQ/CA/HA/VT.
+  "capital_constitution",
 ])
 
 export function getJournalCode(entry: {

@@ -54,6 +54,8 @@ const clientSchema = z.object({
   contactName: z.string().optional(),
   annualTurnover: z.coerce.number().min(0, "Le chiffre d'affaires doit être positif").optional(),
   capitalSocial: z.coerce.number().min(0, "Le capital social doit être positif").optional(),
+  capitalDeposited: z.boolean(),
+  isReprise: z.boolean(),
   taxRegime: z.enum(TAX_REGIME_VALUES, { required_error: "Le régime fiscal est requis" }),
   isVatRegistered: z.boolean(),
 })
@@ -76,6 +78,8 @@ export default function ClientNew() {
       contactName: "",
       annualTurnover: 0,
       capitalSocial: 0,
+      capitalDeposited: true,
+      isReprise: false,
       taxRegime: TaxRegime.REEL_NORMAL,
       isVatRegistered: true,
     }
@@ -85,11 +89,15 @@ export default function ClientNew() {
     mutation: {
       onSuccess: (data) => {
         const capitalSocial = form.getValues("capitalSocial") ?? 0
+        const capitalDeposited = form.getValues("capitalDeposited")
+        const isReprise = form.getValues("isReprise")
         toast({
           title: "Client créé avec succès",
-          description: capitalSocial > 0
-            ? "Écriture de constitution du capital social générée automatiquement (Journal OD — Débit 5211 / Crédit 1013)."
-            : undefined,
+          description: capitalSocial <= 0
+            ? undefined
+            : isReprise
+              ? "Dossier marqué comme repris : le capital social a été initialisé sans écriture. Reprenez le solde historique via la Balance d'Entrée."
+              : `Écriture de constitution du capital social générée avec succès (Journal OD — Débit ${capitalDeposited ? "5211" : "4613"} / Crédit 1013).`,
         })
         setLocation(`/clients/${data.id}`)
       },
@@ -315,6 +323,30 @@ export default function ClientNew() {
                 />
                 <FormField
                   control={form.control}
+                  name="isReprise"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                      <div className="space-y-0.5">
+                        <FormLabel className="text-sm">Reprise de dossier (Client existant)</FormLabel>
+                        <FormDescription className="text-xs">
+                          Activez si ce dossier existait déjà avant son entrée au cabinet.
+                          Aucune écriture de constitution ne sera générée : le capital et les
+                          capitaux propres historiques seront repris via la Balance d'Entrée
+                          (À-nouveaux).
+                        </FormDescription>
+                      </div>
+                      <FormControl>
+                        <Switch
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="switch-is-reprise"
+                        />
+                      </FormControl>
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
                   name="capitalSocial"
                   render={({ field }) => (
                     <FormItem>
@@ -323,13 +355,35 @@ export default function ClientNew() {
                         <AmountInput placeholder="0" {...field} />
                       </FormControl>
                       <FormDescription>
-                        Si renseigné, une écriture de constitution sera automatiquement
-                        générée dans le Journal OD (Débit 5211 / Crédit 1013).
+                        {form.watch("isReprise")
+                          ? "Capital historique du dossier repris. Aucune écriture ne sera générée automatiquement — à reprendre via la Balance d'Entrée."
+                          : "Si renseigné, une écriture de constitution sera automatiquement générée dans le Journal OD."}
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+                {!form.watch("isReprise") && (form.watch("capitalSocial") ?? 0) > 0 && (
+                  <FormField
+                    control={form.control}
+                    name="capitalDeposited"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center justify-between rounded-lg border p-3">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm">Capital versé en banque</FormLabel>
+                          <FormDescription className="text-xs">
+                            Activé : Débit 5211 (Banques locales). Désactivé : le capital est
+                            seulement souscrit, non encore versé — Débit 4613 (Associés,
+                            capital souscrit non versé).
+                          </FormDescription>
+                        </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {watchedSector === Sector.STATION_SERVICE && (
                   <div className="flex items-start gap-3 rounded-lg border border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-950/30 p-3">

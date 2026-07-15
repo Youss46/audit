@@ -163,8 +163,8 @@ export default function ClotureAnnuelle() {
           step4: { accountsCarriedForward: number }
         }
         toast({
-          title: `Exercice ${d.year} clôturé`,
-          description: `Résultat net : ${formatFcfa(d.step2.netResult)} (compte ${d.step2.resultAccount}). ${d.step4.accountsCarriedForward} à-nouveau(x) générés.`,
+          title: `L'exercice ${d.year} a été clôturé`,
+          description: `Les comptes de gestion ont été soldés et le résultat a été transféré dans les Capitaux Propres. Résultat net : ${formatFcfa(d.step2.netResult)} (compte ${d.step2.resultAccount}). ${d.step4.accountsCarriedForward} à-nouveau(x) générés.`,
         })
         queryClient.invalidateQueries({ queryKey: getGetClosingStatusQueryKey(clientId ?? 0, selectedYear) })
         refetchStatus()

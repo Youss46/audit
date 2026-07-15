@@ -7,8 +7,15 @@ import { db, accountsTable } from "./index";
 const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: number }[] = [
   // Classe 1 - Comptes de ressources durables
   { accountNumber: "101", name: "Capital social", accountClass: 1 },
+  // Module Capitaux Propres — Apport de Constitution : comptes spécifiques
+  // utilisés par capital-engine.ts pour l'écriture automatique de constitution.
+  { accountNumber: "1013", name: "Capital souscrit, appelé, versé, non amorti", accountClass: 1 },
   { accountNumber: "106", name: "Réserves", accountClass: 1 },
   { accountNumber: "120", name: "Résultat net de l'exercice", accountClass: 1 },
+  // Module M19 (Clôture Annuelle) — comptes de résultat de l'exercice utilisés
+  // par closing-engine.ts pour le virement du résultat en fin d'exercice.
+  { accountNumber: "1301", name: "Résultat net de l'exercice (bénéfice)", accountClass: 1 },
+  { accountNumber: "1309", name: "Résultat net de l'exercice (perte)", accountClass: 1 },
   { accountNumber: "162", name: "Emprunts auprès des établissements de crédit", accountClass: 1 },
   // Module M18 (Immobilisations Financières & Emprunts).
   { accountNumber: "161", name: "Emprunts auprès des établissements de crédit", accountClass: 1 },
@@ -35,12 +42,18 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "421", name: "Personnel, avances et acomptes", accountClass: 4 },
   { accountNumber: "444", name: "État, impôts sur les bénéfices", accountClass: 4 },
   { accountNumber: "445", name: "État, TVA", accountClass: 4 },
+  // Module Capitaux Propres — Apport de Constitution : compte de repli utilisé
+  // par capital-engine.ts quand le capital souscrit n'est pas encore versé.
+  { accountNumber: "4613", name: "Associés, capital souscrit — appelé, non versé", accountClass: 4 },
 
   // Classe 5 - Comptes de trésorerie
   { accountNumber: "52", name: "Banques", accountClass: 5 },
   // Module M18 (Financements & Dettes) — specific bank sub-account used for
   // loan/financial-asset installment settlements.
   { accountNumber: "521", name: "Banques locales", accountClass: 5 },
+  // Module Capitaux Propres — Apport de Constitution : sous-compte bancaire
+  // débité par capital-engine.ts lorsque le capital social est versé en banque.
+  { accountNumber: "5211", name: "Banques locales", accountClass: 5 },
   { accountNumber: "571", name: "Caisse", accountClass: 5 },
   // Module P6 (Un Pompiste = Une Caisse): master/collective account for a
   // STATION_SERVICE client's per-pompiste sub-accounts (571101, 571102...).

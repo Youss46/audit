@@ -18,12 +18,92 @@ import { AuditAction, logAudit } from "../lib/audit";
 import { determineAccountingSystem } from "../lib/visa-engine";
 import {
   postCapitalContribution,
+  markCapitalAsReprise,
   CapitalAlreadyInitializedError,
 } from "../lib/capital-engine";
 
 const router: IRouter = Router();
 
 router.use(requireAuth);
+
+// Client tel que retourné par un insert/update de clientsTable -- suffisant
+// pour piloter l'initialisation du capital (pas besoin du type Zod complet).
+type ClientCapitalFields = {
+  id: number;
+  firmId: number;
+  name: string;
+  capitalSocial: number;
+  capitalDeposited: boolean;
+  isReprise: boolean;
+  createdAt: Date;
+};
+
+/**
+ * Initialise le capital social d'un dossier client (appelé à la création du
+ * dossier, ou lors du premier renseignement du capital via une mise à jour).
+ *
+ * Deux branches, selon `isReprise` ("Reprise de dossier — Client existant") :
+ *  - `isReprise = true`  : aucune écriture n'est générée. Le client est
+ *    directement marqué `isCapitalInitialized = true` -- son capital et le
+ *    reste de ses capitaux propres historiques seront repris globalement via
+ *    la Balance d'Entrée (Journal des À-nouveaux), pas via un apport de
+ *    constitution fictif daté d'aujourd'hui.
+ *  - `isReprise = false` (création d'entreprise, cas standard) : génération
+ *    automatique de l'écriture de constitution (Débit 5211/4613 / Crédit 1013)
+ *    datée de la création du dossier.
+ *
+ * Non-bloquant : toute erreur (hors double-initialisation, silencieuse) est
+ * journalisée mais ne fait pas échouer la requête HTTP appelante -- le
+ * dossier reste utilisable et l'expert-comptable peut intervenir manuellement.
+ */
+async function initializeClientCapital(
+  client: ClientCapitalFields,
+  ctx: { firmId: number; userId: number; userName: string; userRole: string; ip: string | undefined },
+): Promise<void> {
+  try {
+    if (client.isReprise) {
+      await markCapitalAsReprise(client.firmId, client.id);
+      await logAudit({
+        firmId: ctx.firmId,
+        userId: ctx.userId,
+        userName: ctx.userName,
+        userRole: ctx.userRole,
+        action: AuditAction.CAPITAL_REPRISE,
+        entityType: "client",
+        entityId: client.id,
+        details: `Dossier "${client.name}" marqué comme repris (client existant) : capital de ${client.capitalSocial.toLocaleString("fr")} FCFA initialisé sans écriture -- à reprendre via la Balance d'Entrée.`,
+        ipAddress: ctx.ip,
+      });
+    } else {
+      await postCapitalContribution(
+        client.firmId,
+        client.id,
+        ctx.userId,
+        client.name,
+        client.capitalSocial,
+        client.createdAt,
+        client.capitalDeposited,
+      );
+      await logAudit({
+        firmId: ctx.firmId,
+        userId: ctx.userId,
+        userName: ctx.userName,
+        userRole: ctx.userRole,
+        action: AuditAction.CAPITAL_INIT,
+        entityType: "client",
+        entityId: client.id,
+        details: `Écriture de constitution du capital social générée (${client.capitalSocial.toLocaleString("fr")} FCFA) — Débit ${client.capitalDeposited ? "5211" : "4613"} / Crédit 1013 — "${client.name}"`,
+        ipAddress: ctx.ip,
+      });
+    }
+  } catch (err) {
+    // Non-bloquant : le dossier reste créé/mis à jour même si l'écriture ou
+    // le marquage échoue (l'expert-comptable peut intervenir manuellement).
+    if (!(err instanceof CapitalAlreadyInitializedError)) {
+      console.error("[capital-engine] Erreur lors de l'initialisation du capital :", err);
+    }
+  }
+}
 
 router.get("/clients", async (req, res) => {
   const { missionStatus } = ListClientsQueryParams.parse(req.query);
@@ -78,36 +158,20 @@ router.post("/clients", requireRole("expert_comptable", "collaborateur"), async 
     ipAddress: req.ip,
   });
 
-  // Génération automatique de l'écriture de constitution du capital social
-  // si un capital > 0 a été renseigné à la création du dossier.
+  // Initialisation du capital social à la création du dossier :
+  //  - "Reprise de dossier" (client déjà existant) : on marque simplement le
+  //    capital comme initialisé, sans écriture — le solde historique sera
+  //    repris via la Balance d'Entrée globale (À-nouveaux).
+  //  - Création d'entreprise (cas standard) : génération automatique de
+  //    l'écriture de constitution (Débit 5211/4613 / Crédit 1013).
   if (client.capitalSocial > 0 && !client.isCapitalInitialized) {
-    try {
-      await postCapitalContribution(
-        client.firmId,
-        client.id,
-        req.user!.id,
-        client.name,
-        client.capitalSocial,
-        client.createdAt,
-      );
-      await logAudit({
-        firmId: req.user!.firmId,
-        userId: req.user!.id,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: AuditAction.CAPITAL_INIT,
-        entityType: "client",
-        entityId: client.id,
-        details: `Écriture de constitution du capital social générée (${client.capitalSocial.toLocaleString("fr")} FCFA) — Débit 5211 / Crédit 1013 — "${client.name}"`,
-        ipAddress: req.ip,
-      });
-    } catch (err) {
-      // La constitution est non-bloquante : le dossier est créé même si
-      // l'écriture échoue (l'expert-comptable peut la saisir manuellement).
-      if (!(err instanceof CapitalAlreadyInitializedError)) {
-        console.error("[capital-engine] Erreur lors de la génération de l'écriture de constitution :", err);
-      }
-    }
+    await initializeClientCapital(client, {
+      firmId: req.user!.firmId,
+      userId: req.user!.id,
+      userName: req.user!.fullName,
+      userRole: req.user!.role,
+      ip: req.ip,
+    });
   }
 
   // Re-fetch the client after potential isCapitalInitialized flag update
@@ -174,46 +238,27 @@ router.patch(
     ipAddress: req.ip,
   });
 
-  // Génération automatique de l'écriture de constitution si le capital social
-  // vient d'être renseigné pour la première fois (n'avait jamais été initialisé).
+  // Initialisation du capital social si le capital vient d'être renseigné
+  // pour la première fois (n'avait jamais été initialisé) -- que ce soit un
+  // apport de constitution (création d'entreprise) ou une reprise de dossier.
   if (
     updated.capitalSocial > 0 &&
     !existing.isCapitalInitialized &&
     !updated.isCapitalInitialized
   ) {
-    try {
-      await postCapitalContribution(
-        req.user!.firmId,
-        id,
-        req.user!.id,
-        updated.name,
-        updated.capitalSocial,
-        updated.createdAt,
-      );
-      await logAudit({
-        firmId: req.user!.firmId,
-        userId: req.user!.id,
-        userName: req.user!.fullName,
-        userRole: req.user!.role,
-        action: AuditAction.CAPITAL_INIT,
-        entityType: "client",
-        entityId: id,
-        details: `Écriture de constitution du capital social générée (${updated.capitalSocial.toLocaleString("fr")} FCFA) — Débit 5211 / Crédit 1013 — "${updated.name}"`,
-        ipAddress: req.ip,
-      });
-      // Re-fetch to get the latest isCapitalInitialized = true
-      const refreshed = await db.query.clientsTable.findFirst({
-        where: eq(clientsTable.id, id),
-      });
-      if (refreshed) {
-        res.json(UpdateClientResponse.parse(refreshed));
-        return;
-      }
-    } catch (err) {
-      if (!(err instanceof CapitalAlreadyInitializedError)) {
-        console.error("[capital-engine] Erreur lors de la génération de l'écriture de constitution :", err);
-      }
-    }
+    await initializeClientCapital(updated, {
+      firmId: req.user!.firmId,
+      userId: req.user!.id,
+      userName: req.user!.fullName,
+      userRole: req.user!.role,
+      ip: req.ip,
+    });
+    // Re-fetch to get the latest isCapitalInitialized = true
+    const refreshed = await db.query.clientsTable.findFirst({
+      where: eq(clientsTable.id, id),
+    });
+    res.json(UpdateClientResponse.parse(refreshed ?? updated));
+    return;
   }
 
   res.json(UpdateClientResponse.parse(updated));

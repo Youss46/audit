@@ -233,6 +233,8 @@ export default function ClientDetail() {
   const [editSector, setEditSector] = useState<Sector>(Sector.services)
   const [editTurnover, setEditTurnover] = useState<number>(0)
   const [editCapitalSocial, setEditCapitalSocial] = useState<number>(0)
+  const [editCapitalDeposited, setEditCapitalDeposited] = useState<boolean>(true)
+  const [editIsReprise, setEditIsReprise] = useState<boolean>(false)
   const [editTaxRegime, setEditTaxRegime] = useState<TaxRegime>(TaxRegime.REEL_NORMAL)
   const [editIsVatRegistered, setEditIsVatRegistered] = useState<boolean>(true)
   
@@ -297,8 +299,16 @@ export default function ClientDetail() {
 
   const updateClientMutation = useUpdateClient({
     mutation: {
-      onSuccess: () => {
-        toast({ title: "Profil financier mis à jour" })
+      onSuccess: (data) => {
+        const justInitialized = !client?.isCapitalInitialized && data.isCapitalInitialized
+        toast({
+          title: "Profil financier mis à jour",
+          description: !justInitialized
+            ? undefined
+            : data.isReprise
+              ? "Dossier marqué comme repris : le capital social a été initialisé sans écriture. Reprenez le solde historique via la Balance d'Entrée."
+              : `Écriture de constitution du capital social générée avec succès (Journal OD — Débit ${data.capitalDeposited ? "5211" : "4613"} / Crédit 1013).`,
+        })
         setIsEditingProfile(false)
         refetchClient()
       },
@@ -317,6 +327,8 @@ export default function ClientDetail() {
     setEditSector(client.sector)
     setEditTurnover(client.annualTurnover ?? 0)
     setEditCapitalSocial(client.capitalSocial ?? 0)
+    setEditCapitalDeposited(client.capitalDeposited ?? true)
+    setEditIsReprise(client.isReprise ?? false)
     setEditTaxRegime(client.taxRegime ?? TaxRegime.REEL_NORMAL)
     setEditIsVatRegistered(client.isVatRegistered ?? true)
     setIsEditingProfile(true)
@@ -330,6 +342,8 @@ export default function ClientDetail() {
         sector: editSector,
         annualTurnover: editTurnover,
         capitalSocial: editCapitalSocial,
+        capitalDeposited: editCapitalDeposited,
+        isReprise: editIsReprise,
         taxRegime: editTaxRegime,
         isVatRegistered: editIsVatRegistered,
       }
@@ -496,6 +510,55 @@ export default function ClientDetail() {
                         onChange={(e) => setEditTurnover(parseFloat(e.target.value) || 0)}
                       />
                     </div>
+                    {!client?.isCapitalInitialized && (
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <Label className="text-sm">Reprise de dossier (Client existant)</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Activez si ce dossier existait déjà avant son entrée au cabinet.
+                            Aucune écriture de constitution ne sera générée : le capital et les
+                            capitaux propres historiques seront repris via la Balance d'Entrée
+                            (À-nouveaux).
+                          </p>
+                        </div>
+                        <Switch
+                          checked={editIsReprise}
+                          onCheckedChange={setEditIsReprise}
+                          data-testid="switch-is-reprise"
+                        />
+                      </div>
+                    )}
+                    <div className="space-y-2">
+                      <Label>Capital Social (FCFA)</Label>
+                      <AmountInput
+                        min={0}
+                        value={editCapitalSocial || ""}
+                        onChange={(e) => setEditCapitalSocial(parseFloat(e.target.value) || 0)}
+                        disabled={client?.isCapitalInitialized}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        {client?.isCapitalInitialized
+                          ? "Le capital a déjà été initialisé : ce montant n'est plus modifiable."
+                          : editIsReprise
+                            ? "Capital historique du dossier repris. Aucune écriture ne sera générée automatiquement — à reprendre via la Balance d'Entrée."
+                            : "Si renseigné, une écriture de constitution sera automatiquement générée dans le Journal OD."}
+                      </p>
+                    </div>
+                    {!client?.isCapitalInitialized && !editIsReprise && editCapitalSocial > 0 && (
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <div>
+                          <Label className="text-sm">Capital versé en banque</Label>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Activé : Débit 5211 (Banques locales). Désactivé : Débit 4613 (capital
+                            souscrit, non versé).
+                          </p>
+                        </div>
+                        <Switch
+                          checked={editCapitalDeposited}
+                          onCheckedChange={setEditCapitalDeposited}
+                        />
+                      </div>
+                    )}
                     <div className="space-y-2">
                       <Label>Régime fiscal</Label>
                       <Select value={editTaxRegime} onValueChange={(v) => setEditTaxRegime(v as TaxRegime)}>
@@ -564,9 +627,15 @@ export default function ClientDetail() {
                         {client.capitalSocial > 0 ? formatCurrency(client.capitalSocial) : '-'}
                         {client.capitalSocial > 0 && (
                           client.isCapitalInitialized ? (
-                            <Badge variant="secondary" className="text-xs font-normal text-green-700 border-green-300 dark:text-green-400">
-                              OD comptabilisée
-                            </Badge>
+                            client.isReprise ? (
+                              <Badge variant="secondary" className="text-xs font-normal text-blue-700 border-blue-300 dark:text-blue-400">
+                                Repris (sans écriture)
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-xs font-normal text-green-700 border-green-300 dark:text-green-400">
+                                OD comptabilisée
+                              </Badge>
+                            )
                           ) : (
                             <Badge variant="outline" className="text-xs font-normal text-amber-700 border-amber-300 dark:text-amber-400">
                               En attente

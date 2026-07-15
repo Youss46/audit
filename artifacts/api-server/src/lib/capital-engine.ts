@@ -4,13 +4,19 @@
  * Génère automatiquement l'écriture de constitution du capital social lors de
  * la création ou du premier renseignement du capital d'un dossier client :
  *
- *   Débit  5211 — Banques locales     → montant du capital social
- *   Crédit 1013 — Capital souscrit, appelé, versé, non amorti → même montant
+ *   Cas standard (capital versé en banque) :
+ *     Débit  5211 — Banques locales     → montant du capital social
+ *     Crédit 1013 — Capital souscrit, appelé, versé, non amorti → même montant
+ *
+ *   Cas capital souscrit mais non encore versé (`capitalDeposited = false`) :
+ *     Débit  4613 — Associés, capital souscrit — appelé, non versé
+ *     Crédit 1013 — Capital souscrit, appelé, versé, non amorti
  *
  * L'écriture est immédiatement validée (status = "valide", source =
- * "capital_constitution") et comptabilisée dans le Grand Livre à la date de
- * création du dossier client. Elle ne peut être générée qu'une seule fois par
- * dossier grâce au flag `isCapitalInitialized` sur le client.
+ * "capital_constitution") et comptabilisée dans le Journal OD (Opérations
+ * Diverses) à la date de création du dossier client. Elle ne peut être
+ * générée qu'une seule fois par dossier grâce au flag `isCapitalInitialized`
+ * sur le client.
  */
 
 import { and, eq } from "drizzle-orm";
@@ -60,12 +66,14 @@ export interface PostCapitalContributionResult {
 /**
  * Comptabilise l'apport initial de capital social pour un client.
  *
- * @param firmId      - ID du cabinet
- * @param clientId    - ID du dossier client
- * @param createdById - ID de l'utilisateur déclenchant l'opération
- * @param clientName  - Raison sociale (utilisée dans les libellés)
- * @param capitalSocial - Montant du capital social en FCFA (entier)
- * @param entryDate   - Date de l'écriture (= date de création du dossier client)
+ * @param firmId          - ID du cabinet
+ * @param clientId        - ID du dossier client
+ * @param createdById     - ID de l'utilisateur déclenchant l'opération
+ * @param clientName      - Raison sociale (utilisée dans les libellés)
+ * @param capitalSocial   - Montant du capital social en FCFA (entier)
+ * @param entryDate       - Date de l'écriture (= date de création du dossier client)
+ * @param capitalDeposited - true si le capital est versé en banque (débit 5211),
+ *                           false s'il est seulement souscrit, non versé (débit 4613)
  */
 export async function postCapitalContribution(
   firmId: number,
@@ -74,6 +82,7 @@ export async function postCapitalContribution(
   clientName: string,
   capitalSocial: number,
   entryDate: Date,
+  capitalDeposited: boolean = true,
 ): Promise<PostCapitalContributionResult> {
   // ------------------------------------------------------------------
   // Garde d'idempotence : vérifier le flag en DB pour éviter les races
@@ -96,18 +105,21 @@ export async function postCapitalContribution(
   // ------------------------------------------------------------------
   // Construction des lignes (écriture équilibrée)
   // ------------------------------------------------------------------
-  //   Débit  5211 — Banques locales (capital déposé à la banque)
-  //   Crédit 1013 — Capital souscrit, appelé, versé, non amorti
-  //
-  // Justification du compte 5211 (au lieu de 4613 "Capital souscrit non versé") :
-  // dans le cas standard ivoirien, le capital est simultanément souscrit ET
-  // libéré à la constitution. L'apport va directement dans un compte bancaire
-  // ouvert au nom de la société. Si le capital est souscrit mais non encore
-  // versé, l'expert-comptable devra corriger manuellement la ligne de débit.
+  //   Cas capital versé (capitalDeposited = true, cas standard ivoirien) :
+  //     Débit  5211 — Banques locales (capital déposé à la banque)
+  //     Crédit 1013 — Capital souscrit, appelé, versé, non amorti
+  //   Cas capital souscrit non versé (capitalDeposited = false) :
+  //     Débit  4613 — Associés, capital souscrit — appelé, non versé
+  //     Crédit 1013 — Capital souscrit, appelé, versé, non amorti
+  const debitAccount = capitalDeposited ? "5211" : "4613";
+  const debitLabel = capitalDeposited
+    ? `Apport initial de constitution — Banques locales — ${clientName}`
+    : `Apport initial de constitution — Capital souscrit non versé — ${clientName}`;
+
   const lines = [
     {
-      accountNumber: "5211",
-      label: `Apport initial de constitution — Banques locales — ${clientName}`,
+      accountNumber: debitAccount,
+      label: debitLabel,
       debitAmount: amount,
       creditAmount: 0,
     },
@@ -128,6 +140,10 @@ export async function postCapitalContribution(
 
   // ------------------------------------------------------------------
   // Insertion dans le Grand Livre (transaction atomique)
+  // Source "capital_constitution" -> classée automatiquement dans le
+  // Journal OD (Opérations Diverses) côté frontend (voir status.ts).
+  // paymentMethod reste null quand le capital n'est pas versé : aucun
+  // mouvement de trésorerie réel n'a lieu tant que 4613 n'est pas soldé.
   // ------------------------------------------------------------------
   const [tx] = await db
     .insert(transactionsTable)
@@ -140,7 +156,7 @@ export async function postCapitalContribution(
       type: "recette",
       category: null,
       paymentType: "cash",
-      paymentMethod: "virement",
+      paymentMethod: capitalDeposited ? "virement" : null,
       status: "valide",
       source: "capital_constitution",
       createdById,
@@ -164,8 +180,38 @@ export async function postCapitalContribution(
 
   return {
     transactionId: tx.id,
-    debitAccount: "5211",
+    debitAccount,
     creditAccount: "1013",
     amount,
   };
+}
+
+/**
+ * "Reprise de dossier" (client existant repris par le cabinet) : marque le
+ * capital du client comme initialisé SANS générer d'écriture de constitution
+ * datée d'aujourd'hui. Le solde historique du capital (et le reste des
+ * capitaux propres) sera repris globalement via la Balance d'Entrée /
+ * Journal des À-nouveaux, pas via un apport de constitution fictif.
+ *
+ * Idempotent au même titre que postCapitalContribution() : ne fait rien (et
+ * lève CapitalAlreadyInitializedError) si le client est déjà initialisé.
+ *
+ * @param firmId   - ID du cabinet
+ * @param clientId - ID du dossier client
+ */
+export async function markCapitalAsReprise(firmId: number, clientId: number): Promise<void> {
+  const client = await db.query.clientsTable.findFirst({
+    where: and(eq(clientsTable.id, clientId), eq(clientsTable.firmId, firmId)),
+  });
+  if (!client) {
+    throw new Error(`Client #${clientId} introuvable.`);
+  }
+  if (client.isCapitalInitialized) {
+    throw new CapitalAlreadyInitializedError(clientId);
+  }
+
+  await db
+    .update(clientsTable)
+    .set({ isCapitalInitialized: true })
+    .where(and(eq(clientsTable.id, clientId), eq(clientsTable.firmId, firmId)));
 }
