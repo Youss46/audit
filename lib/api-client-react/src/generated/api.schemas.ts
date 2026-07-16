@@ -2768,6 +2768,107 @@ export interface ConfirmMobileMoneyRepatriationReceptionResult {
   mobileMoneyTransaction: MobileMoneyTransaction;
 }
 
+export type PurchasePaymentMode = typeof PurchasePaymentMode[keyof typeof PurchasePaymentMode];
+
+
+export const PurchasePaymentMode = {
+  credit: 'credit',
+  bank: 'bank',
+  mobile_money: 'mobile_money',
+} as const;
+
+export type PurchaseStatus = typeof PurchaseStatus[keyof typeof PurchaseStatus];
+
+
+export const PurchaseStatus = {
+  pending: 'pending',
+  settled: 'settled',
+} as const;
+
+export interface Purchase {
+  id: number;
+  clientId: number;
+  date: string;
+  supplierName: string;
+  /** @nullable */
+  supplierNcc?: string | null;
+  /** @nullable */
+  invoiceRef?: string | null;
+  categoryKey: string;
+  chargeAccount: string;
+  chargeName: string;
+  categoryLabel?: string;
+  amountHt: number;
+  vatRate: number;
+  vatAmount: number;
+  amountTtc: number;
+  paymentMode: PurchasePaymentMode;
+  /** @nullable */
+  mobileMoneyAccountId?: number | null;
+  /** @nullable */
+  mobileMoneyProvider?: string | null;
+  /** @nullable */
+  mobileMoneyAccountNumber?: string | null;
+  /** @nullable */
+  notes?: string | null;
+  status: PurchaseStatus;
+  /** @nullable */
+  transactionId?: number | null;
+  /** @nullable */
+  settlementTransactionId?: number | null;
+  /** @nullable */
+  settledAt?: string | null;
+  createdAt: string;
+}
+
+export type CreatePurchaseBodyVatRate = typeof CreatePurchaseBodyVatRate[keyof typeof CreatePurchaseBodyVatRate];
+
+
+export const CreatePurchaseBodyVatRate = {
+  NUMBER_0: 0,
+  NUMBER_18: 18,
+} as const;
+
+export interface CreatePurchaseBody {
+  clientId: number;
+  date: string;
+  /** @minLength 1 */
+  supplierName: string;
+  supplierNcc?: string;
+  invoiceRef?: string;
+  /** @minLength 1 */
+  categoryKey: string;
+  /** @minimum 1 */
+  amountHt: number;
+  vatRate: CreatePurchaseBodyVatRate;
+  paymentMode: PurchasePaymentMode;
+  mobileMoneyAccountId?: number;
+  notes?: string;
+}
+
+export type SettlePurchaseBodyPaymentMode = typeof SettlePurchaseBodyPaymentMode[keyof typeof SettlePurchaseBodyPaymentMode];
+
+
+export const SettlePurchaseBodyPaymentMode = {
+  bank: 'bank',
+  mobile_money: 'mobile_money',
+} as const;
+
+export interface SettlePurchaseBody {
+  paymentMode: SettlePurchaseBodyPaymentMode;
+  mobileMoneyAccountId?: number;
+}
+
+export interface ListPurchasesQueryParams {
+  clientId?: number;
+  status?: PurchaseStatus;
+}
+
+export interface PurchaseSettleResult {
+  purchase: Purchase;
+  transaction: TransactionDetail;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -2830,6 +2931,19 @@ clientId?: number;
 export type ListMobileMoneyTransactionsParams = {
 clientId?: number;
 mobileMoneyAccountId?: number;
+};
+
+export type ListPurchasesParams = {
+clientId?: number;
+status?: PurchaseStatus;
+};
+
+export type ListPurchaseCategories200Item = {
+  key: string;
+  label: string;
+  account: string;
+  accountName: string;
+  vatEligible: boolean;
 };
 
 export type ListStationsParams = {

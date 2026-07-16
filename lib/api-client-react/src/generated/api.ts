@@ -76,6 +76,7 @@ import type {
   CreateOpeningBalanceBody,
   CreatePumpAssignmentInput,
   CreatePumpInput,
+  CreatePurchaseBody,
   CreateStationInput,
   CreditNoteInput,
   DailyClosure,
@@ -143,6 +144,8 @@ import type {
   ListPumpAssignmentsParams,
   ListPumpShiftsParams,
   ListPumpsParams,
+  ListPurchaseCategories200Item,
+  ListPurchasesParams,
   ListStationsParams,
   ListThreadsParams,
   ListTimesheetEntriesParams,
@@ -178,6 +181,8 @@ import type {
   PumpShiftCreateInput,
   PumpShiftValidateInput,
   PumpShiftValidateResult,
+  Purchase,
+  PurchaseSettleResult,
   RecordMobileMoneySaleBody,
   RecordMobileMoneySaleResult,
   RegisterInput,
@@ -186,6 +191,7 @@ import type {
   ScoringDashboardResult,
   SetAllocationsInput,
   SetValuationInput,
+  SettlePurchaseBody,
   StaffInput,
   StaffUpdate,
   StaffUser,
@@ -5213,6 +5219,387 @@ export const useConfirmMobileMoneyRepatriationReception = <TError = ErrorType<Er
       > => {
       return useMutation(getConfirmMobileMoneyRepatriationReceptionMutationOptions(options));
     }
+
+export const getListPurchasesUrl = (params?: ListPurchasesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/purchases?${stringifiedParams}` : `/api/purchases`
+}
+
+/**
+ * @summary List structured purchases (Dépenses & Achats) for a PME client.
+ */
+export const listPurchases = async (params?: ListPurchasesParams, options?: RequestInit): Promise<Purchase[]> => {
+
+  return customFetch<Purchase[]>(getListPurchasesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPurchasesQueryKey = (params?: ListPurchasesParams,) => {
+    return [
+    `/api/purchases`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListPurchasesQueryOptions = <TData = Awaited<ReturnType<typeof listPurchases>>, TError = ErrorType<unknown>>(params?: ListPurchasesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPurchases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPurchasesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPurchases>>> = ({ signal }) => listPurchases(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPurchases>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPurchasesQueryResult = NonNullable<Awaited<ReturnType<typeof listPurchases>>>
+export type ListPurchasesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List structured purchases (Dépenses & Achats) for a PME client.
+ */
+
+export function useListPurchases<TData = Awaited<ReturnType<typeof listPurchases>>, TError = ErrorType<unknown>>(
+ params?: ListPurchasesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPurchases>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPurchasesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreatePurchaseUrl = () => {
+
+
+
+
+  return `/api/purchases`
+}
+
+/**
+ * @summary Record a new purchase expense and post the SYSCOHADA journal entry.
+ */
+export const createPurchase = async (createPurchaseBody: CreatePurchaseBody, options?: RequestInit): Promise<Purchase> => {
+
+  return customFetch<Purchase>(getCreatePurchaseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createPurchaseBody)
+  }
+);}
+
+
+
+
+
+export const getCreatePurchaseMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPurchase>>, TError,{data: BodyType<CreatePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createPurchase>>, TError,{data: BodyType<CreatePurchaseBody>}, TContext> => {
+
+const mutationKey = ['createPurchase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createPurchase>>, {data: BodyType<CreatePurchaseBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createPurchase(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreatePurchaseMutationResult = NonNullable<Awaited<ReturnType<typeof createPurchase>>>
+    export type CreatePurchaseMutationBody = BodyType<CreatePurchaseBody>
+    export type CreatePurchaseMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record a new purchase expense and post the SYSCOHADA journal entry.
+ */
+export const useCreatePurchase = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createPurchase>>, TError,{data: BodyType<CreatePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createPurchase>>,
+        TError,
+        {data: BodyType<CreatePurchaseBody>},
+        TContext
+      > => {
+      return useMutation(getCreatePurchaseMutationOptions(options));
+    }
+
+export const getGetPurchaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}`
+}
+
+/**
+ * @summary Get a single purchase by ID.
+ */
+export const getPurchase = async (id: number, options?: RequestInit): Promise<Purchase> => {
+
+  return customFetch<Purchase>(getGetPurchaseUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPurchaseQueryKey = (id: number,) => {
+    return [
+    `/api/purchases/${id}`
+    ] as const;
+    }
+
+
+export const getGetPurchaseQueryOptions = <TData = Awaited<ReturnType<typeof getPurchase>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPurchaseQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPurchase>>> = ({ signal }) => getPurchase(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPurchase>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPurchaseQueryResult = NonNullable<Awaited<ReturnType<typeof getPurchase>>>
+export type GetPurchaseQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Get a single purchase by ID.
+ */
+
+export function useGetPurchase<TData = Awaited<ReturnType<typeof getPurchase>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchase>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPurchaseQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getSettlePurchaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}/settle`
+}
+
+/**
+ * @summary Settle a credit purchase — posts Dr 4011 / Cr 5211 or 552xxx.
+ */
+export const settlePurchase = async (id: number,
+    settlePurchaseBody: SettlePurchaseBody, options?: RequestInit): Promise<PurchaseSettleResult> => {
+
+  return customFetch<PurchaseSettleResult>(getSettlePurchaseUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(settlePurchaseBody)
+  }
+);}
+
+
+
+
+
+export const getSettlePurchaseMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settlePurchase>>, TError,{id: number;data: BodyType<SettlePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof settlePurchase>>, TError,{id: number;data: BodyType<SettlePurchaseBody>}, TContext> => {
+
+const mutationKey = ['settlePurchase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof settlePurchase>>, {id: number;data: BodyType<SettlePurchaseBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  settlePurchase(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SettlePurchaseMutationResult = NonNullable<Awaited<ReturnType<typeof settlePurchase>>>
+    export type SettlePurchaseMutationBody = BodyType<SettlePurchaseBody>
+    export type SettlePurchaseMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Settle a credit purchase — posts Dr 4011 / Cr 5211 or 552xxx.
+ */
+export const useSettlePurchase = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof settlePurchase>>, TError,{id: number;data: BodyType<SettlePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof settlePurchase>>,
+        TError,
+        {id: number;data: BodyType<SettlePurchaseBody>},
+        TContext
+      > => {
+      return useMutation(getSettlePurchaseMutationOptions(options));
+    }
+
+export const getListPurchaseCategoriesUrl = () => {
+
+
+
+
+  return `/api/purchases/categories`
+}
+
+/**
+ * @summary List all available purchase expense categories with their SYSCOHADA account mapping.
+ */
+export const listPurchaseCategories = async ( options?: RequestInit): Promise<ListPurchaseCategories200Item[]> => {
+
+  return customFetch<ListPurchaseCategories200Item[]>(getListPurchaseCategoriesUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPurchaseCategoriesQueryKey = () => {
+    return [
+    `/api/purchases/categories`
+    ] as const;
+    }
+
+
+export const getListPurchaseCategoriesQueryOptions = <TData = Awaited<ReturnType<typeof listPurchaseCategories>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPurchaseCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPurchaseCategoriesQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPurchaseCategories>>> = ({ signal }) => listPurchaseCategories({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPurchaseCategories>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListPurchaseCategoriesQueryResult = NonNullable<Awaited<ReturnType<typeof listPurchaseCategories>>>
+export type ListPurchaseCategoriesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List all available purchase expense categories with their SYSCOHADA account mapping.
+ */
+
+export function useListPurchaseCategories<TData = Awaited<ReturnType<typeof listPurchaseCategories>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listPurchaseCategories>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListPurchaseCategoriesQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getListStationsUrl = (params: ListStationsParams,) => {
   const normalizedParams = new URLSearchParams();

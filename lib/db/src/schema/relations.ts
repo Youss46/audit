@@ -27,6 +27,7 @@ import { vatSettingsTable } from "./vat-settings";
 import { stationsTable } from "./stations";
 import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable, fuelPricesTable } from "./station-service";
 import { mobileMoneyAccountsTable, mobileMoneyTransactionsTable } from "./mobile-money";
+import { purchasesTable } from "./purchases";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -533,5 +534,26 @@ export const pumpShiftsRelations = relations(pumpShiftsTable, ({ one }) => ({
     fields: [pumpShiftsTable.discrepancyTransactionId],
     references: [transactionsTable.id],
     relationName: "pumpShiftDiscrepancy",
+  }),
+}));
+
+// Module Dépenses & Achats
+export const purchasesRelations = relations(purchasesTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [purchasesTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [purchasesTable.clientId], references: [clientsTable.id] }),
+  createdBy: one(usersTable, { fields: [purchasesTable.createdById], references: [usersTable.id] }),
+  transaction: one(transactionsTable, {
+    fields: [purchasesTable.transactionId],
+    references: [transactionsTable.id],
+    relationName: "purchaseEntry",
+  }),
+  settlementTransaction: one(transactionsTable, {
+    fields: [purchasesTable.settlementTransactionId],
+    references: [transactionsTable.id],
+    relationName: "purchaseSettlement",
+  }),
+  mobileMoneyAccount: one(mobileMoneyAccountsTable, {
+    fields: [purchasesTable.mobileMoneyAccountId],
+    references: [mobileMoneyAccountsTable.id],
   }),
 }));

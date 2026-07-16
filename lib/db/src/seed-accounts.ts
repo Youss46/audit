@@ -42,6 +42,7 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   { accountNumber: "421", name: "Personnel, avances et acomptes", accountClass: 4 },
   { accountNumber: "444", name: "État, impôts sur les bénéfices", accountClass: 4 },
   { accountNumber: "445", name: "État, TVA", accountClass: 4 },
+  { accountNumber: "4451", name: "TVA récupérable sur achats", accountClass: 4 },
   // Module Capitaux Propres — Apport de Constitution : compte de repli utilisé
   // par capital-engine.ts quand le capital souscrit n'est pas encore versé.
   { accountNumber: "4613", name: "Associés, capital souscrit — appelé, non versé", accountClass: 4 },
@@ -77,6 +78,14 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
 
   // Classe 6 - Comptes de charges
   { accountNumber: "601", name: "Achats de marchandises", accountClass: 6 },
+  { accountNumber: "6011", name: "Matières premières et consommables", accountClass: 6 },
+  { accountNumber: "6055", name: "Fournitures d'entretien", accountClass: 6 },
+  { accountNumber: "616", name: "Transports sur achats et approvisionnements", accountClass: 6 },
+  { accountNumber: "6251", name: "Assurances", accountClass: 6 },
+  { accountNumber: "6261", name: "Frais de télécommunications", accountClass: 6 },
+  { accountNumber: "6311", name: "Publicité, publications et relations publiques", accountClass: 6 },
+  { accountNumber: "6321", name: "Honoraires", accountClass: 6 },
+  { accountNumber: "664", name: "Charges sociales", accountClass: 6 },
   // Module P7 Mobile Money: frais de retrait / virement vers banque.
   { accountNumber: "631700", name: "Frais sur instruments monétaires électroniques", accountClass: 6 },
   { accountNumber: "6051", name: "Fournitures non stockables - Carburant", accountClass: 6 },

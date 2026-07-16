@@ -1736,6 +1736,135 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # ── Dépenses & Achats ──────────────────────────────────────────────────────
+  /purchases:
+    get:
+      operationId: listPurchases
+      tags: [accounting]
+      summary: List structured purchases (Dépenses & Achats) for a PME client.
+      parameters:
+        - name: clientId
+          in: query
+          schema: { type: integer }
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/PurchaseStatus"
+      responses:
+        "200":
+          description: List of purchases
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Purchase"
+    post:
+      operationId: createPurchase
+      tags: [accounting]
+      summary: Record a new purchase expense and post the SYSCOHADA journal entry.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePurchaseBody"
+      responses:
+        "201":
+          description: Purchase created and journal entry posted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /purchases/{id}:
+    get:
+      operationId: getPurchase
+      tags: [accounting]
+      summary: Get a single purchase by ID.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Purchase detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /purchases/{id}/settle:
+    post:
+      operationId: settlePurchase
+      tags: [accounting]
+      summary: Settle a credit purchase — posts Dr 4011 / Cr 5211 or 552xxx.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SettlePurchaseBody"
+      responses:
+        "200":
+          description: Purchase settled
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseSettleResult"
+        "400":
+          description: Already settled or validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /purchases/categories:
+    get:
+      operationId: listPurchaseCategories
+      tags: [accounting]
+      summary: List all available purchase expense categories with their SYSCOHADA account mapping.
+      responses:
+        "200":
+          description: List of categories
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  required: [key, label, account, accountName, vatEligible]
+                  properties:
+                    key: { type: string }
+                    label: { type: string }
+                    account: { type: string }
+                    accountName: { type: string }
+                    vatEligible: { type: boolean }
+
   /stations:
     get:
       operationId: listStations
@@ -7775,3 +7904,111 @@ components:
           $ref: "#/components/schemas/TransactionDetail"
         mobileMoneyTransaction:
           $ref: "#/components/schemas/MobileMoneyTransaction"
+
+    # ── Dépenses & Achats ────────────────────────────────────────────────────
+
+    PurchasePaymentMode:
+      type: string
+      enum: [credit, bank, mobile_money]
+
+    PurchaseStatus:
+      type: string
+      enum: [pending, settled]
+
+    Purchase:
+      type: object
+      required:
+        - id
+        - clientId
+        - date
+        - supplierName
+        - categoryKey
+        - chargeAccount
+        - chargeName
+        - amountHt
+        - vatRate
+        - vatAmount
+        - amountTtc
+        - paymentMode
+        - status
+        - createdAt
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        date: { type: string, format: date-time }
+        supplierName: { type: string }
+        supplierNcc: { type: ["string", "null"] }
+        invoiceRef: { type: ["string", "null"] }
+        categoryKey: { type: string }
+        chargeAccount: { type: string }
+        chargeName: { type: string }
+        categoryLabel: { type: string }
+        amountHt: { type: integer }
+        vatRate: { type: integer }
+        vatAmount: { type: integer }
+        amountTtc: { type: integer }
+        paymentMode:
+          $ref: "#/components/schemas/PurchasePaymentMode"
+        mobileMoneyAccountId: { type: ["integer", "null"] }
+        mobileMoneyProvider: { type: ["string", "null"] }
+        mobileMoneyAccountNumber: { type: ["string", "null"] }
+        notes: { type: ["string", "null"] }
+        status:
+          $ref: "#/components/schemas/PurchaseStatus"
+        transactionId: { type: ["integer", "null"] }
+        settlementTransactionId: { type: ["integer", "null"] }
+        settledAt: { type: ["string", "null"], format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    CreatePurchaseBody:
+      type: object
+      required:
+        - clientId
+        - date
+        - supplierName
+        - categoryKey
+        - amountHt
+        - vatRate
+        - paymentMode
+      properties:
+        clientId: { type: integer }
+        date: { type: string, format: date-time }
+        supplierName: { type: string, minLength: 1 }
+        supplierNcc: { type: string }
+        invoiceRef: { type: string }
+        categoryKey: { type: string, minLength: 1 }
+        amountHt:
+          type: integer
+          minimum: 1
+        vatRate:
+          type: integer
+          enum: [0, 18]
+        paymentMode:
+          $ref: "#/components/schemas/PurchasePaymentMode"
+        mobileMoneyAccountId: { type: integer }
+        notes: { type: string }
+
+    SettlePurchaseBody:
+      type: object
+      required: [paymentMode]
+      properties:
+        paymentMode:
+          type: string
+          enum: [bank, mobile_money]
+        mobileMoneyAccountId: { type: integer }
+
+    ListPurchasesQueryParams:
+      type: object
+      properties:
+        clientId: { type: integer }
+        status:
+          $ref: "#/components/schemas/PurchaseStatus"
+
+    PurchaseSettleResult:
+      type: object
+      required: [purchase, transaction]
+      properties:
+        purchase:
+          $ref: "#/components/schemas/Purchase"
+        transaction:
+          $ref: "#/components/schemas/TransactionDetail"

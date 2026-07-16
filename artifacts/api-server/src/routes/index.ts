@@ -32,6 +32,7 @@ import pumpsRouter from "./pumps";
 import pumpAssignmentsRouter from "./pump-assignments";
 import fuelPricesRouter from "./fuel-prices";
 import mobileMoneyRouter from "./mobile-money";
+import purchasesRouter from "./purchases";
 import documentFoldersRouter from "./document-folders";
 import stationsRouter from "./stations";
 import accountsRouter from "./accounts";
@@ -72,6 +73,7 @@ router.use(pumpsRouter);
 router.use(pumpAssignmentsRouter);
 router.use(fuelPricesRouter);
 router.use(mobileMoneyRouter);
+router.use(purchasesRouter);
 router.use(documentFoldersRouter);
 router.use(accountsRouter);
 

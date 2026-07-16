@@ -185,6 +185,88 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
 
 export type TransactionCategory = keyof typeof CATEGORY_RULES;
 
+// ---------------------------------------------------------------------------
+// Module Dépenses & Achats — category catalogue
+// ---------------------------------------------------------------------------
+// Extended SYSCOHADA Class 6 mapping for structured purchase recording
+// (hors Caisse Terrain). Unlike CATEGORY_RULES (which drives the generic
+// Mes Opérations entry form), these categories carry the HT/TVA breakdown
+// and support three payment modes (credit / bank / mobile money).
+export const PURCHASE_CATEGORIES: Record<
+  string,
+  { label: string; account: string; accountName: string; vatEligible: boolean }
+> = {
+  achat_marchandises:    { label: "Achats de marchandises",                    account: "601",    accountName: "Achats de marchandises",                                  vatEligible: true  },
+  achat_matieres:        { label: "Matières premières / consommables",          account: "6011",   accountName: "Matières premières et consommables",                      vatEligible: true  },
+  carburant:             { label: "Carburant",                                  account: "6051",   accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
+  electricite_eau:       { label: "Eau / Électricité",                          account: "6052",   accountName: "Fournitures non stockables — Eau, énergie",               vatEligible: true  },
+  fournitures_bureau:    { label: "Fournitures de bureau",                      account: "6054",   accountName: "Fournitures de bureau",                                   vatEligible: true  },
+  fournitures_entretien: { label: "Produits d'entretien",                       account: "6055",   accountName: "Fournitures d'entretien",                                 vatEligible: true  },
+  transport_achat:       { label: "Transport sur achats",                       account: "616",    accountName: "Transports sur achats et approvisionnements",             vatEligible: true  },
+  transport_personnel:   { label: "Transport du personnel",                     account: "614",    accountName: "Transports du personnel",                                 vatEligible: true  },
+  loyer:                 { label: "Loyer / Bail",                               account: "622",    accountName: "Locations et charges locatives",                          vatEligible: false },
+  entretien:             { label: "Entretien / Réparation",                     account: "624",    accountName: "Entretien, réparations et maintenance",                   vatEligible: true  },
+  assurance:             { label: "Assurances",                                 account: "6251",   accountName: "Assurances",                                              vatEligible: false },
+  telephone_internet:    { label: "Téléphone / Internet",                       account: "6261",   accountName: "Frais de télécommunications",                             vatEligible: true  },
+  publicite:             { label: "Publicité / Marketing",                      account: "6311",   accountName: "Publicité et relations publiques",                        vatEligible: true  },
+  honoraires:            { label: "Honoraires (comptable, avocat…)",            account: "6321",   accountName: "Honoraires",                                              vatEligible: false },
+  salaires:              { label: "Salaires / Rémunérations",                  account: "661",    accountName: "Appointements, salaires et commissions",                  vatEligible: false },
+  charges_sociales:      { label: "Charges sociales (CNPS…)",                  account: "664",    accountName: "Charges sociales",                                        vatEligible: false },
+  autres_achats:         { label: "Autres achats / charges",                    account: "628",    accountName: "Autres charges externes",                                 vatEligible: true  },
+} as const;
+
+export type PurchaseCategoryKey = keyof typeof PURCHASE_CATEGORIES;
+
+// Computes the balanced SYSCOHADA journal lines for a structured purchase
+// (Dépenses & Achats module):
+//   Debit  : Class 6 charge account (amountHt)
+//   Debit  : 4451 TVA récupérable (vatAmount, if > 0)
+//   Credit : 4011 Fournisseurs | 5211 Banques | 552xxx Mobile Money (amountTtc)
+export function computePurchaseJournalLines(input: {
+  amountHt: number;
+  vatAmount: number;
+  amountTtc: number;
+  chargeAccount: string;
+  chargeName: string;
+  creditAccount: string;
+  creditLabel: string;
+}): ComputedJournalLine[] {
+  if (input.amountHt <= 0) throw new AccountingEngineError("Le montant HT doit être strictement positif.");
+  if (input.amountTtc <= 0) throw new AccountingEngineError("Le montant TTC doit être strictement positif.");
+  if (input.vatAmount < 0)  throw new AccountingEngineError("Le montant de TVA ne peut pas être négatif.");
+  if (Math.round(input.amountHt + input.vatAmount) !== Math.round(input.amountTtc)) {
+    throw new AccountingEngineError(
+      `Incohérence : HT (${input.amountHt}) + TVA (${input.vatAmount}) ≠ TTC (${input.amountTtc}).`,
+    );
+  }
+
+  const lines: ComputedJournalLine[] = [
+    { accountNumber: input.chargeAccount, label: input.chargeName,                  debitAmount: input.amountHt,  creditAmount: 0              },
+    ...(input.vatAmount > 0 ? [{ accountNumber: "4451", label: "TVA récupérable sur achats", debitAmount: input.vatAmount, creditAmount: 0 }] : []),
+    { accountNumber: input.creditAccount, label: input.creditLabel,                 debitAmount: 0,               creditAmount: input.amountTtc },
+  ];
+
+  const totalDebit  = lines.reduce((s, l) => s + l.debitAmount,  0);
+  const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
+  if (Math.round(totalDebit) !== Math.round(totalCredit)) {
+    throw new AccountingEngineError(`Écriture déséquilibrée : débit ${totalDebit} ≠ crédit ${totalCredit}.`);
+  }
+  return lines;
+}
+
+// Computes the settlement journal lines for a credit purchase (Dr 4011 / Cr treasury).
+export function computePurchaseSettlementLines(input: {
+  amountTtc: number;
+  creditAccount: string;
+  creditLabel: string;
+}): ComputedJournalLine[] {
+  if (input.amountTtc <= 0) throw new AccountingEngineError("Le montant à régler doit être strictement positif.");
+  return [
+    { accountNumber: "4011", label: "Fournisseurs d'exploitation",  debitAmount: input.amountTtc, creditAmount: 0              },
+    { accountNumber: input.creditAccount, label: input.creditLabel, debitAmount: 0,               creditAmount: input.amountTtc },
+  ];
+}
+
 export function listCategoriesForType(type: TransactionType) {
   return Object.entries(CATEGORY_RULES)
     .filter(([, rule]) => rule.type === type && !rule.hidden)

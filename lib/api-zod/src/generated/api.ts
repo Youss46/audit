@@ -2418,6 +2418,225 @@ export const ConfirmMobileMoneyRepatriationReceptionResponse = zod.object({
 
 
 /**
+ * @summary List structured purchases (Dépenses & Achats) for a PME client.
+ */
+export const ListPurchasesQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional(),
+  "status": zod.enum(['pending', 'settled']).optional()
+})
+
+export const ListPurchasesResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListPurchasesResponse = zod.array(ListPurchasesResponseItem)
+
+
+/**
+ * @summary Record a new purchase expense and post the SYSCOHADA journal entry.
+ */
+
+
+
+
+
+export const CreatePurchaseBody = zod.object({
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string().min(1),
+  "supplierNcc": zod.string().optional(),
+  "invoiceRef": zod.string().optional(),
+  "categoryKey": zod.string().min(1),
+  "amountHt": zod.number().min(1),
+  "vatRate": zod.union([zod.literal(0),zod.literal(18)]),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().optional(),
+  "notes": zod.string().optional()
+})
+
+export const CreatePurchaseResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Get a single purchase by ID.
+ */
+export const GetPurchaseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPurchaseResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Settle a credit purchase — posts Dr 4011 / Cr 5211 or 552xxx.
+ */
+export const SettlePurchaseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const SettlePurchaseBody = zod.object({
+  "paymentMode": zod.enum(['bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().optional()
+})
+
+export const SettlePurchaseResponse = zod.object({
+  "purchase": zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+}),
+  "transaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))
+})
+
+
+/**
+ * @summary List all available purchase expense categories with their SYSCOHADA account mapping.
+ */
+export const ListPurchaseCategoriesResponseItem = zod.object({
+  "key": zod.string(),
+  "label": zod.string(),
+  "account": zod.string(),
+  "accountName": zod.string(),
+  "vatEligible": zod.boolean()
+})
+export const ListPurchaseCategoriesResponse = zod.array(ListPurchaseCategoriesResponseItem)
+
+
+/**
  * @summary Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff.
  */
 export const ListStationsQueryParams = zod.object({
