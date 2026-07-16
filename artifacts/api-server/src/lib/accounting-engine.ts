@@ -396,6 +396,111 @@ export function computeMobileMoneyVirementJournalLines(input: {
   return lines;
 }
 
+// Module Trésorerie Mobile Money (generalized, all PME clients): computes
+// the compound journal entry for money flowing INTO a client's Mobile Money
+// account -- either an invoice settlement (crédit 411) or a manual "vente
+// globale" not tied to an invoice (crédit 701/706).
+//   Dr 552xxx    net amount (totalAmount - feeAmount)  → Mobile Money provider
+//   Dr 631700    feeAmount                             → Frais Mobile Money
+//   Cr <creditAccount>  totalAmount
+// Reuses the per-provider 552xxx sub-accounts and the 631700 fee account
+// already seeded for module P7, instead of the flat 552/6318 accounts, to
+// keep a single consistent Mobile Money mapping across the whole app.
+export function computeMobileMoneyInflowJournalLines(input: {
+  provider: string;
+  totalAmount: number;
+  feeAmount: number;
+  creditAccount: string;
+  creditLabel: string;
+}): ComputedJournalLine[] {
+  if (input.feeAmount < 0 || input.feeAmount >= input.totalAmount) {
+    throw new AccountingEngineError(
+      "Les frais doivent être positifs et strictement inférieurs au montant total.",
+    );
+  }
+  const netAmount = input.totalAmount - input.feeAmount;
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
+
+  const lines: ComputedJournalLine[] = [
+    {
+      accountNumber: mmAccount,
+      label: mmLabel,
+      debitAmount: netAmount,
+      creditAmount: 0,
+    },
+  ];
+
+  if (input.feeAmount > 0) {
+    lines.push({
+      accountNumber: "631700",
+      label: "Frais sur instruments monétaires électroniques",
+      debitAmount: input.feeAmount,
+      creditAmount: 0,
+    });
+  }
+
+  lines.push({
+    accountNumber: input.creditAccount,
+    label: input.creditLabel,
+    debitAmount: 0,
+    creditAmount: input.totalAmount,
+  });
+
+  return lines;
+}
+
+// Module Trésorerie Mobile Money: step 1 of a "Rapatriement de fonds" --
+// funds leave the Mobile Money account and land in the 585 transit account,
+// pending confirmation that they were actually received in the bank.
+//   Dr 585      amount  → Virements de fonds (transit)
+//   Cr 552xxx   amount  → Mobile Money provider
+export function computeMobileMoneyRepatriationOutflowLines(input: {
+  provider: string;
+  amount: number;
+}): ComputedJournalLine[] {
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
+  return [
+    {
+      accountNumber: "585",
+      label: "Virements de fonds — Mobile Money vers Banque",
+      debitAmount: input.amount,
+      creditAmount: 0,
+    },
+    {
+      accountNumber: mmAccount,
+      label: mmLabel,
+      debitAmount: 0,
+      creditAmount: input.amount,
+    },
+  ];
+}
+
+// Module Trésorerie Mobile Money: step 2 of a "Rapatriement de fonds" --
+// the cabinet/PME confirms the funds actually landed in the bank account,
+// clearing the 585 transit account into 5211 (Banque).
+//   Dr 5211   amount  → Banque
+//   Cr 585    amount  → Virements de fonds (transit)
+export function computeMobileMoneyRepatriationReceptionLines(input: {
+  amount: number;
+}): ComputedJournalLine[] {
+  return [
+    {
+      accountNumber: "5211",
+      label: "Banques",
+      debitAmount: input.amount,
+      creditAmount: 0,
+    },
+    {
+      accountNumber: "585",
+      label: "Virements de fonds — Mobile Money vers Banque",
+      debitAmount: 0,
+      creditAmount: input.amount,
+    },
+  ];
+}
+
 // Computes the second leg ("Step 2: Settlement") of a credit operation, once
 // the PME marks an outstanding invoice as paid: moves the balance from the
 // third-party account (4111/4011) to the treasury account for the chosen

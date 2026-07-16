@@ -35,3 +35,4 @@
 - [Pump-to-pompiste assignment enforcement](pump-assignment-enforcement-design.md) — verify router is mounted + server re-validates, not just the frontend filter, before trusting an "already built" restriction feature.
 - [M15-AUDIT multi-station (P8) rollout](m15-audit-p8-multi-station.md) — transactions.stationId + report filtering + selector on Pilotage/Révision; check for prior "P8" groundwork before assuming greenfield.
 - [Capitaux Propres (Classe 1) equity lifecycle gaps](equity-lifecycle-capital-closing-gaps.md) — capital 4613 fallback, OD-journal source allow-list, missing edit-form input, and missing chart-of-accounts codes were the real gaps, not the engines.
+- [Mobile Money treasury module design](mobile-money-treasury-design.md) — generalized PME module: DB schema, accounting engine, API routes, invoice payment dialog, Trésorerie dashboard page.

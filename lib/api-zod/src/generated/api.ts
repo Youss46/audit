@@ -2087,6 +2087,337 @@ export const CreateMobileMoneyTransferResponse = zod.object({
 
 
 /**
+ * @summary List configured Mobile Money accounts (merchant profiles) for a client
+ */
+export const ListMobileMoneyAccountsQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional()
+})
+
+export const ListMobileMoneyAccountsResponseItem = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullable(),
+  "isActive": zod.string().describe('\'true\' or \'false\' (stored as text)'),
+  "balance": zod.number().describe('Cached running balance in FCFA, kept in sync by every posted movement.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+export const ListMobileMoneyAccountsResponse = zod.array(ListMobileMoneyAccountsResponseItem)
+
+
+/**
+ * @summary Register a new Mobile Money account (merchant profile) for a client
+ */
+
+
+
+export const CreateMobileMoneyAccountBody = zod.object({
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string().min(1),
+  "label": zod.string().nullish()
+})
+
+export const CreateMobileMoneyAccountResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullable(),
+  "isActive": zod.string().describe('\'true\' or \'false\' (stored as text)'),
+  "balance": zod.number().describe('Cached running balance in FCFA, kept in sync by every posted movement.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update a Mobile Money account's label or active status
+ */
+export const UpdateMobileMoneyAccountParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UpdateMobileMoneyAccountBody = zod.object({
+  "label": zod.string().nullish(),
+  "isActive": zod.boolean().optional()
+})
+
+export const UpdateMobileMoneyAccountResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullable(),
+  "isActive": zod.string().describe('\'true\' or \'false\' (stored as text)'),
+  "balance": zod.number().describe('Cached running balance in FCFA, kept in sync by every posted movement.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List Mobile Money movements (inflows, outflows, transfers) for a client, most recent first
+ */
+export const ListMobileMoneyTransactionsQueryParams = zod.object({
+  "clientId": zod.coerce.number().optional(),
+  "mobileMoneyAccountId": zod.coerce.number().optional()
+})
+
+export const ListMobileMoneyTransactionsResponseItem = zod.object({
+  "id": zod.number(),
+  "mobileMoneyAccountId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']).optional(),
+  "invoiceId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "transactionId": zod.number().nullish(),
+  "type": zod.enum(['inflow', 'outflow', 'transfer_received']),
+  "status": zod.enum(['initiated', 'completed']),
+  "amount": zod.number(),
+  "feeAmount": zod.number(),
+  "referenceCode": zod.string().nullish(),
+  "label": zod.string(),
+  "date": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMobileMoneyTransactionsResponse = zod.array(ListMobileMoneyTransactionsResponseItem)
+
+
+/**
+ * @summary Record a manual daily sale received directly on a Mobile Money account (not tied to an invoice, e.g. 'Ventes globales'). Posts débit 552xxx (net) + débit 631700 (frais) / crédit 701 ou 706.
+ */
+
+export const recordMobileMoneySaleBodyFeeAmountDefault = 0;
+export const recordMobileMoneySaleBodyFeeAmountMin = 0;
+
+
+
+export const RecordMobileMoneySaleBody = zod.object({
+  "clientId": zod.number(),
+  "mobileMoneyAccountId": zod.number(),
+  "amount": zod.number().min(1).describe('Gross amount of the daily sale received on the Mobile Money account (FCFA).'),
+  "feeAmount": zod.number().min(recordMobileMoneySaleBodyFeeAmountMin).default(recordMobileMoneySaleBodyFeeAmountDefault).describe('Operator fee withheld on receipt (FCFA), books to 631700. Must be strictly less than amount.'),
+  "salesAccount": zod.enum(['701', '706']).describe('701 = Ventes de marchandises, 706 = Prestations de services.'),
+  "date": zod.coerce.date(),
+  "note": zod.string().nullish()
+})
+
+export const RecordMobileMoneySaleResponse = zod.object({
+  "transaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),
+  "account": zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullable(),
+  "isActive": zod.string().describe('\'true\' or \'false\' (stored as text)'),
+  "balance": zod.number().describe('Cached running balance in FCFA, kept in sync by every posted movement.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Step 1 of a bank repatriation: withdraw funds from a Mobile Money account into the 585 transit account (débit 585 / crédit 552xxx), pending confirmation of bank reception.
+ */
+
+
+
+export const CreateMobileMoneyRepatriationBody = zod.object({
+  "clientId": zod.number(),
+  "mobileMoneyAccountId": zod.number(),
+  "amount": zod.number().min(1).describe('Amount withdrawn from the Mobile Money account and put in transit toward the bank (FCFA).'),
+  "date": zod.coerce.date(),
+  "note": zod.string().nullish()
+})
+
+export const CreateMobileMoneyRepatriationResponse = zod.object({
+  "transaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),
+  "mobileMoneyTransaction": zod.object({
+  "id": zod.number(),
+  "mobileMoneyAccountId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']).optional(),
+  "invoiceId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "transactionId": zod.number().nullish(),
+  "type": zod.enum(['inflow', 'outflow', 'transfer_received']),
+  "status": zod.enum(['initiated', 'completed']),
+  "amount": zod.number(),
+  "feeAmount": zod.number(),
+  "referenceCode": zod.string().nullish(),
+  "label": zod.string(),
+  "date": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+}),
+  "account": zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullable(),
+  "isActive": zod.string().describe('\'true\' or \'false\' (stored as text)'),
+  "balance": zod.number().describe('Cached running balance in FCFA, kept in sync by every posted movement.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+})
+
+
+/**
+ * @summary Step 2 of a bank repatriation: confirm the funds landed in the bank, clearing the 585 transit account into 5211 (débit 5211 / crédit 585).
+ */
+export const ConfirmMobileMoneyRepatriationReceptionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ConfirmMobileMoneyRepatriationReceptionResponse = zod.object({
+  "transaction": zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+})),
+  "mobileMoneyTransaction": zod.object({
+  "id": zod.number(),
+  "mobileMoneyAccountId": zod.number(),
+  "provider": zod.enum(['wave', 'orange_money', 'mtn_momo', 'moov_money']).optional(),
+  "invoiceId": zod.number().nullish(),
+  "invoiceNumber": zod.string().nullish(),
+  "transactionId": zod.number().nullish(),
+  "type": zod.enum(['inflow', 'outflow', 'transfer_received']),
+  "status": zod.enum(['initiated', 'completed']),
+  "amount": zod.number(),
+  "feeAmount": zod.number(),
+  "referenceCode": zod.string().nullish(),
+  "label": zod.string(),
+  "date": zod.coerce.date(),
+  "createdAt": zod.coerce.date()
+})
+})
+
+
+/**
  * @summary Multi-station (P8): list all stations for a PME client. Accessible to PME owner and cabinet staff.
  */
 export const ListStationsQueryParams = zod.object({
@@ -4972,10 +5303,21 @@ export const ValidateInvoiceResponse = zod.object({
 
 
 /**
- * @summary Mark a validated invoice as paid (PAYE) — M28
+ * @summary Mark a validated invoice as paid (PAYE) — M28. When paymentMethod is 'mobile_money', also posts the settlement entry (débit 552xxx net + débit 631700 frais / crédit 411) and records a Trésorerie Mobile Money movement linked to the invoice.
  */
 export const MarkInvoicePaidParams = zod.object({
   "id": zod.coerce.number()
+})
+
+export const markInvoicePaidBodyFeeAmountMin = 0;
+
+
+
+export const MarkInvoicePaidBody = zod.object({
+  "paymentMethod": zod.union([zod.literal('especes'),zod.literal('mobile_money'),zod.literal('cheque'),zod.literal('virement'),zod.literal(null)]).nullish().describe('Optional. When \'mobile_money\', the Mobile Money settlement fields below are required and the entry is posted automatically.'),
+  "mobileMoneyAccountId": zod.number().nullish().describe('Required when paymentMethod is \'mobile_money\' — the receiving Trésorerie Mobile Money account.'),
+  "feeAmount": zod.number().min(markInvoicePaidBodyFeeAmountMin).nullish().describe('Operator fee withheld on receipt (FCFA), books to 631700. Defaults to 0.'),
+  "referenceCode": zod.string().nullish().describe('Optional operator transaction reference, kept for traceability.')
 })
 
 export const MarkInvoicePaidResponse = zod.object({

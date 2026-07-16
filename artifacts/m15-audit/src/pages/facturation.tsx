@@ -11,6 +11,7 @@ import {
   useCancelInvoice,
   downloadInvoicePdf,
   useCreateCreditNote,
+  useListMobileMoneyAccounts,
   getListInvoicesQueryKey,
   getGetInvoiceQueryKey,
 } from "@workspace/api-client-react"
@@ -47,6 +48,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 import {
   Tooltip,
   TooltipContent,
@@ -119,6 +128,13 @@ const emptyForm = (clientId: number): InvoiceForm => ({
 // ---------------------------------------------------------------------------
 function fmtFcfa(n: number): string {
   return new Intl.NumberFormat("fr-FR").format(n) + " FCFA"
+}
+
+const MOBILE_MONEY_PROVIDER_LABELS: Record<string, string> = {
+  wave: "Wave",
+  orange_money: "Orange Money",
+  mtn_momo: "MTN MoMo",
+  moov_money: "Moov Money",
 }
 
 function fmtDate(d: string | Date | null | undefined): string {
@@ -198,6 +214,11 @@ export default function Facturation() {
   const [cancelTarget,      setCancelTarget]      = React.useState<number | null>(null)
   const [downloadingId,     setDownloadingId]     = React.useState<number | null>(null)
   const [form,              setForm]              = React.useState<InvoiceForm>(emptyForm(clientId))
+  const [paymentTargetId,   setPaymentTargetId]   = React.useState<number | null>(null)
+  const [paymentMethod,     setPaymentMethod]     = React.useState<"especes" | "mobile_money" | "cheque" | "virement">("especes")
+  const [paymentAccountId,  setPaymentAccountId]  = React.useState<string>("")
+  const [paymentFee,        setPaymentFee]        = React.useState<string>("0")
+  const [paymentReference,  setPaymentReference]  = React.useState<string>("")
 
   // ── Queries ────────────────────────────────────────────────────────────
   const statusFilter = activeTab !== "tous" ? activeTab.toUpperCase() as InvoiceStatus : undefined
@@ -277,11 +298,54 @@ export default function Facturation() {
     mutation: {
       onSuccess: () => {
         toast({ title: "Facture marquée comme payée" })
+        closePaymentDialog()
         invalidate()
       },
-      onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error, variant: "destructive" }),
+      onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error ?? "Règlement impossible.", variant: "destructive" }),
     },
   })
+
+  // ── Payment dialog ("Enregistrer un règlement") ──────────────────────────
+  const paymentTarget = invoices.find((i) => i.id === paymentTargetId) ?? allInvoices.find((i) => i.id === paymentTargetId) ?? null
+
+  const mobileMoneyAccountsQuery = useListMobileMoneyAccounts(
+    { clientId: clientId || undefined },
+    { query: { enabled: !!clientId && paymentMethod === "mobile_money" && !!paymentTargetId } },
+  )
+  const mobileMoneyAccounts = (mobileMoneyAccountsQuery.data ?? []).filter((a) => a.isActive !== "false")
+
+  const openPaymentDialog = (invoiceId: number) => {
+    setPaymentTargetId(invoiceId)
+    setPaymentMethod("especes")
+    setPaymentAccountId("")
+    setPaymentFee("0")
+    setPaymentReference("")
+  }
+
+  const closePaymentDialog = () => {
+    setPaymentTargetId(null)
+  }
+
+  const confirmPayment = () => {
+    if (!paymentTargetId) return
+    if (paymentMethod !== "mobile_money") {
+      markPaidMutation.mutate({ id: paymentTargetId, data: { paymentMethod } })
+      return
+    }
+    if (!paymentAccountId) {
+      toast({ title: "Compte Mobile Money requis", description: "Sélectionnez le compte qui a reçu le règlement.", variant: "destructive" })
+      return
+    }
+    markPaidMutation.mutate({
+      id: paymentTargetId,
+      data: {
+        paymentMethod: "mobile_money",
+        mobileMoneyAccountId: Number(paymentAccountId),
+        feeAmount: Number(paymentFee) || 0,
+        referenceCode: paymentReference.trim() || undefined,
+      },
+    })
+  }
 
   const cancelMutation = useCancelInvoice({
     mutation: {
@@ -456,9 +520,8 @@ export default function Facturation() {
       {/* Mark paid (VALIDE) */}
       {inv.status === "VALIDE" && (
         <ActionBtn
-          tip="Marquer comme payée"
-          onClick={() => markPaidMutation.mutate({ id: inv.id })}
-          loading={markPaidMutation.isPending}
+          tip="Enregistrer un règlement"
+          onClick={() => openPaymentDialog(inv.id)}
           className="text-emerald-600 hover:bg-emerald-50"
         >
           <CreditCard className="h-3.5 w-3.5" />
@@ -971,6 +1034,113 @@ export default function Facturation() {
             >
               {creditNoteMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Émettre l'avoir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================================================================
+          Payment ("Enregistrer un règlement") dialog
+      ================================================================ */}
+      <Dialog open={!!paymentTargetId} onOpenChange={(o) => { if (!o) closePaymentDialog() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enregistrer un règlement</DialogTitle>
+            <DialogDescription>
+              {paymentTarget
+                ? `Facture ${paymentTarget.invoiceNumber ?? ""} — ${fmtFcfa(paymentTarget.totalTtc)}`
+                : "Sélectionnez le moyen de paiement utilisé par le client."}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div>
+              <Label className="mb-2 block">Moyen de paiement</Label>
+              <RadioGroup
+                value={paymentMethod}
+                onValueChange={(v) => setPaymentMethod(v as typeof paymentMethod)}
+                className="grid grid-cols-2 gap-2"
+              >
+                {[
+                  { value: "especes",      label: "Espèces" },
+                  { value: "mobile_money", label: "Mobile Money" },
+                  { value: "cheque",       label: "Chèque" },
+                  { value: "virement",     label: "Virement bancaire" },
+                ].map((opt) => (
+                  <label
+                    key={opt.value}
+                    className={cn(
+                      "flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer",
+                      paymentMethod === opt.value ? "border-primary bg-primary/5" : "border-border",
+                    )}
+                  >
+                    <RadioGroupItem value={opt.value} />
+                    {opt.label}
+                  </label>
+                ))}
+              </RadioGroup>
+            </div>
+
+            {paymentMethod === "mobile_money" && (
+              <div className="space-y-3 rounded-md border bg-muted/30 p-3">
+                <div>
+                  <Label htmlFor="paymentAccount">Compte Mobile Money receveur <span className="text-destructive">*</span></Label>
+                  <Select value={paymentAccountId} onValueChange={setPaymentAccountId}>
+                    <SelectTrigger id="paymentAccount" className="mt-1">
+                      <SelectValue placeholder="Sélectionner un compte…" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {mobileMoneyAccounts.length === 0 && (
+                        <div className="px-2 py-1.5 text-sm text-muted-foreground">
+                          Aucun compte configuré — voir Trésorerie Mobile Money.
+                        </div>
+                      )}
+                      {mobileMoneyAccounts.map((a) => (
+                        <SelectItem key={a.id} value={String(a.id)}>
+                          {MOBILE_MONEY_PROVIDER_LABELS[a.provider] ?? a.provider} — {a.accountNumber}
+                          {a.label ? ` (${a.label})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="paymentFee">Frais opérateur (FCFA)</Label>
+                    <AmountInput
+                      id="paymentFee"
+                      value={paymentFee}
+                      onChange={(e) => setPaymentFee(e.target.value)}
+                      className="mt-1"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="paymentReference">Référence (facultatif)</Label>
+                    <Input
+                      id="paymentReference"
+                      value={paymentReference}
+                      onChange={(e) => setPaymentReference(e.target.value)}
+                      placeholder="Ex : TXN123456"
+                      className="mt-1"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Le montant net ({paymentTarget ? fmtFcfa(paymentTarget.totalTtc - (Number(paymentFee) || 0)) : "—"}) sera crédité sur le compte,
+                  les frais seront comptabilisés en charges (631700), et le règlement sera automatiquement enregistré en comptabilité.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={closePaymentDialog}>Annuler</Button>
+            <Button
+              onClick={confirmPayment}
+              disabled={markPaidMutation.isPending || (paymentMethod === "mobile_money" && !paymentAccountId)}
+            >
+              {markPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Confirmer le règlement
             </Button>
           </DialogFooter>
         </DialogContent>

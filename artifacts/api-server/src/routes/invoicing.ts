@@ -10,6 +10,8 @@ import {
   invoicesTable,
   invoiceItemsTable,
   vatSettingsTable,
+  mobileMoneyAccountsTable,
+  mobileMoneyTransactionsTable,
   isPortalRole,
 } from "@workspace/db";
 import {
@@ -20,6 +22,7 @@ import {
   UpdateInvoiceBody,
   ValidateInvoiceParams,
   MarkInvoicePaidParams,
+  MarkInvoicePaidBody,
   CancelInvoiceParams,
   DownloadInvoicePdfParams,
   CreateCreditNoteParams,
@@ -29,6 +32,11 @@ import { requireAuth, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { generateInvoicePdf } from "../lib/export-engine";
 import { ACCOUNT_TVA_COLLECTEE_18 } from "../lib/vat-engine";
+import {
+  computeMobileMoneyInflowJournalLines,
+  MOBILE_MONEY_PROVIDER_LABELS,
+  AccountingEngineError,
+} from "../lib/accounting-engine";
 
 class HttpError extends Error {
   constructor(
@@ -479,12 +487,101 @@ router.post("/invoices/:id/validate", requirePermission("facturation.create"), a
 // ---------------------------------------------------------------------------
 router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), async (req, res) => {
   const { id } = MarkInvoicePaidParams.parse(req.params);
+  const body = MarkInvoicePaidBody.parse(req.body ?? {});
 
   const inv = await fetchFullInvoice(id);
   if (!inv) throw new HttpError(404, "Facture introuvable.");
   assertOwnership(inv, req);
   if (inv.status !== "VALIDE") {
     throw new HttpError(400, "Seule une facture VALIDÉE peut être marquée comme payée.");
+  }
+
+  // Module Trésorerie Mobile Money: when settled via Mobile Money, also post
+  // the settlement leg (débit 552xxx net + débit 631700 frais / crédit 411)
+  // and record a traceable Mobile Money movement linked to this invoice --
+  // this never edits the original 411/706/443 entry posted at validation.
+  if (body.paymentMethod === "mobile_money") {
+    if (!body.mobileMoneyAccountId) {
+      throw new HttpError(400, "Le compte Mobile Money est requis pour un règlement Mobile Money.");
+    }
+    const feeAmount = body.feeAmount ?? 0;
+
+    const account = await db.query.mobileMoneyAccountsTable.findFirst({
+      where: and(
+        eq(mobileMoneyAccountsTable.id, body.mobileMoneyAccountId),
+        eq(mobileMoneyAccountsTable.clientId, inv.clientId),
+        eq(mobileMoneyAccountsTable.firmId, req.user!.firmId),
+      ),
+    });
+    if (!account) throw new HttpError(404, "Compte Mobile Money introuvable pour ce client.");
+
+    let journalLines;
+    try {
+      journalLines = computeMobileMoneyInflowJournalLines({
+        provider: account.provider,
+        totalAmount: inv.totalTtc,
+        feeAmount,
+        creditAccount: "411",
+        creditLabel: "Clients",
+      });
+    } catch (err) {
+      if (err instanceof AccountingEngineError) throw new HttpError(400, err.message);
+      throw err;
+    }
+
+    const providerLabel = MOBILE_MONEY_PROVIDER_LABELS[account.provider] ?? account.provider;
+    const label = `Règlement Mobile Money (${providerLabel}) — Facture ${inv.invoiceNumber}`;
+
+    const [settlement] = await db
+      .insert(transactionsTable)
+      .values({
+        firmId: req.user!.firmId,
+        clientId: inv.clientId,
+        date: new Date(),
+        label,
+        amount: inv.totalTtc,
+        type: "recette",
+        category: "Ventes / Prestations de services",
+        paymentType: "cash",
+        paymentMethod: "mobile_money",
+        status: "a_valider",
+        source: "settlement",
+        parentTransactionId: inv.postedTransactionId,
+        createdById: req.user!.id,
+      })
+      .returning();
+
+    await db.insert(journalLinesTable).values(
+      journalLines.map((line) => ({
+        transactionId: settlement.id,
+        accountNumber: line.accountNumber,
+        label: line.label,
+        debitAmount: line.debitAmount,
+        creditAmount: line.creditAmount,
+      })),
+    );
+
+    const netAmount = inv.totalTtc - feeAmount;
+    await db
+      .update(mobileMoneyAccountsTable)
+      .set({ balance: account.balance + netAmount })
+      .where(eq(mobileMoneyAccountsTable.id, account.id));
+
+    await db.insert(mobileMoneyTransactionsTable).values({
+      firmId: req.user!.firmId,
+      clientId: inv.clientId,
+      mobileMoneyAccountId: account.id,
+      invoiceId: inv.id,
+      transactionId: settlement.id,
+      type: "inflow",
+      status: "completed",
+      amount: inv.totalTtc,
+      feeAmount,
+      referenceCode: body.referenceCode ?? null,
+      label,
+      date: new Date(),
+      createdById: req.user!.id,
+    });
   }
 
   await db
@@ -500,7 +597,9 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
     action:     AuditAction.INVOICE_MARK_PAID,
     entityType: "invoice",
     entityId:   id,
-    details:    `Facture marquée PAYÉE : ${inv.invoiceNumber}`,
+    details:    body.paymentMethod === "mobile_money"
+      ? `Facture marquée PAYÉE (Mobile Money) : ${inv.invoiceNumber} — ${inv.totalTtc} FCFA`
+      : `Facture marquée PAYÉE : ${inv.invoiceNumber}`,
   });
 
   const updated = await fetchFullInvoice(id);

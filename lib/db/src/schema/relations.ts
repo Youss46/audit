@@ -26,6 +26,7 @@ import { payrollSettingsTable } from "./payroll-settings";
 import { vatSettingsTable } from "./vat-settings";
 import { stationsTable } from "./stations";
 import { pumpsTable, pumpShiftsTable, pumpAssignmentsTable, fuelPricesTable } from "./station-service";
+import { mobileMoneyAccountsTable, mobileMoneyTransactionsTable } from "./mobile-money";
 
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
@@ -389,6 +390,35 @@ export const invoiceItemsRelations = relations(invoiceItemsTable, ({ one }) => (
   invoice: one(invoicesTable, {
     fields: [invoiceItemsTable.invoiceId],
     references: [invoicesTable.id],
+  }),
+}));
+
+// Module Trésorerie Mobile Money (generalized, all PME clients).
+export const mobileMoneyAccountsRelations = relations(mobileMoneyAccountsTable, ({ one, many }) => ({
+  firm: one(firmsTable, { fields: [mobileMoneyAccountsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [mobileMoneyAccountsTable.clientId], references: [clientsTable.id] }),
+  createdBy: one(usersTable, { fields: [mobileMoneyAccountsTable.createdById], references: [usersTable.id] }),
+  transactions: many(mobileMoneyTransactionsTable),
+}));
+
+export const mobileMoneyTransactionsRelations = relations(mobileMoneyTransactionsTable, ({ one }) => ({
+  firm: one(firmsTable, { fields: [mobileMoneyTransactionsTable.firmId], references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [mobileMoneyTransactionsTable.clientId], references: [clientsTable.id] }),
+  account: one(mobileMoneyAccountsTable, {
+    fields: [mobileMoneyTransactionsTable.mobileMoneyAccountId],
+    references: [mobileMoneyAccountsTable.id],
+  }),
+  invoice: one(invoicesTable, {
+    fields: [mobileMoneyTransactionsTable.invoiceId],
+    references: [invoicesTable.id],
+  }),
+  transaction: one(transactionsTable, {
+    fields: [mobileMoneyTransactionsTable.transactionId],
+    references: [transactionsTable.id],
+  }),
+  createdBy: one(usersTable, {
+    fields: [mobileMoneyTransactionsTable.createdById],
+    references: [usersTable.id],
   }),
 }));
 

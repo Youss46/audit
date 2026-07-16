@@ -61,6 +61,11 @@ const SYSCOHADA_ACCOUNTS: { accountNumber: string; name: string; accountClass: n
   // always posted to a pompiste's own sub-account, never to this one.
   { accountNumber: "571100", name: "Caisse Pompistes (compte collectif)", accountClass: 5 },
   { accountNumber: "58", name: "Virements de fonds", accountClass: 5 },
+  // Module Trésorerie Mobile Money — compte de transit utilisé pour le
+  // rapatriement de fonds en 2 étapes (débit 585 / crédit 552xxx à
+  // l'initiation, puis débit 5211 / crédit 585 à la confirmation de
+  // réception en banque).
+  { accountNumber: "585", name: "Virements de fonds — Mobile Money vers Banque", accountClass: 5 },
   // Classe 55 - Instruments de monnaie électronique (Mobile Money).
   // Added automatically for clients with a STATION_SERVICE profile.
   // 552100 Orange Money, 552200 Wave, 552300 MTN MoMo, 552400 Moov Money.

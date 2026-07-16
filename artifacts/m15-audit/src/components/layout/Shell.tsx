@@ -29,7 +29,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
-import { UserCog, Fuel, CircleDollarSign } from "lucide-react"
+import { UserCog, Fuel, CircleDollarSign, Smartphone } from "lucide-react"
 import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
@@ -134,7 +134,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // (dashboard, client list, team, audit log) even if they navigate there
   // directly by URL.
   const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/scoring", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication", "/cabinet/settings"]
-  const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/client/settings"]
+  const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/tresorerie-mobile-money", "/client/settings"]
   React.useEffect(() => {
     if (
       !isLoading &&
@@ -184,7 +184,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         (location.startsWith("/mes-operations") && !hasPermission(user, "operations.view")) ||
         (location.startsWith("/caisse") && !hasPermission(user, "caisse.view")) ||
         (location.startsWith("/pilotage") && !hasPermission(user, "pilotage.view")) ||
-        (location.startsWith("/facturation") && !hasPermission(user, "facturation.view"))
+        (location.startsWith("/facturation") && !hasPermission(user, "facturation.view")) ||
+        (location.startsWith("/tresorerie-mobile-money") && !hasPermission(user, "facturation.view"))
       if (blocked) setLocation("/portal")
     }
   }, [isLoading, user, location, setLocation])
@@ -293,6 +294,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )} data-testid="link-facturation">
               <Receipt className="h-5 w-5" />
               Mon Facturier
+            </Link>
+          )}
+
+          {hasPermission(user, "facturation.view") && user?.roleCode !== 'POMPISTE' && (
+            <Link href="/tresorerie-mobile-money" className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+              location.startsWith("/tresorerie-mobile-money")
+                ? "bg-primary text-primary-foreground"
+                : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            )} data-testid="link-tresorerie-mobile-money">
+              <Smartphone className="h-5 w-5" />
+              Trésorerie Mobile Money
             </Link>
           )}
 

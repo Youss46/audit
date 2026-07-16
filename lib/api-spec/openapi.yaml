@@ -1572,6 +1572,170 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  # Module Trésorerie Mobile Money (generalized, all PME clients)
+  # -------------------------------------------------------------------------
+  /mobile-money/accounts:
+    get:
+      operationId: listMobileMoneyAccounts
+      tags: [mobile-money]
+      summary: List configured Mobile Money accounts (merchant profiles) for a client
+      parameters:
+        - name: clientId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Account list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MobileMoneyAccount"
+    post:
+      operationId: createMobileMoneyAccount
+      tags: [mobile-money]
+      summary: Register a new Mobile Money account (merchant profile) for a client
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMobileMoneyAccountBody"
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileMoneyAccount"
+
+  /mobile-money/accounts/{id}:
+    patch:
+      operationId: updateMobileMoneyAccount
+      tags: [mobile-money]
+      summary: Update a Mobile Money account's label or active status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateMobileMoneyAccountBody"
+      responses:
+        "200":
+          description: Account updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileMoneyAccount"
+
+  /mobile-money/transactions:
+    get:
+      operationId: listMobileMoneyTransactions
+      tags: [mobile-money]
+      summary: List Mobile Money movements (inflows, outflows, transfers) for a client, most recent first
+      parameters:
+        - name: clientId
+          in: query
+          schema: { type: integer }
+        - name: mobileMoneyAccountId
+          in: query
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Transaction list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MobileMoneyTransaction"
+
+  /mobile-money/sales:
+    post:
+      operationId: recordMobileMoneySale
+      tags: [mobile-money]
+      summary: "Record a manual daily sale received directly on a Mobile Money account (not tied to an invoice, e.g. 'Ventes globales'). Posts débit 552xxx (net) + débit 631700 (frais) / crédit 701 ou 706."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RecordMobileMoneySaleBody"
+      responses:
+        "201":
+          description: Sale posted and account balance updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RecordMobileMoneySaleResult"
+        "400":
+          description: Invalid input, e.g. feeAmount ≥ amount
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mobile-money/repatriations:
+    post:
+      operationId: createMobileMoneyRepatriation
+      tags: [mobile-money]
+      summary: "Step 1 of a bank repatriation: withdraw funds from a Mobile Money account into the 585 transit account (débit 585 / crédit 552xxx), pending confirmation of bank reception."
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMobileMoneyRepatriationBody"
+      responses:
+        "201":
+          description: Repatriation initiated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreateMobileMoneyRepatriationResult"
+        "400":
+          description: Invalid input, e.g. amount exceeds the account's current balance
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /mobile-money/repatriations/{id}/confirm-reception:
+    post:
+      operationId: confirmMobileMoneyRepatriationReception
+      tags: [mobile-money]
+      summary: "Step 2 of a bank repatriation: confirm the funds landed in the bank, clearing the 585 transit account into 5211 (débit 5211 / crédit 585)."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Repatriation confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfirmMobileMoneyRepatriationReceptionResult"
+        "404":
+          description: Repatriation not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Repatriation already confirmed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /stations:
     get:
       operationId: listStations
@@ -4316,12 +4480,18 @@ paths:
     post:
       operationId: markInvoicePaid
       tags: [invoicing]
-      summary: Mark a validated invoice as paid (PAYE) — M28
+      summary: "Mark a validated invoice as paid (PAYE) — M28. When paymentMethod is 'mobile_money', also posts the settlement entry (débit 552xxx net + débit 631700 frais / crédit 411) and records a Trésorerie Mobile Money movement linked to the invoice."
       parameters:
         - name: id
           in: path
           required: true
           schema: { type: integer }
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkInvoicePaidBody"
       responses:
         "200":
           description: Invoice marked as paid
@@ -4329,6 +4499,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/InvoiceDetail"
+        "400":
+          description: Invalid settlement input (e.g. missing Mobile Money account, fee ≥ total)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /invoices/{id}/cancel:
     post:
@@ -7243,6 +7419,24 @@ components:
           items:
             $ref: "#/components/schemas/InvoiceItemInput"
 
+    MarkInvoicePaidBody:
+      type: object
+      properties:
+        paymentMethod:
+          type: ["string", "null"]
+          enum: [especes, mobile_money, cheque, virement, null]
+          description: "Optional. When 'mobile_money', the Mobile Money settlement fields below are required and the entry is posted automatically."
+        mobileMoneyAccountId:
+          type: ["integer", "null"]
+          description: Required when paymentMethod is 'mobile_money' — the receiving Trésorerie Mobile Money account.
+        feeAmount:
+          type: ["integer", "null"]
+          minimum: 0
+          description: "Operator fee withheld on receipt (FCFA), books to 631700. Defaults to 0."
+        referenceCode:
+          type: ["string", "null"]
+          description: Optional operator transaction reference, kept for traceability.
+
     InvoicePdfResponse:
       type: object
       required: [invoiceId, invoiceNumber, fileName, mimeType, fileData]
@@ -7449,3 +7643,135 @@ components:
       properties:
         transaction:
           $ref: "#/components/schemas/TransactionDetail"
+
+    # -- Trésorerie Mobile Money (generalized, all PME clients) -------------
+    MobileMoneyAccount:
+      type: object
+      required: [id, clientId, provider, accountNumber, label, isActive, balance, createdAt, updatedAt]
+      properties:
+        id: { type: integer }
+        clientId: { type: integer }
+        provider:
+          $ref: "#/components/schemas/MobileMoneyProvider"
+        accountNumber: { type: string }
+        label: { type: ["string", "null"] }
+        isActive: { type: string, description: "'true' or 'false' (stored as text)" }
+        balance:
+          type: integer
+          description: Cached running balance in FCFA, kept in sync by every posted movement.
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateMobileMoneyAccountBody:
+      type: object
+      required: [clientId, provider, accountNumber]
+      properties:
+        clientId: { type: integer }
+        provider:
+          $ref: "#/components/schemas/MobileMoneyProvider"
+        accountNumber: { type: string, minLength: 1 }
+        label: { type: ["string", "null"] }
+
+    UpdateMobileMoneyAccountBody:
+      type: object
+      properties:
+        label: { type: ["string", "null"] }
+        isActive: { type: boolean }
+
+    MobileMoneyTransactionType:
+      type: string
+      enum: [inflow, outflow, transfer_received]
+
+    MobileMoneyTransactionStatus:
+      type: string
+      enum: [initiated, completed]
+
+    MobileMoneyTransaction:
+      type: object
+      required: [id, mobileMoneyAccountId, type, status, amount, feeAmount, label, date, createdAt]
+      properties:
+        id: { type: integer }
+        mobileMoneyAccountId: { type: integer }
+        provider:
+          $ref: "#/components/schemas/MobileMoneyProvider"
+        invoiceId: { type: ["integer", "null"] }
+        invoiceNumber: { type: ["string", "null"] }
+        transactionId: { type: ["integer", "null"] }
+        type:
+          $ref: "#/components/schemas/MobileMoneyTransactionType"
+        status:
+          $ref: "#/components/schemas/MobileMoneyTransactionStatus"
+        amount: { type: integer }
+        feeAmount: { type: integer }
+        referenceCode: { type: ["string", "null"] }
+        label: { type: string }
+        date: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    RecordMobileMoneySaleBody:
+      type: object
+      required: [clientId, mobileMoneyAccountId, amount, date, salesAccount]
+      properties:
+        clientId: { type: integer }
+        mobileMoneyAccountId: { type: integer }
+        amount:
+          type: integer
+          minimum: 1
+          description: Gross amount of the daily sale received on the Mobile Money account (FCFA).
+        feeAmount:
+          type: integer
+          minimum: 0
+          default: 0
+          description: Operator fee withheld on receipt (FCFA), books to 631700. Must be strictly less than amount.
+        salesAccount:
+          type: string
+          enum: ["701", "706"]
+          description: "701 = Ventes de marchandises, 706 = Prestations de services."
+        date:
+          type: string
+          format: date-time
+        note: { type: ["string", "null"] }
+
+    RecordMobileMoneySaleResult:
+      type: object
+      required: [transaction, account]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/TransactionDetail"
+        account:
+          $ref: "#/components/schemas/MobileMoneyAccount"
+
+    CreateMobileMoneyRepatriationBody:
+      type: object
+      required: [clientId, mobileMoneyAccountId, amount, date]
+      properties:
+        clientId: { type: integer }
+        mobileMoneyAccountId: { type: integer }
+        amount:
+          type: integer
+          minimum: 1
+          description: Amount withdrawn from the Mobile Money account and put in transit toward the bank (FCFA).
+        date:
+          type: string
+          format: date-time
+        note: { type: ["string", "null"] }
+
+    CreateMobileMoneyRepatriationResult:
+      type: object
+      required: [transaction, mobileMoneyTransaction, account]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/TransactionDetail"
+        mobileMoneyTransaction:
+          $ref: "#/components/schemas/MobileMoneyTransaction"
+        account:
+          $ref: "#/components/schemas/MobileMoneyAccount"
+
+    ConfirmMobileMoneyRepatriationReceptionResult:
+      type: object
+      required: [transaction, mobileMoneyTransaction]
+      properties:
+        transaction:
+          $ref: "#/components/schemas/TransactionDetail"
+        mobileMoneyTransaction:
+          $ref: "#/components/schemas/MobileMoneyTransaction"

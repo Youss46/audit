@@ -2414,6 +2414,44 @@ export interface InvoiceInput {
   items: InvoiceItemInput[];
 }
 
+/**
+ * Optional. When 'mobile_money', the Mobile Money settlement fields below are required and the entry is posted automatically.
+ * @nullable
+ */
+export type MarkInvoicePaidBodyPaymentMethod = typeof MarkInvoicePaidBodyPaymentMethod[keyof typeof MarkInvoicePaidBodyPaymentMethod] | null;
+
+
+export const MarkInvoicePaidBodyPaymentMethod = {
+  especes: 'especes',
+  mobile_money: 'mobile_money',
+  cheque: 'cheque',
+  virement: 'virement',
+} as const;
+
+export interface MarkInvoicePaidBody {
+  /**
+     * Optional. When 'mobile_money', the Mobile Money settlement fields below are required and the entry is posted automatically.
+     * @nullable
+     */
+  paymentMethod?: MarkInvoicePaidBodyPaymentMethod;
+  /**
+     * Required when paymentMethod is 'mobile_money' — the receiving Trésorerie Mobile Money account.
+     * @nullable
+     */
+  mobileMoneyAccountId?: number | null;
+  /**
+     * Operator fee withheld on receipt (FCFA), books to 631700. Defaults to 0.
+     * @minimum 0
+     * @nullable
+     */
+  feeAmount?: number | null;
+  /**
+     * Optional operator transaction reference, kept for traceability.
+     * @nullable
+     */
+  referenceCode?: string | null;
+}
+
 export interface InvoicePdfResponse {
   invoiceId: number;
   invoiceNumber: string;
@@ -2602,6 +2640,134 @@ export interface MobileMoneyVirementResult {
   transaction: TransactionDetail;
 }
 
+export interface MobileMoneyAccount {
+  id: number;
+  clientId: number;
+  provider: MobileMoneyProvider;
+  accountNumber: string;
+  /** @nullable */
+  label: string | null;
+  /** 'true' or 'false' (stored as text) */
+  isActive: string;
+  /** Cached running balance in FCFA, kept in sync by every posted movement. */
+  balance: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMobileMoneyAccountBody {
+  clientId: number;
+  provider: MobileMoneyProvider;
+  /** @minLength 1 */
+  accountNumber: string;
+  /** @nullable */
+  label?: string | null;
+}
+
+export interface UpdateMobileMoneyAccountBody {
+  /** @nullable */
+  label?: string | null;
+  isActive?: boolean;
+}
+
+export type MobileMoneyTransactionType = typeof MobileMoneyTransactionType[keyof typeof MobileMoneyTransactionType];
+
+
+export const MobileMoneyTransactionType = {
+  inflow: 'inflow',
+  outflow: 'outflow',
+  transfer_received: 'transfer_received',
+} as const;
+
+export type MobileMoneyTransactionStatus = typeof MobileMoneyTransactionStatus[keyof typeof MobileMoneyTransactionStatus];
+
+
+export const MobileMoneyTransactionStatus = {
+  initiated: 'initiated',
+  completed: 'completed',
+} as const;
+
+export interface MobileMoneyTransaction {
+  id: number;
+  mobileMoneyAccountId: number;
+  provider?: MobileMoneyProvider;
+  /** @nullable */
+  invoiceId?: number | null;
+  /** @nullable */
+  invoiceNumber?: string | null;
+  /** @nullable */
+  transactionId?: number | null;
+  type: MobileMoneyTransactionType;
+  status: MobileMoneyTransactionStatus;
+  amount: number;
+  feeAmount: number;
+  /** @nullable */
+  referenceCode?: string | null;
+  label: string;
+  date: string;
+  createdAt: string;
+}
+
+/**
+ * 701 = Ventes de marchandises, 706 = Prestations de services.
+ */
+export type RecordMobileMoneySaleBodySalesAccount = typeof RecordMobileMoneySaleBodySalesAccount[keyof typeof RecordMobileMoneySaleBodySalesAccount];
+
+
+export const RecordMobileMoneySaleBodySalesAccount = {
+  NUMBER_701: '701',
+  NUMBER_706: '706',
+} as const;
+
+export interface RecordMobileMoneySaleBody {
+  clientId: number;
+  mobileMoneyAccountId: number;
+  /**
+     * Gross amount of the daily sale received on the Mobile Money account (FCFA).
+     * @minimum 1
+     */
+  amount: number;
+  /**
+     * Operator fee withheld on receipt (FCFA), books to 631700. Must be strictly less than amount.
+     * @minimum 0
+     */
+  feeAmount?: number;
+  /** 701 = Ventes de marchandises, 706 = Prestations de services. */
+  salesAccount: RecordMobileMoneySaleBodySalesAccount;
+  date: string;
+  /** @nullable */
+  note?: string | null;
+}
+
+export interface RecordMobileMoneySaleResult {
+  transaction: TransactionDetail;
+  account: MobileMoneyAccount;
+}
+
+export interface CreateMobileMoneyRepatriationBody {
+  clientId: number;
+  mobileMoneyAccountId: number;
+  /**
+     * Amount withdrawn from the Mobile Money account and put in transit toward the bank (FCFA).
+     * @minimum 1
+     */
+  amount: number;
+  date: string;
+  /** @nullable */
+  note?: string | null;
+}
+
+export interface CreateMobileMoneyRepatriationResult {
+  transaction: TransactionDetail;
+  mobileMoneyTransaction: MobileMoneyTransaction;
+  account: MobileMoneyAccount;
+}
+
+export interface ConfirmMobileMoneyRepatriationReceptionResult {
+  transaction: TransactionDetail;
+  mobileMoneyTransaction: MobileMoneyTransaction;
+}
+
 export type ListAuditLogsParams = {
 entityType?: string;
 action?: string;
@@ -2655,6 +2821,15 @@ status?: PumpShiftStatus;
  * Multi-station (P8): filter shifts to a specific station.
  */
 stationId?: number;
+};
+
+export type ListMobileMoneyAccountsParams = {
+clientId?: number;
+};
+
+export type ListMobileMoneyTransactionsParams = {
+clientId?: number;
+mobileMoneyAccountId?: number;
 };
 
 export type ListStationsParams = {

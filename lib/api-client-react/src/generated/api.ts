@@ -67,8 +67,12 @@ import type {
   CollaborationThreadDetail,
   CompiledDocumentPreview,
   CompteDeResultatResult,
+  ConfirmMobileMoneyRepatriationReceptionResult,
   ContextualComment,
   ContextualCommentInput,
+  CreateMobileMoneyAccountBody,
+  CreateMobileMoneyRepatriationBody,
+  CreateMobileMoneyRepatriationResult,
   CreateOpeningBalanceBody,
   CreatePumpAssignmentInput,
   CreatePumpInput,
@@ -133,6 +137,8 @@ import type {
   ListGeneratedDocumentsParams,
   ListInvoicesParams,
   ListMissionsParams,
+  ListMobileMoneyAccountsParams,
+  ListMobileMoneyTransactionsParams,
   ListPayslipsParams,
   ListPumpAssignmentsParams,
   ListPumpShiftsParams,
@@ -143,10 +149,13 @@ import type {
   ListTransactionCategoriesParams,
   ListTransactionsParams,
   LoginInput,
+  MarkInvoicePaidBody,
   Mission,
   MissionDetail,
   MissionInput,
   MissionUpdate,
+  MobileMoneyAccount,
+  MobileMoneyTransaction,
   MobileMoneyVirementInput,
   MobileMoneyVirementResult,
   MyPumpAssignment,
@@ -169,6 +178,8 @@ import type {
   PumpShiftCreateInput,
   PumpShiftValidateInput,
   PumpShiftValidateResult,
+  RecordMobileMoneySaleBody,
+  RecordMobileMoneySaleResult,
   RegisterInput,
   ResetFirstPasswordInput,
   Role,
@@ -188,6 +199,7 @@ import type {
   TransactionRejectInput,
   TransactionSettleInput,
   UpdateJournalLinesInput,
+  UpdateMobileMoneyAccountBody,
   UpdatePumpInput,
   UpdateStationInput,
   UpsertFuelPriceInput,
@@ -4676,6 +4688,530 @@ export const useCreateMobileMoneyTransfer = <TError = ErrorType<ErrorResponse>,
         TContext
       > => {
       return useMutation(getCreateMobileMoneyTransferMutationOptions(options));
+    }
+
+export const getListMobileMoneyAccountsUrl = (params?: ListMobileMoneyAccountsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mobile-money/accounts?${stringifiedParams}` : `/api/mobile-money/accounts`
+}
+
+/**
+ * @summary List configured Mobile Money accounts (merchant profiles) for a client
+ */
+export const listMobileMoneyAccounts = async (params?: ListMobileMoneyAccountsParams, options?: RequestInit): Promise<MobileMoneyAccount[]> => {
+
+  return customFetch<MobileMoneyAccount[]>(getListMobileMoneyAccountsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMobileMoneyAccountsQueryKey = (params?: ListMobileMoneyAccountsParams,) => {
+    return [
+    `/api/mobile-money/accounts`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMobileMoneyAccountsQueryOptions = <TData = Awaited<ReturnType<typeof listMobileMoneyAccounts>>, TError = ErrorType<unknown>>(params?: ListMobileMoneyAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMobileMoneyAccountsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMobileMoneyAccounts>>> = ({ signal }) => listMobileMoneyAccounts(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyAccounts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMobileMoneyAccountsQueryResult = NonNullable<Awaited<ReturnType<typeof listMobileMoneyAccounts>>>
+export type ListMobileMoneyAccountsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List configured Mobile Money accounts (merchant profiles) for a client
+ */
+
+export function useListMobileMoneyAccounts<TData = Awaited<ReturnType<typeof listMobileMoneyAccounts>>, TError = ErrorType<unknown>>(
+ params?: ListMobileMoneyAccountsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyAccounts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMobileMoneyAccountsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMobileMoneyAccountUrl = () => {
+
+
+
+
+  return `/api/mobile-money/accounts`
+}
+
+/**
+ * @summary Register a new Mobile Money account (merchant profile) for a client
+ */
+export const createMobileMoneyAccount = async (createMobileMoneyAccountBody: CreateMobileMoneyAccountBody, options?: RequestInit): Promise<MobileMoneyAccount> => {
+
+  return customFetch<MobileMoneyAccount>(getCreateMobileMoneyAccountUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createMobileMoneyAccountBody)
+  }
+);}
+
+
+
+
+
+export const getCreateMobileMoneyAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyAccount>>, TError,{data: BodyType<CreateMobileMoneyAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyAccount>>, TError,{data: BodyType<CreateMobileMoneyAccountBody>}, TContext> => {
+
+const mutationKey = ['createMobileMoneyAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMobileMoneyAccount>>, {data: BodyType<CreateMobileMoneyAccountBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMobileMoneyAccount(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMobileMoneyAccountMutationResult = NonNullable<Awaited<ReturnType<typeof createMobileMoneyAccount>>>
+    export type CreateMobileMoneyAccountMutationBody = BodyType<CreateMobileMoneyAccountBody>
+    export type CreateMobileMoneyAccountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Register a new Mobile Money account (merchant profile) for a client
+ */
+export const useCreateMobileMoneyAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyAccount>>, TError,{data: BodyType<CreateMobileMoneyAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMobileMoneyAccount>>,
+        TError,
+        {data: BodyType<CreateMobileMoneyAccountBody>},
+        TContext
+      > => {
+      return useMutation(getCreateMobileMoneyAccountMutationOptions(options));
+    }
+
+export const getUpdateMobileMoneyAccountUrl = (id: number,) => {
+
+
+
+
+  return `/api/mobile-money/accounts/${id}`
+}
+
+/**
+ * @summary Update a Mobile Money account's label or active status
+ */
+export const updateMobileMoneyAccount = async (id: number,
+    updateMobileMoneyAccountBody: UpdateMobileMoneyAccountBody, options?: RequestInit): Promise<MobileMoneyAccount> => {
+
+  return customFetch<MobileMoneyAccount>(getUpdateMobileMoneyAccountUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateMobileMoneyAccountBody)
+  }
+);}
+
+
+
+
+
+export const getUpdateMobileMoneyAccountMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMobileMoneyAccount>>, TError,{id: number;data: BodyType<UpdateMobileMoneyAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateMobileMoneyAccount>>, TError,{id: number;data: BodyType<UpdateMobileMoneyAccountBody>}, TContext> => {
+
+const mutationKey = ['updateMobileMoneyAccount'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateMobileMoneyAccount>>, {id: number;data: BodyType<UpdateMobileMoneyAccountBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateMobileMoneyAccount(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateMobileMoneyAccountMutationResult = NonNullable<Awaited<ReturnType<typeof updateMobileMoneyAccount>>>
+    export type UpdateMobileMoneyAccountMutationBody = BodyType<UpdateMobileMoneyAccountBody>
+    export type UpdateMobileMoneyAccountMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Update a Mobile Money account's label or active status
+ */
+export const useUpdateMobileMoneyAccount = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateMobileMoneyAccount>>, TError,{id: number;data: BodyType<UpdateMobileMoneyAccountBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateMobileMoneyAccount>>,
+        TError,
+        {id: number;data: BodyType<UpdateMobileMoneyAccountBody>},
+        TContext
+      > => {
+      return useMutation(getUpdateMobileMoneyAccountMutationOptions(options));
+    }
+
+export const getListMobileMoneyTransactionsUrl = (params?: ListMobileMoneyTransactionsParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/mobile-money/transactions?${stringifiedParams}` : `/api/mobile-money/transactions`
+}
+
+/**
+ * @summary List Mobile Money movements (inflows, outflows, transfers) for a client, most recent first
+ */
+export const listMobileMoneyTransactions = async (params?: ListMobileMoneyTransactionsParams, options?: RequestInit): Promise<MobileMoneyTransaction[]> => {
+
+  return customFetch<MobileMoneyTransaction[]>(getListMobileMoneyTransactionsUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMobileMoneyTransactionsQueryKey = (params?: ListMobileMoneyTransactionsParams,) => {
+    return [
+    `/api/mobile-money/transactions`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMobileMoneyTransactionsQueryOptions = <TData = Awaited<ReturnType<typeof listMobileMoneyTransactions>>, TError = ErrorType<unknown>>(params?: ListMobileMoneyTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMobileMoneyTransactionsQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMobileMoneyTransactions>>> = ({ signal }) => listMobileMoneyTransactions(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyTransactions>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMobileMoneyTransactionsQueryResult = NonNullable<Awaited<ReturnType<typeof listMobileMoneyTransactions>>>
+export type ListMobileMoneyTransactionsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List Mobile Money movements (inflows, outflows, transfers) for a client, most recent first
+ */
+
+export function useListMobileMoneyTransactions<TData = Awaited<ReturnType<typeof listMobileMoneyTransactions>>, TError = ErrorType<unknown>>(
+ params?: ListMobileMoneyTransactionsParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMobileMoneyTransactions>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMobileMoneyTransactionsQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getRecordMobileMoneySaleUrl = () => {
+
+
+
+
+  return `/api/mobile-money/sales`
+}
+
+/**
+ * @summary Record a manual daily sale received directly on a Mobile Money account (not tied to an invoice, e.g. 'Ventes globales'). Posts débit 552xxx (net) + débit 631700 (frais) / crédit 701 ou 706.
+ */
+export const recordMobileMoneySale = async (recordMobileMoneySaleBody: RecordMobileMoneySaleBody, options?: RequestInit): Promise<RecordMobileMoneySaleResult> => {
+
+  return customFetch<RecordMobileMoneySaleResult>(getRecordMobileMoneySaleUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(recordMobileMoneySaleBody)
+  }
+);}
+
+
+
+
+
+export const getRecordMobileMoneySaleMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMobileMoneySale>>, TError,{data: BodyType<RecordMobileMoneySaleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recordMobileMoneySale>>, TError,{data: BodyType<RecordMobileMoneySaleBody>}, TContext> => {
+
+const mutationKey = ['recordMobileMoneySale'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recordMobileMoneySale>>, {data: BodyType<RecordMobileMoneySaleBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  recordMobileMoneySale(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecordMobileMoneySaleMutationResult = NonNullable<Awaited<ReturnType<typeof recordMobileMoneySale>>>
+    export type RecordMobileMoneySaleMutationBody = BodyType<RecordMobileMoneySaleBody>
+    export type RecordMobileMoneySaleMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record a manual daily sale received directly on a Mobile Money account (not tied to an invoice, e.g. 'Ventes globales'). Posts débit 552xxx (net) + débit 631700 (frais) / crédit 701 ou 706.
+ */
+export const useRecordMobileMoneySale = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recordMobileMoneySale>>, TError,{data: BodyType<RecordMobileMoneySaleBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof recordMobileMoneySale>>,
+        TError,
+        {data: BodyType<RecordMobileMoneySaleBody>},
+        TContext
+      > => {
+      return useMutation(getRecordMobileMoneySaleMutationOptions(options));
+    }
+
+export const getCreateMobileMoneyRepatriationUrl = () => {
+
+
+
+
+  return `/api/mobile-money/repatriations`
+}
+
+/**
+ * @summary Step 1 of a bank repatriation: withdraw funds from a Mobile Money account into the 585 transit account (débit 585 / crédit 552xxx), pending confirmation of bank reception.
+ */
+export const createMobileMoneyRepatriation = async (createMobileMoneyRepatriationBody: CreateMobileMoneyRepatriationBody, options?: RequestInit): Promise<CreateMobileMoneyRepatriationResult> => {
+
+  return customFetch<CreateMobileMoneyRepatriationResult>(getCreateMobileMoneyRepatriationUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createMobileMoneyRepatriationBody)
+  }
+);}
+
+
+
+
+
+export const getCreateMobileMoneyRepatriationMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyRepatriation>>, TError,{data: BodyType<CreateMobileMoneyRepatriationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyRepatriation>>, TError,{data: BodyType<CreateMobileMoneyRepatriationBody>}, TContext> => {
+
+const mutationKey = ['createMobileMoneyRepatriation'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMobileMoneyRepatriation>>, {data: BodyType<CreateMobileMoneyRepatriationBody>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMobileMoneyRepatriation(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMobileMoneyRepatriationMutationResult = NonNullable<Awaited<ReturnType<typeof createMobileMoneyRepatriation>>>
+    export type CreateMobileMoneyRepatriationMutationBody = BodyType<CreateMobileMoneyRepatriationBody>
+    export type CreateMobileMoneyRepatriationMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Step 1 of a bank repatriation: withdraw funds from a Mobile Money account into the 585 transit account (débit 585 / crédit 552xxx), pending confirmation of bank reception.
+ */
+export const useCreateMobileMoneyRepatriation = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMobileMoneyRepatriation>>, TError,{data: BodyType<CreateMobileMoneyRepatriationBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMobileMoneyRepatriation>>,
+        TError,
+        {data: BodyType<CreateMobileMoneyRepatriationBody>},
+        TContext
+      > => {
+      return useMutation(getCreateMobileMoneyRepatriationMutationOptions(options));
+    }
+
+export const getConfirmMobileMoneyRepatriationReceptionUrl = (id: number,) => {
+
+
+
+
+  return `/api/mobile-money/repatriations/${id}/confirm-reception`
+}
+
+/**
+ * @summary Step 2 of a bank repatriation: confirm the funds landed in the bank, clearing the 585 transit account into 5211 (débit 5211 / crédit 585).
+ */
+export const confirmMobileMoneyRepatriationReception = async (id: number, options?: RequestInit): Promise<ConfirmMobileMoneyRepatriationReceptionResult> => {
+
+  return customFetch<ConfirmMobileMoneyRepatriationReceptionResult>(getConfirmMobileMoneyRepatriationReceptionUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getConfirmMobileMoneyRepatriationReceptionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['confirmMobileMoneyRepatriationReception'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  confirmMobileMoneyRepatriationReception(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ConfirmMobileMoneyRepatriationReceptionMutationResult = NonNullable<Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>>
+
+    export type ConfirmMobileMoneyRepatriationReceptionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Step 2 of a bank repatriation: confirm the funds landed in the bank, clearing the 585 transit account into 5211 (débit 5211 / crédit 585).
+ */
+export const useConfirmMobileMoneyRepatriationReception = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof confirmMobileMoneyRepatriationReception>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getConfirmMobileMoneyRepatriationReceptionMutationOptions(options));
     }
 
 export const getListStationsUrl = (params: ListStationsParams,) => {
@@ -12477,16 +13013,17 @@ export const getMarkInvoicePaidUrl = (id: number,) => {
 }
 
 /**
- * @summary Mark a validated invoice as paid (PAYE) — M28
+ * @summary Mark a validated invoice as paid (PAYE) — M28. When paymentMethod is 'mobile_money', also posts the settlement entry (débit 552xxx net + débit 631700 frais / crédit 411) and records a Trésorerie Mobile Money movement linked to the invoice.
  */
-export const markInvoicePaid = async (id: number, options?: RequestInit): Promise<InvoiceDetail> => {
+export const markInvoicePaid = async (id: number,
+    markInvoicePaidBody?: MarkInvoicePaidBody, options?: RequestInit): Promise<InvoiceDetail> => {
 
   return customFetch<InvoiceDetail>(getMarkInvoicePaidUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(markInvoicePaidBody)
   }
 );}
 
@@ -12494,9 +13031,9 @@ export const markInvoicePaid = async (id: number, options?: RequestInit): Promis
 
 
 
-export const getMarkInvoicePaidMutationOptions = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number}, TContext> => {
+export const getMarkInvoicePaidMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number;data?: BodyType<MarkInvoicePaidBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number;data?: BodyType<MarkInvoicePaidBody>}, TContext> => {
 
 const mutationKey = ['markInvoicePaid'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -12508,10 +13045,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markInvoicePaid>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markInvoicePaid>>, {id: number;data?: BodyType<MarkInvoicePaidBody>}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  markInvoicePaid(id,requestOptions)
+          return  markInvoicePaid(id,data,requestOptions)
         }
 
 
@@ -12522,18 +13059,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type MarkInvoicePaidMutationResult = NonNullable<Awaited<ReturnType<typeof markInvoicePaid>>>
-
-    export type MarkInvoicePaidMutationError = ErrorType<unknown>
+    export type MarkInvoicePaidMutationBody = BodyType<MarkInvoicePaidBody> | undefined
+    export type MarkInvoicePaidMutationError = ErrorType<ErrorResponse>
 
     /**
- * @summary Mark a validated invoice as paid (PAYE) — M28
+ * @summary Mark a validated invoice as paid (PAYE) — M28. When paymentMethod is 'mobile_money', also posts the settlement entry (débit 552xxx net + débit 631700 frais / crédit 411) and records a Trésorerie Mobile Money movement linked to the invoice.
  */
-export const useMarkInvoicePaid = <TError = ErrorType<unknown>,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+export const useMarkInvoicePaid = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePaid>>, TError,{id: number;data?: BodyType<MarkInvoicePaidBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
  ): UseMutationResult<
         Awaited<ReturnType<typeof markInvoicePaid>>,
         TError,
-        {id: number},
+        {id: number;data?: BodyType<MarkInvoicePaidBody>},
         TContext
       > => {
       return useMutation(getMarkInvoicePaidMutationOptions(options));

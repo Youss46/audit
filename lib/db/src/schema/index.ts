@@ -26,4 +26,5 @@ export * from "./payroll-settings";
 export * from "./vat-settings";
 export * from "./stations";
 export * from "./station-service";
+export * from "./mobile-money";
 export * from "./relations";
