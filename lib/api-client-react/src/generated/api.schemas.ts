@@ -2785,9 +2785,20 @@ export const PurchaseStatus = {
   settled: 'settled',
 } as const;
 
+export type PurchaseReviewStatus = typeof PurchaseReviewStatus[keyof typeof PurchaseReviewStatus];
+
+
+export const PurchaseReviewStatus = {
+  brouillon: 'brouillon',
+  en_attente: 'en_attente',
+  valide: 'valide',
+} as const;
+
 export interface Purchase {
   id: number;
   clientId: number;
+  /** @nullable */
+  clientName?: string | null;
   date: string;
   supplierName: string;
   /** @nullable */
@@ -2801,6 +2812,8 @@ export interface Purchase {
   amountHt: number;
   vatRate: number;
   vatAmount: number;
+  aibRate: number;
+  aibAmount: number;
   amountTtc: number;
   paymentMode: PurchasePaymentMode;
   /** @nullable */
@@ -2812,6 +2825,21 @@ export interface Purchase {
   /** @nullable */
   notes?: string | null;
   status: PurchaseStatus;
+  reviewStatus: PurchaseReviewStatus;
+  isLettre: boolean;
+  hasReceipt: boolean;
+  /** @nullable */
+  receiptFileName?: string | null;
+  /** @nullable */
+  receiptMimeType?: string | null;
+  /** @nullable */
+  validatedById?: number | null;
+  /** @nullable */
+  validatedAt?: string | null;
+  /** @nullable */
+  correctedChargeAccount?: string | null;
+  /** @nullable */
+  correctedChargeName?: string | null;
   /** @nullable */
   transactionId?: number | null;
   /** @nullable */
@@ -2829,6 +2857,30 @@ export const CreatePurchaseBodyVatRate = {
   NUMBER_18: 18,
 } as const;
 
+export type CreatePurchaseBodyAibRate = typeof CreatePurchaseBodyAibRate[keyof typeof CreatePurchaseBodyAibRate];
+
+
+export const CreatePurchaseBodyAibRate = {
+  NUMBER_0: 0,
+  NUMBER_2: 2,
+  NUMBER_7: 7,
+} as const;
+
+export type CreatePurchaseBodyReviewStatus = typeof CreatePurchaseBodyReviewStatus[keyof typeof CreatePurchaseBodyReviewStatus];
+
+
+export const CreatePurchaseBodyReviewStatus = {
+  brouillon: 'brouillon',
+  en_attente: 'en_attente',
+} as const;
+
+export type CreatePurchaseBodyReceipt = {
+  /** Base64-encoded file content */
+  fileData: string;
+  fileName: string;
+  mimeType: string;
+};
+
 export interface CreatePurchaseBody {
   clientId: number;
   date: string;
@@ -2841,9 +2893,23 @@ export interface CreatePurchaseBody {
   /** @minimum 1 */
   amountHt: number;
   vatRate: CreatePurchaseBodyVatRate;
+  aibRate?: CreatePurchaseBodyAibRate;
   paymentMode: PurchasePaymentMode;
   mobileMoneyAccountId?: number;
   notes?: string;
+  reviewStatus?: CreatePurchaseBodyReviewStatus;
+  receipt?: CreatePurchaseBodyReceipt;
+}
+
+export interface ValidatePurchaseBody {
+  correctedChargeAccount?: string;
+  correctedChargeName?: string;
+}
+
+export interface PurchaseReceiptResponse {
+  fileData: string;
+  fileName: string;
+  mimeType: string;
 }
 
 export type SettlePurchaseBodyPaymentMode = typeof SettlePurchaseBodyPaymentMode[keyof typeof SettlePurchaseBodyPaymentMode];
@@ -2862,6 +2928,7 @@ export interface SettlePurchaseBody {
 export interface ListPurchasesQueryParams {
   clientId?: number;
   status?: PurchaseStatus;
+  reviewStatus?: PurchaseReviewStatus;
 }
 
 export interface PurchaseSettleResult {
@@ -2936,6 +3003,7 @@ mobileMoneyAccountId?: number;
 export type ListPurchasesParams = {
 clientId?: number;
 status?: PurchaseStatus;
+reviewStatus?: PurchaseReviewStatus;
 };
 
 export type ListPurchaseCategories200Item = {

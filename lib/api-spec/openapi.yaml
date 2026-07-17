@@ -1750,6 +1750,10 @@ paths:
           in: query
           schema:
             $ref: "#/components/schemas/PurchaseStatus"
+        - name: reviewStatus
+          in: query
+          schema:
+            $ref: "#/components/schemas/PurchaseReviewStatus"
       responses:
         "200":
           description: List of purchases
@@ -1802,6 +1806,96 @@ paths:
                 $ref: "#/components/schemas/Purchase"
         "404":
           description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /purchases/{id}/receipt:
+    get:
+      operationId: getPurchaseReceipt
+      tags: [accounting]
+      summary: Download the attached receipt / justificatif for a purchase.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Receipt file (base64)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseReceiptResponse"
+        "404":
+          description: No receipt attached or purchase not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: uploadPurchaseReceipt
+      tags: [accounting]
+      summary: Attach or replace a receipt / justificatif on an existing purchase.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseReceiptResponse"
+      responses:
+        "200":
+          description: Receipt attached
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+        "404":
+          description: Purchase not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /purchases/{id}/validate:
+    post:
+      operationId: validatePurchase
+      tags: [accounting]
+      summary: >
+        Cabinet — validate a purchase, optionally correcting the charge account.
+        Flips reviewStatus to 'valide' and locks the accounting entry.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ValidatePurchaseBody"
+      responses:
+        "200":
+          description: Purchase validated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Purchase"
+        "400":
+          description: Already validated or period locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Purchase not found
           content:
             application/json:
               schema:
@@ -7915,6 +8009,10 @@ components:
       type: string
       enum: [pending, settled]
 
+    PurchaseReviewStatus:
+      type: string
+      enum: [brouillon, en_attente, valide]
+
     Purchase:
       type: object
       required:
@@ -7928,13 +8026,19 @@ components:
         - amountHt
         - vatRate
         - vatAmount
+        - aibRate
+        - aibAmount
         - amountTtc
         - paymentMode
         - status
+        - reviewStatus
+        - isLettre
+        - hasReceipt
         - createdAt
       properties:
         id: { type: integer }
         clientId: { type: integer }
+        clientName: { type: ["string", "null"] }
         date: { type: string, format: date-time }
         supplierName: { type: string }
         supplierNcc: { type: ["string", "null"] }
@@ -7946,6 +8050,8 @@ components:
         amountHt: { type: integer }
         vatRate: { type: integer }
         vatAmount: { type: integer }
+        aibRate: { type: integer }
+        aibAmount: { type: integer }
         amountTtc: { type: integer }
         paymentMode:
           $ref: "#/components/schemas/PurchasePaymentMode"
@@ -7955,6 +8061,16 @@ components:
         notes: { type: ["string", "null"] }
         status:
           $ref: "#/components/schemas/PurchaseStatus"
+        reviewStatus:
+          $ref: "#/components/schemas/PurchaseReviewStatus"
+        isLettre: { type: boolean }
+        hasReceipt: { type: boolean }
+        receiptFileName: { type: ["string", "null"] }
+        receiptMimeType: { type: ["string", "null"] }
+        validatedById: { type: ["integer", "null"] }
+        validatedAt: { type: ["string", "null"], format: date-time }
+        correctedChargeAccount: { type: ["string", "null"] }
+        correctedChargeName: { type: ["string", "null"] }
         transactionId: { type: ["integer", "null"] }
         settlementTransactionId: { type: ["integer", "null"] }
         settledAt: { type: ["string", "null"], format: date-time }
@@ -7983,10 +8099,37 @@ components:
         vatRate:
           type: integer
           enum: [0, 18]
+        aibRate:
+          type: integer
+          enum: [0, 2, 7]
         paymentMode:
           $ref: "#/components/schemas/PurchasePaymentMode"
         mobileMoneyAccountId: { type: integer }
         notes: { type: string }
+        reviewStatus:
+          type: string
+          enum: [brouillon, en_attente]
+        receipt:
+          type: object
+          required: [fileData, fileName, mimeType]
+          properties:
+            fileData: { type: string, description: "Base64-encoded file content" }
+            fileName: { type: string }
+            mimeType: { type: string }
+
+    ValidatePurchaseBody:
+      type: object
+      properties:
+        correctedChargeAccount: { type: string }
+        correctedChargeName: { type: string }
+
+    PurchaseReceiptResponse:
+      type: object
+      required: [fileData, fileName, mimeType]
+      properties:
+        fileData: { type: string }
+        fileName: { type: string }
+        mimeType: { type: string }
 
     SettlePurchaseBody:
       type: object
@@ -8003,6 +8146,8 @@ components:
         clientId: { type: integer }
         status:
           $ref: "#/components/schemas/PurchaseStatus"
+        reviewStatus:
+          $ref: "#/components/schemas/PurchaseReviewStatus"
 
     PurchaseSettleResult:
       type: object

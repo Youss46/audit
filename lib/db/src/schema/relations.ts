@@ -542,6 +542,11 @@ export const purchasesRelations = relations(purchasesTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [purchasesTable.firmId], references: [firmsTable.id] }),
   client: one(clientsTable, { fields: [purchasesTable.clientId], references: [clientsTable.id] }),
   createdBy: one(usersTable, { fields: [purchasesTable.createdById], references: [usersTable.id] }),
+  validatedBy: one(usersTable, {
+    fields: [purchasesTable.validatedById],
+    references: [usersTable.id],
+    relationName: "purchaseValidator",
+  }),
   transaction: one(transactionsTable, {
     fields: [purchasesTable.transactionId],
     references: [transactionsTable.id],

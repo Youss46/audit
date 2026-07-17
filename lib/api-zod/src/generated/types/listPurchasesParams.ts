@@ -5,9 +5,11 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { PurchaseReviewStatus } from './purchaseReviewStatus';
 import type { PurchaseStatus } from './purchaseStatus';
 
 export type ListPurchasesParams = {
 clientId?: number;
 status?: PurchaseStatus;
+reviewStatus?: PurchaseReviewStatus;
 };

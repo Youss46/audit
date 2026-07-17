@@ -2422,12 +2422,14 @@ export const ConfirmMobileMoneyRepatriationReceptionResponse = zod.object({
  */
 export const ListPurchasesQueryParams = zod.object({
   "clientId": zod.coerce.number().optional(),
-  "status": zod.enum(['pending', 'settled']).optional()
+  "status": zod.enum(['pending', 'settled']).optional(),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']).optional()
 })
 
 export const ListPurchasesResponseItem = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "date": zod.coerce.date(),
   "supplierName": zod.string(),
   "supplierNcc": zod.string().nullish(),
@@ -2439,6 +2441,8 @@ export const ListPurchasesResponseItem = zod.object({
   "amountHt": zod.number(),
   "vatRate": zod.number(),
   "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
   "amountTtc": zod.number(),
   "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
   "mobileMoneyAccountId": zod.number().nullish(),
@@ -2446,6 +2450,15 @@ export const ListPurchasesResponseItem = zod.object({
   "mobileMoneyAccountNumber": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
   "transactionId": zod.number().nullish(),
   "settlementTransactionId": zod.number().nullish(),
   "settledAt": zod.coerce.date().nullish(),
@@ -2471,14 +2484,22 @@ export const CreatePurchaseBody = zod.object({
   "categoryKey": zod.string().min(1),
   "amountHt": zod.number().min(1),
   "vatRate": zod.union([zod.literal(0),zod.literal(18)]),
+  "aibRate": zod.union([zod.literal(0),zod.literal(2),zod.literal(7)]).optional(),
   "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
   "mobileMoneyAccountId": zod.number().optional(),
-  "notes": zod.string().optional()
+  "notes": zod.string().optional(),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente']).optional(),
+  "receipt": zod.object({
+  "fileData": zod.string().describe('Base64-encoded file content'),
+  "fileName": zod.string(),
+  "mimeType": zod.string()
+}).optional()
 })
 
 export const CreatePurchaseResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "date": zod.coerce.date(),
   "supplierName": zod.string(),
   "supplierNcc": zod.string().nullish(),
@@ -2490,6 +2511,8 @@ export const CreatePurchaseResponse = zod.object({
   "amountHt": zod.number(),
   "vatRate": zod.number(),
   "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
   "amountTtc": zod.number(),
   "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
   "mobileMoneyAccountId": zod.number().nullish(),
@@ -2497,6 +2520,15 @@ export const CreatePurchaseResponse = zod.object({
   "mobileMoneyAccountNumber": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
   "transactionId": zod.number().nullish(),
   "settlementTransactionId": zod.number().nullish(),
   "settledAt": zod.coerce.date().nullish(),
@@ -2514,6 +2546,7 @@ export const GetPurchaseParams = zod.object({
 export const GetPurchaseResponse = zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "date": zod.coerce.date(),
   "supplierName": zod.string(),
   "supplierNcc": zod.string().nullish(),
@@ -2525,6 +2558,8 @@ export const GetPurchaseResponse = zod.object({
   "amountHt": zod.number(),
   "vatRate": zod.number(),
   "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
   "amountTtc": zod.number(),
   "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
   "mobileMoneyAccountId": zod.number().nullish(),
@@ -2532,6 +2567,135 @@ export const GetPurchaseResponse = zod.object({
   "mobileMoneyAccountNumber": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Download the attached receipt / justificatif for a purchase.
+ */
+export const GetPurchaseReceiptParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const GetPurchaseReceiptResponse = zod.object({
+  "fileData": zod.string(),
+  "fileName": zod.string(),
+  "mimeType": zod.string()
+})
+
+
+/**
+ * @summary Attach or replace a receipt / justificatif on an existing purchase.
+ */
+export const UploadPurchaseReceiptParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const UploadPurchaseReceiptBody = zod.object({
+  "fileData": zod.string(),
+  "fileName": zod.string(),
+  "mimeType": zod.string()
+})
+
+export const UploadPurchaseReceiptResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
+  "transactionId": zod.number().nullish(),
+  "settlementTransactionId": zod.number().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Cabinet — validate a purchase, optionally correcting the charge account. Flips reviewStatus to 'valide' and locks the accounting entry.
+
+ */
+export const ValidatePurchaseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const ValidatePurchaseBody = zod.object({
+  "correctedChargeAccount": zod.string().optional(),
+  "correctedChargeName": zod.string().optional()
+})
+
+export const ValidatePurchaseResponse = zod.object({
+  "id": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "supplierName": zod.string(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "categoryKey": zod.string(),
+  "chargeAccount": zod.string(),
+  "chargeName": zod.string(),
+  "categoryLabel": zod.string().optional(),
+  "amountHt": zod.number(),
+  "vatRate": zod.number(),
+  "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
+  "amountTtc": zod.number(),
+  "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
+  "mobileMoneyAccountId": zod.number().nullish(),
+  "mobileMoneyProvider": zod.string().nullish(),
+  "mobileMoneyAccountNumber": zod.string().nullish(),
+  "notes": zod.string().nullish(),
+  "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
   "transactionId": zod.number().nullish(),
   "settlementTransactionId": zod.number().nullish(),
   "settledAt": zod.coerce.date().nullish(),
@@ -2555,6 +2719,7 @@ export const SettlePurchaseResponse = zod.object({
   "purchase": zod.object({
   "id": zod.number(),
   "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
   "date": zod.coerce.date(),
   "supplierName": zod.string(),
   "supplierNcc": zod.string().nullish(),
@@ -2566,6 +2731,8 @@ export const SettlePurchaseResponse = zod.object({
   "amountHt": zod.number(),
   "vatRate": zod.number(),
   "vatAmount": zod.number(),
+  "aibRate": zod.number(),
+  "aibAmount": zod.number(),
   "amountTtc": zod.number(),
   "paymentMode": zod.enum(['credit', 'bank', 'mobile_money']),
   "mobileMoneyAccountId": zod.number().nullish(),
@@ -2573,6 +2740,15 @@ export const SettlePurchaseResponse = zod.object({
   "mobileMoneyAccountNumber": zod.string().nullish(),
   "notes": zod.string().nullish(),
   "status": zod.enum(['pending', 'settled']),
+  "reviewStatus": zod.enum(['brouillon', 'en_attente', 'valide']),
+  "isLettre": zod.boolean(),
+  "hasReceipt": zod.boolean(),
+  "receiptFileName": zod.string().nullish(),
+  "receiptMimeType": zod.string().nullish(),
+  "validatedById": zod.number().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "correctedChargeAccount": zod.string().nullish(),
+  "correctedChargeName": zod.string().nullish(),
   "transactionId": zod.number().nullish(),
   "settlementTransactionId": zod.number().nullish(),
   "settledAt": zod.coerce.date().nullish(),

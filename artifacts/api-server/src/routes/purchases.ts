@@ -27,14 +27,27 @@ import {
   GetPurchaseParams,
   SettlePurchaseParams,
   SettlePurchaseBody,
+  GetPurchaseReceiptParams,
+  UploadPurchaseReceiptParams,
+  UploadPurchaseReceiptBody,
+  ValidatePurchaseParams,
+  ValidatePurchaseBody,
 } from "@workspace/api-zod";
 
 // Module Dépenses & Achats — structured purchase recording for all PME
 // clients. Handles three payment modes:
-//   - "credit"       → Cr 4011 Fournisseurs (HA journal, pending until settled)
-//   - "bank"         → Cr 5211 Banques       (BQ journal, settled immediately)
-//   - "mobile_money" → Cr 552xxx             (BQ journal, settled immediately)
-// Every save produces a balanced SYSCOHADA double-entry via computePurchaseJournalLines.
+//   - "credit"       → Cr 4011 Fournisseurs     (HA journal, pending until settled)
+//   - "bank"         → Cr 5211 Banques           (BQ journal, settled immediately)
+//   - "mobile_money" → Cr 552xxx                 (BQ journal, settled immediately)
+//
+// Workflow status (reviewStatus):
+//   brouillon   → PME saved as draft, not yet submitted for review
+//   en_attente  → submitted, cabinet accountant must validate
+//   valide      → cabinet validated + optionally corrected the charge account
+//
+// AIB (Acompte sur Impôts et Bénéfices, Côte d'Ivoire):
+//   Immediate payments: Cr 447200 AIB + Cr treasury (net)
+//   Credit purchases:   AIB deducted at settlement time
 
 const router: IRouter = Router();
 router.use(requireAuth);
@@ -43,24 +56,31 @@ router.use(requireAuth);
 // Helpers
 // ---------------------------------------------------------------------------
 
-function serializePurchase(
-  p: PurchaseRow & { mobileMoneyProvider?: string | null; mobileMoneyAccountNumber?: string | null },
-) {
+type EnrichedPurchase = PurchaseRow & {
+  mobileMoneyProvider?: string | null;
+  mobileMoneyAccountNumber?: string | null;
+  clientName?: string | null;
+};
+
+function serializePurchase(p: EnrichedPurchase) {
   const cat = PURCHASE_CATEGORIES[p.categoryKey];
   return {
     id: p.id,
     clientId: p.clientId,
+    clientName: p.clientName ?? null,
     date: p.date,
     supplierName: p.supplierName,
     supplierNcc: p.supplierNcc ?? null,
     invoiceRef: p.invoiceRef ?? null,
     categoryKey: p.categoryKey,
-    chargeAccount: p.chargeAccount,
-    chargeName: p.chargeName,
+    chargeAccount: p.correctedChargeAccount ?? p.chargeAccount,
+    chargeName: p.correctedChargeName ?? p.chargeName,
     categoryLabel: cat?.label ?? p.chargeName,
     amountHt: p.amountHt,
     vatRate: p.vatRate,
     vatAmount: p.vatAmount,
+    aibRate: p.aibRate,
+    aibAmount: p.aibAmount,
     amountTtc: p.amountTtc,
     paymentMode: p.paymentMode,
     mobileMoneyAccountId: p.mobileMoneyAccountId ?? null,
@@ -68,6 +88,15 @@ function serializePurchase(
     mobileMoneyAccountNumber: p.mobileMoneyAccountNumber ?? null,
     notes: p.notes ?? null,
     status: p.status,
+    reviewStatus: p.reviewStatus,
+    isLettre: p.isLettre,
+    hasReceipt: !!p.receiptFileData,
+    receiptFileName: p.receiptFileName ?? null,
+    receiptMimeType: p.receiptMimeType ?? null,
+    validatedById: p.validatedById ?? null,
+    validatedAt: p.validatedAt ?? null,
+    correctedChargeAccount: p.correctedChargeAccount ?? null,
+    correctedChargeName: p.correctedChargeName ?? null,
     transactionId: p.transactionId ?? null,
     settlementTransactionId: p.settlementTransactionId ?? null,
     settledAt: p.settledAt ?? null,
@@ -75,7 +104,8 @@ function serializePurchase(
   };
 }
 
-async function enrichWithMmAccount(rows: PurchaseRow[]) {
+async function enrichRows(rows: PurchaseRow[]): Promise<EnrichedPurchase[]> {
+  // Mobile money provider labels
   const mmIds = [...new Set(rows.map((r) => r.mobileMoneyAccountId).filter(Boolean))] as number[];
   const mmMap = new Map<number, { provider: string; accountNumber: string }>();
   if (mmIds.length) {
@@ -85,10 +115,23 @@ async function enrichWithMmAccount(rows: PurchaseRow[]) {
     });
     for (const a of accounts) mmMap.set(a.id, a);
   }
+
+  // Client names (needed for cabinet-side review)
+  const clientIds = [...new Set(rows.map((r) => r.clientId))];
+  const clientMap = new Map<number, string>();
+  if (clientIds.length) {
+    const clients = await db.query.clientsTable.findMany({
+      where: (t, { inArray }) => inArray(t.id, clientIds),
+      columns: { id: true, name: true },
+    });
+    for (const c of clients) clientMap.set(c.id, c.name);
+  }
+
   return rows.map((r) => ({
     ...r,
     mobileMoneyProvider: r.mobileMoneyAccountId ? (mmMap.get(r.mobileMoneyAccountId)?.provider ?? null) : null,
     mobileMoneyAccountNumber: r.mobileMoneyAccountId ? (mmMap.get(r.mobileMoneyAccountId)?.accountNumber ?? null) : null,
+    clientName: clientMap.get(r.clientId) ?? null,
   }));
 }
 
@@ -96,16 +139,15 @@ function getCreditAccount(
   paymentMode: "credit" | "bank" | "mobile_money",
   mmProvider?: string | null,
 ): { account: string; label: string; journal: "HA" | "BQ" } {
-  if (paymentMode === "credit")       return { account: "4011", label: "Fournisseurs d'exploitation",   journal: "HA" };
-  if (paymentMode === "bank")         return { account: "5211", label: "Banques locales",               journal: "BQ" };
-  // mobile_money
+  if (paymentMode === "credit") return { account: "4011", label: "Fournisseurs d'exploitation", journal: "HA" };
+  if (paymentMode === "bank")   return { account: "5211", label: "Banques locales",             journal: "BQ" };
   const acct  = mmProvider ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[mmProvider] ?? "552") : "552";
   const label = mmProvider ? (MOBILE_MONEY_PROVIDER_LABELS[mmProvider]   ?? "Monnaie Électronique") : "Monnaie Électronique";
   return { account: acct, label, journal: "BQ" };
 }
 
 // ---------------------------------------------------------------------------
-// GET /purchases/categories — must be before /:id
+// GET /purchases/categories  — must be before /:id
 // ---------------------------------------------------------------------------
 router.get("/purchases/categories", async (_req, res) => {
   res.json(
@@ -125,7 +167,6 @@ router.get("/purchases/categories", async (_req, res) => {
 router.get("/purchases", requirePermission("operations.view"), async (req, res) => {
   const query = ListPurchasesQueryParams.parse(req.query);
 
-  // Portal roles are scoped to their own client; cabinet staff can filter.
   const effectiveClientId = isPortalRole(req.user!.role)
     ? req.user!.clientId!
     : (query.clientId ?? null);
@@ -134,12 +175,13 @@ router.get("/purchases", requirePermission("operations.view"), async (req, res) 
     where: and(
       effectiveClientId ? eq(purchasesTable.clientId, effectiveClientId) : undefined,
       eq(purchasesTable.firmId, req.user!.firmId),
-      query.status ? eq(purchasesTable.status, query.status) : undefined,
+      query.status       ? eq(purchasesTable.status,       query.status)       : undefined,
+      query.reviewStatus ? eq(purchasesTable.reviewStatus, query.reviewStatus) : undefined,
     ),
     orderBy: [desc(purchasesTable.date)],
   });
 
-  const enriched = await enrichWithMmAccount(rows);
+  const enriched = await enrichRows(rows);
   res.json(enriched.map(serializePurchase));
 });
 
@@ -149,7 +191,6 @@ router.get("/purchases", requirePermission("operations.view"), async (req, res) 
 router.post("/purchases", requirePermission("operations.create"), async (req, res) => {
   const body = CreatePurchaseBody.parse(req.body);
 
-  // Ownership check for portal roles.
   if (isPortalRole(req.user!.role) && body.clientId !== req.user!.clientId) {
     res.status(403).json({ error: "Accès non autorisé à ce dossier client." });
     return;
@@ -168,13 +209,18 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
   const cat = PURCHASE_CATEGORIES[body.categoryKey];
   if (!cat) { res.status(400).json({ error: `Catégorie inconnue : "${body.categoryKey}".` }); return; }
 
-  // Compute amounts — vatRate 0 or 18.
+  // Amounts
   const amountHt  = body.amountHt;
   const vatRate   = body.vatRate ?? 0;
   const vatAmount = Math.round(amountHt * (vatRate / 100));
   const amountTtc = amountHt + vatAmount;
+  const aibRate   = body.aibRate ?? 0;
+  const aibAmount = Math.round(amountTtc * (aibRate / 100));
 
-  // Resolve payment side.
+  // Review workflow status
+  const reviewStatus = body.reviewStatus ?? "en_attente";
+
+  // Resolve mobile money provider
   let mmProvider: string | null = null;
   if (body.paymentMode === "mobile_money") {
     if (!body.mobileMoneyAccountId) {
@@ -191,20 +237,21 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
     mmProvider = mmAcct.provider;
   }
 
-  const { account: creditAccount, label: creditLabel, journal } = getCreditAccount(body.paymentMode, mmProvider);
+  const { account: creditAccount, label: creditLabel } = getCreditAccount(body.paymentMode, mmProvider);
 
   try {
     const lines = computePurchaseJournalLines({
       amountHt,
       vatAmount,
       amountTtc,
+      aibAmount,
       chargeAccount: cat.account,
       chargeName: cat.accountName,
       creditAccount,
       creditLabel,
+      paymentMode: body.paymentMode,
     });
 
-    // Post transaction + journal lines in a DB transaction.
     const [purchase] = await db.transaction(async (tx) => {
       const label = `Achat — ${body.supplierName} — ${cat.label}`;
 
@@ -242,11 +289,18 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
         amountHt,
         vatRate,
         vatAmount,
+        aibRate,
+        aibAmount,
         amountTtc,
         paymentMode: body.paymentMode,
         mobileMoneyAccountId: body.mobileMoneyAccountId ?? null,
         notes: body.notes ?? null,
         status: body.paymentMode === "credit" ? "pending" : "settled",
+        reviewStatus,
+        // Receipt attachment (optional, stored inline as base64)
+        receiptFileName: body.receipt?.fileName ?? null,
+        receiptMimeType: body.receipt?.mimeType ?? null,
+        receiptFileData: body.receipt?.fileData ?? null,
         transactionId: txRow.id,
         settledAt: body.paymentMode === "credit" ? null : new Date(),
         createdById: req.user!.id,
@@ -261,10 +315,10 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
       action: AuditAction.CREATE,
       entityType: "purchase",
       entityId: String(purchase.id),
-      details: `Dépense enregistrée : ${body.supplierName} — ${cat.label} — ${amountTtc} FCFA (${body.paymentMode})`,
+      details: `Dépense enregistrée : ${body.supplierName} — ${cat.label} — ${amountTtc} FCFA (${body.paymentMode})${aibAmount > 0 ? ` — AIB ${aibRate}% retenu : ${aibAmount} FCFA` : ""}`,
     });
 
-    const enriched = await enrichWithMmAccount([purchase]);
+    const enriched = await enrichRows([purchase]);
     res.status(201).json(serializePurchase(enriched[0]));
   } catch (err) {
     if (err instanceof AccountingEngineError) {
@@ -289,7 +343,134 @@ router.get("/purchases/:id", requirePermission("operations.view"), async (req, r
     res.status(403).json({ error: "Accès non autorisé." });
     return;
   }
-  const enriched = await enrichWithMmAccount([row]);
+  const enriched = await enrichRows([row]);
+  res.json(serializePurchase(enriched[0]));
+});
+
+// ---------------------------------------------------------------------------
+// GET /purchases/:id/receipt — download attached justificatif
+// ---------------------------------------------------------------------------
+router.get("/purchases/:id/receipt", requirePermission("operations.view"), async (req, res) => {
+  const { id } = GetPurchaseReceiptParams.parse(req.params);
+  const row = await db.query.purchasesTable.findFirst({
+    where: and(eq(purchasesTable.id, id), eq(purchasesTable.firmId, req.user!.firmId)),
+    columns: { id: true, clientId: true, receiptFileData: true, receiptFileName: true, receiptMimeType: true },
+  });
+  if (!row) { res.status(404).json({ error: "Dépense introuvable." }); return; }
+  if (isPortalRole(req.user!.role) && row.clientId !== req.user!.clientId) {
+    res.status(403).json({ error: "Accès non autorisé." }); return;
+  }
+  if (!row.receiptFileData) {
+    res.status(404).json({ error: "Aucune pièce jointe sur cette dépense." }); return;
+  }
+  res.json({
+    fileData: row.receiptFileData,
+    fileName: row.receiptFileName,
+    mimeType: row.receiptMimeType,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// POST /purchases/:id/receipt — attach or replace receipt
+// ---------------------------------------------------------------------------
+router.post("/purchases/:id/receipt", requirePermission("operations.create"), async (req, res) => {
+  const { id } = UploadPurchaseReceiptParams.parse(req.params);
+  const body   = UploadPurchaseReceiptBody.parse(req.body);
+
+  const purchase = await db.query.purchasesTable.findFirst({
+    where: and(eq(purchasesTable.id, id), eq(purchasesTable.firmId, req.user!.firmId)),
+  });
+  if (!purchase) { res.status(404).json({ error: "Dépense introuvable." }); return; }
+  if (isPortalRole(req.user!.role) && purchase.clientId !== req.user!.clientId) {
+    res.status(403).json({ error: "Accès non autorisé." }); return;
+  }
+  if (purchase.reviewStatus === "valide") {
+    res.status(409).json({ error: "Cette dépense est validée. Pièce jointe non modifiable." }); return;
+  }
+
+  const [updated] = await db.update(purchasesTable)
+    .set({ receiptFileName: body.fileName, receiptMimeType: body.mimeType, receiptFileData: body.fileData })
+    .where(eq(purchasesTable.id, id))
+    .returning();
+
+  await logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    action: AuditAction.UPDATE,
+    entityType: "purchase",
+    entityId: String(id),
+    details: `Pièce justificative jointe : ${body.fileName}`,
+  });
+
+  const enriched = await enrichRows([updated]);
+  res.json(serializePurchase(enriched[0]));
+});
+
+// ---------------------------------------------------------------------------
+// POST /purchases/:id/validate — cabinet validates + optionally corrects account
+// ---------------------------------------------------------------------------
+router.post("/purchases/:id/validate", requirePermission("operations.create"), async (req, res) => {
+  const { id } = ValidatePurchaseParams.parse(req.params);
+  const body   = ValidatePurchaseBody.parse(req.body);
+
+  // Cabinet-only: portal roles cannot validate
+  if (isPortalRole(req.user!.role)) {
+    res.status(403).json({ error: "Seul le cabinet peut valider une dépense." }); return;
+  }
+
+  const purchase = await db.query.purchasesTable.findFirst({
+    where: and(eq(purchasesTable.id, id), eq(purchasesTable.firmId, req.user!.firmId)),
+  });
+  if (!purchase) { res.status(404).json({ error: "Dépense introuvable." }); return; }
+  if (purchase.reviewStatus === "valide") {
+    res.status(400).json({ error: "Cette dépense est déjà validée." }); return;
+  }
+  if (await isPeriodLocked(purchase.clientId, purchase.date)) {
+    res.status(409).json({ error: "La période comptable est clôturée. Modification impossible." }); return;
+  }
+
+  const correctedAccount = body.correctedChargeAccount?.trim() || null;
+  const correctedName    = body.correctedChargeName?.trim()    || null;
+  const now = new Date();
+
+  const [updated] = await db.transaction(async (tx) => {
+    // If cabinet corrected the charge account, update the journal line in-place.
+    if (correctedAccount && correctedAccount !== purchase.chargeAccount && purchase.transactionId) {
+      await tx.update(journalLinesTable)
+        .set({
+          accountNumber: correctedAccount,
+          label: correctedName ?? purchase.chargeName,
+        })
+        .where(
+          and(
+            eq(journalLinesTable.transactionId, purchase.transactionId),
+            eq(journalLinesTable.accountNumber, purchase.chargeAccount),
+          ),
+        );
+    }
+
+    const [p] = await tx.update(purchasesTable)
+      .set({
+        reviewStatus: "valide",
+        validatedById: req.user!.id,
+        validatedAt: now,
+        ...(correctedAccount ? { correctedChargeAccount: correctedAccount, correctedChargeName: correctedName } : {}),
+      })
+      .where(eq(purchasesTable.id, id))
+      .returning();
+    return [p];
+  });
+
+  await logAudit({
+    firmId: req.user!.firmId,
+    userId: req.user!.id,
+    action: AuditAction.UPDATE,
+    entityType: "purchase",
+    entityId: String(id),
+    details: `Dépense validée${correctedAccount ? ` — compte corrigé : ${purchase.chargeAccount} → ${correctedAccount}` : ""}`,
+  });
+
+  const enriched = await enrichRows([updated]);
   res.json(serializePurchase(enriched[0]));
 });
 
@@ -337,6 +518,7 @@ router.post("/purchases/:id/settle", requirePermission("operations.create"), asy
 
   const settlementLines = computePurchaseSettlementLines({
     amountTtc: purchase.amountTtc,
+    aibAmount: purchase.aibAmount,
     creditAccount,
     creditLabel,
   });
@@ -379,10 +561,10 @@ router.post("/purchases/:id/settle", requirePermission("operations.create"), asy
     action: AuditAction.UPDATE,
     entityType: "purchase",
     entityId: String(purchase.id),
-    details: `Règlement dépense à crédit : ${purchase.supplierName} — ${purchase.amountTtc} FCFA via ${body.paymentMode}`,
+    details: `Règlement dépense à crédit : ${purchase.supplierName} — ${purchase.amountTtc} FCFA via ${body.paymentMode}${purchase.aibAmount > 0 ? ` — AIB retenu : ${purchase.aibAmount} FCFA` : ""}`,
   });
 
-  const enriched = await enrichWithMmAccount([updated]);
+  const enriched = await enrichRows([updated]);
   res.json({
     purchase: serializePurchase(enriched[0]),
     transaction: { id: txRow.id, label: txRow.label, amount: txRow.amount, journalLines: settlementLines },

@@ -5,6 +5,9 @@
  * M15-AUDIT API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CreatePurchaseBodyAibRate } from './createPurchaseBodyAibRate';
+import type { CreatePurchaseBodyReceipt } from './createPurchaseBodyReceipt';
+import type { CreatePurchaseBodyReviewStatus } from './createPurchaseBodyReviewStatus';
 import type { CreatePurchaseBodyVatRate } from './createPurchaseBodyVatRate';
 import type { PurchasePaymentMode } from './purchasePaymentMode';
 
@@ -20,7 +23,10 @@ export interface CreatePurchaseBody {
   /** @minimum 1 */
   amountHt: number;
   vatRate: CreatePurchaseBodyVatRate;
+  aibRate?: CreatePurchaseBodyAibRate;
   paymentMode: PurchasePaymentMode;
   mobileMoneyAccountId?: number;
   notes?: string;
+  reviewStatus?: CreatePurchaseBodyReviewStatus;
+  receipt?: CreatePurchaseBodyReceipt;
 }

@@ -182,6 +182,7 @@ import type {
   PumpShiftValidateInput,
   PumpShiftValidateResult,
   Purchase,
+  PurchaseReceiptResponse,
   PurchaseSettleResult,
   RecordMobileMoneySaleBody,
   RecordMobileMoneySaleResult,
@@ -213,6 +214,7 @@ import type {
   UserInput,
   UserRateInput,
   UserUpdate,
+  ValidatePurchaseBody,
   VatAnnexRow,
   VatDeclaration,
   VatSupplierInfoInput
@@ -5451,6 +5453,229 @@ export function useGetPurchase<TData = Awaited<ReturnType<typeof getPurchase>>, 
 
 
 
+
+export const getGetPurchaseReceiptUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}/receipt`
+}
+
+/**
+ * @summary Download the attached receipt / justificatif for a purchase.
+ */
+export const getPurchaseReceipt = async (id: number, options?: RequestInit): Promise<PurchaseReceiptResponse> => {
+
+  return customFetch<PurchaseReceiptResponse>(getGetPurchaseReceiptUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPurchaseReceiptQueryKey = (id: number,) => {
+    return [
+    `/api/purchases/${id}/receipt`
+    ] as const;
+    }
+
+
+export const getGetPurchaseReceiptQueryOptions = <TData = Awaited<ReturnType<typeof getPurchaseReceipt>>, TError = ErrorType<ErrorResponse>>(id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchaseReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPurchaseReceiptQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPurchaseReceipt>>> = ({ signal }) => getPurchaseReceipt(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPurchaseReceipt>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetPurchaseReceiptQueryResult = NonNullable<Awaited<ReturnType<typeof getPurchaseReceipt>>>
+export type GetPurchaseReceiptQueryError = ErrorType<ErrorResponse>
+
+
+/**
+ * @summary Download the attached receipt / justificatif for a purchase.
+ */
+
+export function useGetPurchaseReceipt<TData = Awaited<ReturnType<typeof getPurchaseReceipt>>, TError = ErrorType<ErrorResponse>>(
+ id: number, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getPurchaseReceipt>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetPurchaseReceiptQueryOptions(id,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getUploadPurchaseReceiptUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}/receipt`
+}
+
+/**
+ * @summary Attach or replace a receipt / justificatif on an existing purchase.
+ */
+export const uploadPurchaseReceipt = async (id: number,
+    purchaseReceiptResponse: PurchaseReceiptResponse, options?: RequestInit): Promise<Purchase> => {
+
+  return customFetch<Purchase>(getUploadPurchaseReceiptUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(purchaseReceiptResponse)
+  }
+);}
+
+
+
+
+
+export const getUploadPurchaseReceiptMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPurchaseReceipt>>, TError,{id: number;data: BodyType<PurchaseReceiptResponse>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof uploadPurchaseReceipt>>, TError,{id: number;data: BodyType<PurchaseReceiptResponse>}, TContext> => {
+
+const mutationKey = ['uploadPurchaseReceipt'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof uploadPurchaseReceipt>>, {id: number;data: BodyType<PurchaseReceiptResponse>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  uploadPurchaseReceipt(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UploadPurchaseReceiptMutationResult = NonNullable<Awaited<ReturnType<typeof uploadPurchaseReceipt>>>
+    export type UploadPurchaseReceiptMutationBody = BodyType<PurchaseReceiptResponse>
+    export type UploadPurchaseReceiptMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Attach or replace a receipt / justificatif on an existing purchase.
+ */
+export const useUploadPurchaseReceipt = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof uploadPurchaseReceipt>>, TError,{id: number;data: BodyType<PurchaseReceiptResponse>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof uploadPurchaseReceipt>>,
+        TError,
+        {id: number;data: BodyType<PurchaseReceiptResponse>},
+        TContext
+      > => {
+      return useMutation(getUploadPurchaseReceiptMutationOptions(options));
+    }
+
+export const getValidatePurchaseUrl = (id: number,) => {
+
+
+
+
+  return `/api/purchases/${id}/validate`
+}
+
+/**
+ * @summary Cabinet — validate a purchase, optionally correcting the charge account. Flips reviewStatus to 'valide' and locks the accounting entry.
+
+ */
+export const validatePurchase = async (id: number,
+    validatePurchaseBody: ValidatePurchaseBody, options?: RequestInit): Promise<Purchase> => {
+
+  return customFetch<Purchase>(getValidatePurchaseUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(validatePurchaseBody)
+  }
+);}
+
+
+
+
+
+export const getValidatePurchaseMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validatePurchase>>, TError,{id: number;data: BodyType<ValidatePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof validatePurchase>>, TError,{id: number;data: BodyType<ValidatePurchaseBody>}, TContext> => {
+
+const mutationKey = ['validatePurchase'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof validatePurchase>>, {id: number;data: BodyType<ValidatePurchaseBody>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  validatePurchase(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ValidatePurchaseMutationResult = NonNullable<Awaited<ReturnType<typeof validatePurchase>>>
+    export type ValidatePurchaseMutationBody = BodyType<ValidatePurchaseBody>
+    export type ValidatePurchaseMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Cabinet — validate a purchase, optionally correcting the charge account. Flips reviewStatus to 'valide' and locks the accounting entry.
+
+ */
+export const useValidatePurchase = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof validatePurchase>>, TError,{id: number;data: BodyType<ValidatePurchaseBody>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof validatePurchase>>,
+        TError,
+        {id: number;data: BodyType<ValidatePurchaseBody>},
+        TContext
+      > => {
+      return useMutation(getValidatePurchaseMutationOptions(options));
+    }
 
 export const getSettlePurchaseUrl = (id: number,) => {
 

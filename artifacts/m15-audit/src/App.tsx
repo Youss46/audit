@@ -40,6 +40,7 @@ import Scoring from '@/pages/scoring';
 import Facturation from '@/pages/facturation';
 import TresorerieMobileMoney from '@/pages/tresorerie-mobile-money';
 import DepensesAchats from '@/pages/depenses-achats';
+import DepensesRevision from '@/pages/depenses-revision';
 import ClientStaff from '@/pages/client-staff';
 import PumpSettings from '@/pages/pump-settings';
 import StationSettings from '@/pages/station-settings';
@@ -82,6 +83,7 @@ function Router() {
         <Route path="/client/settings/pumps" component={PumpSettings} />
         <Route path="/client/settings/fuel-prices" component={FuelPriceSettings} />
         <Route path="/client/settings/pump-assignments" component={PumpAssignments} />
+        <Route path="/cabinet/depenses-revision" component={DepensesRevision} />
         <Route path="/comptabilite" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/saisie" component={ComptabiliteCabinet} />
         <Route path="/comptabilite/:clientId/journaux" component={ComptabiliteJournaux} />

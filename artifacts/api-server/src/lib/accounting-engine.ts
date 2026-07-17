@@ -218,52 +218,102 @@ export const PURCHASE_CATEGORIES: Record<
 export type PurchaseCategoryKey = keyof typeof PURCHASE_CATEGORIES;
 
 // Computes the balanced SYSCOHADA journal lines for a structured purchase
-// (Dépenses & Achats module):
-//   Debit  : Class 6 charge account (amountHt)
-//   Debit  : 4451 TVA récupérable (vatAmount, if > 0)
-//   Credit : 4011 Fournisseurs | 5211 Banques | 552xxx Mobile Money (amountTtc)
+// (Dépenses & Achats module). Handles TVA and AIB (Acompte sur Impôts et
+// Bénéfices — retenue à la source Côte d'Ivoire, account 447200).
+//
+// AIB timing follows strict SYSCOHADA accrual treatment:
+//   • Immediate payment (bank / mobile_money): AIB is withheld on the spot →
+//     Cr 447200 (AIB) + Cr treasury (TTC − AIB) in the initial entry.
+//   • Credit purchase: AIB is withheld at settlement time, not at invoice
+//     booking → initial entry credits 4011 for the full TTC; settlement entry
+//     splits 4011 debit into Cr 447200 + Cr treasury.
+//
+// Journal structure:
+//   Dr  Class 6 charge account          (amountHt)
+//   Dr  4451 TVA récupérable            (vatAmount, if > 0)
+//   Cr  447200 AIB retenu à la source   (aibAmount, immediate payment only, if > 0)
+//   Cr  4011 | 5211 | 552xxx            (amountTtc for credit; amountTtc−aib for immediate)
 export function computePurchaseJournalLines(input: {
   amountHt: number;
   vatAmount: number;
   amountTtc: number;
+  aibAmount: number;           // 0 when no AIB applies
   chargeAccount: string;
   chargeName: string;
-  creditAccount: string;
+  creditAccount: string;       // 4011 | 5211 | 552xxx
   creditLabel: string;
+  paymentMode: "credit" | "bank" | "mobile_money";
 }): ComputedJournalLine[] {
   if (input.amountHt <= 0) throw new AccountingEngineError("Le montant HT doit être strictement positif.");
   if (input.amountTtc <= 0) throw new AccountingEngineError("Le montant TTC doit être strictement positif.");
   if (input.vatAmount < 0)  throw new AccountingEngineError("Le montant de TVA ne peut pas être négatif.");
+  if (input.aibAmount < 0)  throw new AccountingEngineError("Le montant AIB ne peut pas être négatif.");
   if (Math.round(input.amountHt + input.vatAmount) !== Math.round(input.amountTtc)) {
     throw new AccountingEngineError(
       `Incohérence : HT (${input.amountHt}) + TVA (${input.vatAmount}) ≠ TTC (${input.amountTtc}).`,
     );
   }
+  if (input.aibAmount > input.amountTtc) {
+    throw new AccountingEngineError("Le montant AIB ne peut pas dépasser le montant TTC.");
+  }
+
+  const isCredit    = input.paymentMode === "credit";
+  const hasVat      = input.vatAmount > 0;
+  const hasAib      = input.aibAmount > 0 && !isCredit; // AIB booked at settlement for credit
 
   const lines: ComputedJournalLine[] = [
-    { accountNumber: input.chargeAccount, label: input.chargeName,                  debitAmount: input.amountHt,  creditAmount: 0              },
-    ...(input.vatAmount > 0 ? [{ accountNumber: "4451", label: "TVA récupérable sur achats", debitAmount: input.vatAmount, creditAmount: 0 }] : []),
-    { accountNumber: input.creditAccount, label: input.creditLabel,                 debitAmount: 0,               creditAmount: input.amountTtc },
+    // Debit side
+    { accountNumber: input.chargeAccount, label: input.chargeName,
+      debitAmount: input.amountHt,  creditAmount: 0 },
+    ...(hasVat ? [{ accountNumber: "4451", label: "TVA récupérable sur achats",
+      debitAmount: input.vatAmount, creditAmount: 0 }] : []),
+    // Credit side
+    ...(hasAib ? [{ accountNumber: "447200",
+      label: "État, retenues à la source — AIB",
+      debitAmount: 0, creditAmount: input.aibAmount }] : []),
+    { accountNumber: input.creditAccount, label: input.creditLabel,
+      debitAmount: 0,
+      // Credit account receives full TTC for credit purchases;
+      // only the net (TTC − AIB) for immediate payments.
+      creditAmount: isCredit ? input.amountTtc : input.amountTtc - input.aibAmount },
   ];
 
   const totalDebit  = lines.reduce((s, l) => s + l.debitAmount,  0);
   const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0);
   if (Math.round(totalDebit) !== Math.round(totalCredit)) {
-    throw new AccountingEngineError(`Écriture déséquilibrée : débit ${totalDebit} ≠ crédit ${totalCredit}.`);
+    throw new AccountingEngineError(
+      `Écriture déséquilibrée : débit ${totalDebit} ≠ crédit ${totalCredit}.`,
+    );
   }
   return lines;
 }
 
-// Computes the settlement journal lines for a credit purchase (Dr 4011 / Cr treasury).
+// Computes the settlement journal lines for a credit purchase.
+// Debits 4011 Fournisseurs for the full TTC, then splits the credit between
+// 447200 AIB (if applicable) and the treasury account (net amount).
+//
+//   Dr  4011 Fournisseurs              (amountTtc)
+//   Cr  447200 AIB retenu              (aibAmount, if > 0)
+//   Cr  5211 | 552xxx treasury         (amountTtc − aibAmount)
 export function computePurchaseSettlementLines(input: {
   amountTtc: number;
+  aibAmount: number;
   creditAccount: string;
   creditLabel: string;
 }): ComputedJournalLine[] {
   if (input.amountTtc <= 0) throw new AccountingEngineError("Le montant à régler doit être strictement positif.");
+  if (input.aibAmount < 0)  throw new AccountingEngineError("Le montant AIB ne peut pas être négatif.");
+  if (input.aibAmount > input.amountTtc) throw new AccountingEngineError("Le montant AIB dépasse le TTC.");
+
+  const netAmount = input.amountTtc - input.aibAmount;
   return [
-    { accountNumber: "4011", label: "Fournisseurs d'exploitation",  debitAmount: input.amountTtc, creditAmount: 0              },
-    { accountNumber: input.creditAccount, label: input.creditLabel, debitAmount: 0,               creditAmount: input.amountTtc },
+    { accountNumber: "4011", label: "Fournisseurs d'exploitation",
+      debitAmount: input.amountTtc, creditAmount: 0 },
+    ...(input.aibAmount > 0 ? [{ accountNumber: "447200",
+      label: "État, retenues à la source — AIB",
+      debitAmount: 0, creditAmount: input.aibAmount }] : []),
+    { accountNumber: input.creditAccount, label: input.creditLabel,
+      debitAmount: 0, creditAmount: netAmount },
   ];
 }
 

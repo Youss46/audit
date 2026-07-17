@@ -6,11 +6,14 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { PurchasePaymentMode } from './purchasePaymentMode';
+import type { PurchaseReviewStatus } from './purchaseReviewStatus';
 import type { PurchaseStatus } from './purchaseStatus';
 
 export interface Purchase {
   id: number;
   clientId: number;
+  /** @nullable */
+  clientName?: string | null;
   date: Date;
   supplierName: string;
   /** @nullable */
@@ -24,6 +27,8 @@ export interface Purchase {
   amountHt: number;
   vatRate: number;
   vatAmount: number;
+  aibRate: number;
+  aibAmount: number;
   amountTtc: number;
   paymentMode: PurchasePaymentMode;
   /** @nullable */
@@ -35,6 +40,21 @@ export interface Purchase {
   /** @nullable */
   notes?: string | null;
   status: PurchaseStatus;
+  reviewStatus: PurchaseReviewStatus;
+  isLettre: boolean;
+  hasReceipt: boolean;
+  /** @nullable */
+  receiptFileName?: string | null;
+  /** @nullable */
+  receiptMimeType?: string | null;
+  /** @nullable */
+  validatedById?: number | null;
+  /** @nullable */
+  validatedAt?: Date | null;
+  /** @nullable */
+  correctedChargeAccount?: string | null;
+  /** @nullable */
+  correctedChargeName?: string | null;
   /** @nullable */
   transactionId?: number | null;
   /** @nullable */
