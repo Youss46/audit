@@ -408,7 +408,7 @@ router.patch("/collaboration/threads/:targetType/:targetId/resolve", async (req,
     { type: "thread:resolved", payload: { targetType, targetId, clientId: owner.clientId } },
   );
 
-  const loginUrl = `${process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app"}/login`;
+  const loginUrl = `${process.env.FRONTEND_URL ?? "https://audit.m15-edutech.ci"}/login`;
   for (const cu of clientUsers) {
     sendMail(mailThreadResolu({
       to: cu.email,

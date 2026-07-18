@@ -391,7 +391,7 @@ router.post("/auth/forgot-password", async (req, res) => {
 
     const pwdFingerprint = user.passwordHash.slice(0, 16);
     const token = signForgotPasswordToken({ id: user.id, email: user.email, pwdFingerprint });
-    const frontendUrl = process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app";
+    const frontendUrl = process.env.FRONTEND_URL ?? "https://audit.m15-edutech.ci";
     const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
 
     await sendMail(mailResetPassword({ to: user.email, fullName: user.fullName, resetUrl }));

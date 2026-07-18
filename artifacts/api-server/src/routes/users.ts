@@ -117,7 +117,7 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     where: eq(firmsTable.id, req.user!.firmId),
     columns: { name: true },
   });
-  const loginUrl = `${process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app"}/login`;
+  const loginUrl = `${process.env.FRONTEND_URL ?? "https://audit.m15-edutech.ci"}/login`;
   sendMail(mailInvitation({
     to: user.email,
     fullName: user.fullName,
