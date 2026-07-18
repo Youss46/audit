@@ -28,4 +28,5 @@ export * from "./stations";
 export * from "./station-service";
 export * from "./mobile-money";
 export * from "./purchases";
+export * from "./subscription-licenses";
 export * from "./relations";

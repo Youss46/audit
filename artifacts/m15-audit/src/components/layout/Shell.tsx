@@ -26,9 +26,12 @@ import {
   FileSpreadsheet,
   SlidersHorizontal,
   Percent,
+  KeyRound,
+  LayoutDashboard,
+  ShieldAlert,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, hasPermission } from "@/lib/status"
+import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, isSuperAdmin, hasPermission } from "@/lib/status"
 import { UserCog, Fuel, CircleDollarSign, Smartphone, ShoppingCart, ClipboardCheck } from "lucide-react"
 import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
@@ -123,11 +126,32 @@ export function Shell({ children }: { children: React.ReactNode }) {
   }, [isLoading, user, isPublicRoute, setLocation])
 
   // Redirect away from login/register once already authenticated.
+  // Les super_admin rejoignent la console d'administration système.
   React.useEffect(() => {
     if (!isLoading && user && isPublicRoute) {
-      setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
+      if (isSuperAdmin(user.role)) {
+        setLocation("/admin/dashboard")
+      } else {
+        setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
+      }
     }
   }, [isLoading, user, isPublicRoute, setLocation])
+
+  // Super Admin : toujours confiné à /admin/*.
+  // Tout accès direct à une autre route le redirige vers son tableau de bord.
+  React.useEffect(() => {
+    if (!isLoading && isSuperAdmin(user?.role) && !location.startsWith("/admin")) {
+      setLocation("/admin/dashboard")
+    }
+  }, [isLoading, user, location, setLocation])
+
+  // Non-super_admin : interdit sur /admin/*.
+  // Redirige vers l'espace approprié selon le rôle.
+  React.useEffect(() => {
+    if (!isLoading && user && !isSuperAdmin(user.role) && location.startsWith("/admin")) {
+      setLocation(isPortalRole(user.role) ? "/portal" : "/dashboard")
+    }
+  }, [isLoading, user, location, setLocation])
 
   // Espace PME (client_pme + client_staff, module M29) accounts have their
   // own dedicated portal and must never reach the cabinet-facing screens
@@ -235,9 +259,55 @@ export function Shell({ children }: { children: React.ReactNode }) {
     return <div className="min-h-screen bg-background" />
   }
 
+  // Super Admin hors de /admin/* → écran blanc pendant la redirection.
+  if (isSuperAdmin(user.role) && !location.startsWith("/admin")) {
+    return <div className="min-h-screen bg-background" />
+  }
+  // Non-super_admin sur /admin/* → écran blanc pendant la redirection.
+  if (!isSuperAdmin(user.role) && location.startsWith("/admin")) {
+    return <div className="min-h-screen bg-background" />
+  }
+
   const NavItems = () => (
     <nav className="space-y-1 mt-6 px-3" data-testid="nav-menu">
-      {isPortalRole(user?.role) ? (
+      {isSuperAdmin(user?.role) ? (
+        <>
+          {/* ── Console Super Admin ─────────────────────────── */}
+          <p className="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            Console Système
+          </p>
+
+          <Link href="/admin/dashboard" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location === "/admin/dashboard" || location === "/admin"
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-admin-dashboard">
+            <LayoutDashboard className="h-5 w-5" />
+            Tableau de bord
+          </Link>
+
+          <Link href="/admin/firms" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/admin/firms")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-admin-firms">
+            <Building2 className="h-5 w-5" />
+            Cabinets
+          </Link>
+
+          <Link href="/admin/licenses" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/admin/licenses")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-admin-licenses">
+            <KeyRound className="h-5 w-5" />
+            Licences
+          </Link>
+        </>
+      ) : isPortalRole(user?.role) ? (
         <>
           <Link href="/portal" className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",

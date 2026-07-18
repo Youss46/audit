@@ -17,12 +17,16 @@ import { stationsTable } from "./stations";
 
 // RBAC roles for module M9 (Administration & Auth).
 //
+// "super_admin": platform-level administrator. Belongs to the special system
+// firm. Has cross-tenant access to ALL firms and clients. Can only be created
+// via the seed:super-admin script. Must never access normal cabinet routes
+// and normal cabinet roles must never access /api/admin/* routes.
+//
 // "client_staff" (module M29): a PME employee account created by the
 // company's own "client_pme" owner, restricted to a subset of the Espace
-// PME by its `roleId` (see ./roles.ts). Unlike "client_pme" -- which always
-// has unrestricted access to its one client dossier -- a "client_staff"
-// account's effective permissions come entirely from the referenced role.
+// PME by its `roleId` (see ./roles.ts).
 export const USER_ROLES = [
+  "super_admin",
   "expert_comptable",
   "collaborateur",
   "stagiaire",
@@ -31,13 +35,17 @@ export const USER_ROLES = [
 ] as const;
 export type UserRole = (typeof USER_ROLES)[number];
 
-// Roles/accounts that represent "the PME itself" (as opposed to cabinet
-// staff): scoped to exactly one client dossier via `clientId`, and the
-// portal-facing UI. Exported so route handlers and the auth middleware
-// treat the owner and its staff identically for ownership scoping.
+// Roles that represent "the PME itself": scoped to one client dossier.
+// super_admin is explicitly excluded from this — it must never be treated
+// as a portal role.
 export const PORTAL_ROLES = ["client_pme", "client_staff"] as const;
 export function isPortalRole(role: UserRole): boolean {
   return (PORTAL_ROLES as readonly UserRole[]).includes(role);
+}
+
+// Returns true for the platform super-administrator account.
+export function isSuperAdmin(role: UserRole): boolean {
+  return role === "super_admin";
 }
 
 export const USER_STATUSES = ["active", "invited", "disabled"] as const;

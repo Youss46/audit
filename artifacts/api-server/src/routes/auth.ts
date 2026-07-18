@@ -149,6 +149,22 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
+  // Super Admin Console: if the firm is suspended, immediately block every
+  // user belonging to that firm (cabinet staff, PME owners, client staff).
+  // super_admin accounts bypass this check (they manage all firms).
+  if (user.role !== "super_admin") {
+    const userFirm = await db.query.firmsTable.findFirst({
+      where: eq(firmsTable.id, user.firmId),
+    });
+    if (userFirm?.status === "suspended") {
+      res.status(403).json({
+        error:
+          "Ce cabinet est suspendu. Veuillez contacter l'administrateur système M15-AUDIT.",
+      });
+      return;
+    }
+  }
+
   await logAudit({
     firmId: user.firmId,
     userId: user.id,

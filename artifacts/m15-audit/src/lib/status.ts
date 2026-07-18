@@ -56,6 +56,7 @@ export function getStatusLabel(status: MissionStatus | null | undefined) {
 
 export function getRoleLabel(role: UserRole | string | null | undefined) {
   switch (role) {
+    case 'super_admin': return 'Super Administrateur'
     case 'expert_comptable': return 'Expert-comptable'
     case 'collaborateur': return 'Collaborateur'
     case 'stagiaire': return 'Stagiaire'
@@ -70,6 +71,7 @@ export function getRoleLabel(role: UserRole | string | null | undefined) {
 
 export function getRoleBadgeColor(role: UserRole | string | null | undefined) {
   switch (role) {
+    case 'super_admin': return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
     case 'expert_comptable': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
     case 'collaborateur': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
     case 'stagiaire': return 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300'
@@ -88,6 +90,11 @@ export function getRoleBadgeColor(role: UserRole | string | null | undefined) {
 // @workspace/db.
 export function isPortalRole(role: UserRole | string | null | undefined) {
   return role === 'client_pme' || role === 'client_staff'
+}
+
+// Compte Super Administrateur système — accès exclusif à la console /admin/*.
+export function isSuperAdmin(role: UserRole | string | null | undefined) {
+  return role === 'super_admin'
 }
 
 // Shows the specific staff role label (e.g. "Agent Terrain / Pompiste") for

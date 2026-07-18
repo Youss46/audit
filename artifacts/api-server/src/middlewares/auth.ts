@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import { verifyToken } from "../lib/auth";
-import { isPortalRole, type UserRole } from "@workspace/db";
+import { isPortalRole, isSuperAdmin, type UserRole } from "@workspace/db";
 
 // Verifies the Bearer JWT and attaches the authenticated principal to
 // `req.user`. All routes except /auth/register and /auth/login require this.
@@ -75,6 +75,27 @@ export function requireRole(...roles: UserRole[]) {
     }
     next();
   };
+}
+
+// Super Admin gate: ONLY allows requests from accounts with role "super_admin".
+// Must be composed AFTER requireAuth. Blocks every cabinet and PME role.
+// Used exclusively on /api/admin/* routes.
+export function requireSuperAdmin(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  if (!req.user) {
+    res.status(401).json({ error: "Authentification requise." });
+    return;
+  }
+  if (!isSuperAdmin(req.user.role)) {
+    res.status(403).json({
+      error: "Accès réservé aux administrateurs système.",
+    });
+    return;
+  }
+  next();
 }
 
 // Module P2 (Espace PME) scoping: a client_pme account (and, since module

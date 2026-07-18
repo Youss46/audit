@@ -1,6 +1,7 @@
 import { relations } from "drizzle-orm";
 import { firmsTable } from "./firms";
 import { usersTable } from "./users";
+import { subscriptionLicensesTable } from "./subscription-licenses";
 import { rolesTable } from "./roles";
 import { clientsTable } from "./clients";
 import { missionsTable } from "./missions";
@@ -32,7 +33,23 @@ import { purchasesTable } from "./purchases";
 export const firmsRelations = relations(firmsTable, ({ many }) => ({
   users: many(usersTable),
   clients: many(clientsTable),
+  licenses: many(subscriptionLicensesTable),
 }));
+
+// Super Admin: SaaS subscription licenses
+export const subscriptionLicensesRelations = relations(
+  subscriptionLicensesTable,
+  ({ one }) => ({
+    firm: one(firmsTable, {
+      fields: [subscriptionLicensesTable.firmId],
+      references: [firmsTable.id],
+    }),
+    createdBy: one(usersTable, {
+      fields: [subscriptionLicensesTable.createdById],
+      references: [usersTable.id],
+    }),
+  }),
+);
 
 export const usersRelations = relations(usersTable, ({ one }) => ({
   firm: one(firmsTable, { fields: [usersTable.firmId], references: [firmsTable.id] }),

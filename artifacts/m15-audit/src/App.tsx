@@ -50,6 +50,9 @@ import Communication from '@/pages/communication';
 import PayrollSettings from '@/pages/payroll-settings';
 import VatSettings from '@/pages/vat-settings';
 import NotFound from '@/pages/not-found';
+import AdminDashboard from '@/pages/admin/dashboard';
+import AdminCabinets from '@/pages/admin/firms';
+import AdminLicences from '@/pages/admin/licenses';
 
 const queryClient = new QueryClient();
 
@@ -112,6 +115,11 @@ function Router() {
         <Route path="/audit-log" component={AuditLog} />
         <Route path="/cabinet/compliance" component={Compliance} />
         <Route path="/cabinet/communication" component={Communication} />
+        {/* ── Console Super Admin (route protégée, rôle super_admin uniquement) ── */}
+        <Route path="/admin" component={AdminDashboard} />
+        <Route path="/admin/dashboard" component={AdminDashboard} />
+        <Route path="/admin/firms" component={AdminCabinets} />
+        <Route path="/admin/licenses" component={AdminLicences} />
         <Route component={NotFound} />
       </Switch>
     </Shell>

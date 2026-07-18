@@ -4,7 +4,17 @@ import { useLocation } from "wouter";
 import { useGetCurrentUser, useLogin, useRegister, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
 import { setToken, removeToken, getToken } from "@/lib/auth";
 import { useToast } from "@/hooks/use-toast";
-import { isPortalRole } from "@/lib/status";
+import { isPortalRole, isSuperAdmin } from "@/lib/status";
+
+// Aiguillage post-connexion selon le rôle utilisateur.
+// super_admin → /admin/dashboard (console système)
+// client_pme / client_staff → /portal (espace PME)
+// rôles cabinet → /dashboard
+function routePostConnexion(role: string | null | undefined): string {
+  if (isSuperAdmin(role)) return "/admin/dashboard";
+  if (isPortalRole(role)) return "/portal";
+  return "/dashboard";
+}
 
 export function useAuth() {
   const queryClient = useQueryClient();
@@ -49,7 +59,7 @@ export function useAuth() {
         }
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(isPortalRole(data.user!.role) ? "/portal" : "/dashboard");
+        setLocation(routePostConnexion(data.user!.role));
       },
       onError: (error) => {
         toast({
@@ -66,7 +76,7 @@ export function useAuth() {
       onSuccess: (data) => {
         setToken(data.token);
         queryClient.setQueryData(getGetCurrentUserQueryKey(), data.user);
-        setLocation(isPortalRole(data.user!.role) ? "/portal" : "/dashboard");
+        setLocation(routePostConnexion(data.user!.role));
       },
       onError: (error) => {
         toast({
