@@ -1,4 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useLocation } from 'wouter';
 import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { Toaster } from '@/components/ui/toaster';
@@ -59,10 +61,24 @@ import AdminLicences from '@/pages/admin/licenses';
 
 const queryClient = new QueryClient();
 
+/**
+ * Catches the legacy PWA start_url (/m15-audit or /m15-audit/) that was
+ * baked into older installs. On Vercel (base="/"), wouter sees this path
+ * literally and hits the 404 catch-all. We redirect to "/" so the Dashboard
+ * loads without requiring a reinstall of the PWA.
+ */
+function LegacyPwaRedirect() {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate('/'); }, [navigate]);
+  return null;
+}
+
 function Router() {
   return (
     <Shell>
       <Switch>
+        {/* Redirect legacy PWA start_url /m15-audit → / */}
+        <Route path="/m15-audit" component={LegacyPwaRedirect} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/force-password-change" component={ForcePasswordChange} />
