@@ -56,7 +56,7 @@ import {
 // that /auth/me (and every other authenticated route) rejects -- treat it
 // like a public route so the Shell doesn't bounce back to /login while the
 // interceptor page does its own thing with that token.
-const PUBLIC_ROUTES = ["/login", "/register", "/force-password-change"]
+const PUBLIC_ROUTES = ["/login", "/register", "/force-password-change", "/forgot-password", "/reset-password"]
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { user, logout, isLoading } = useAuth()
