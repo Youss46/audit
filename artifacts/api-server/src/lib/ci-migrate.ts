@@ -17,7 +17,7 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // Chemin vers le dossier drizzle/ de lib/db (embarqué dans le build via esbuild)
-const migrationsFolder = path.resolve(__dirname, "../drizzle");
+const migrationsFolder = path.resolve(__dirname, "drizzle");
 
 export async function runMigrations(): Promise<void> {
   const client = await pool.connect();
