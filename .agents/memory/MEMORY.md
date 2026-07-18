@@ -37,3 +37,5 @@
 - [Capitaux Propres (Classe 1) equity lifecycle gaps](equity-lifecycle-capital-closing-gaps.md) — capital 4613 fallback, OD-journal source allow-list, missing edit-form input, and missing chart-of-accounts codes were the real gaps, not the engines.
 - [Mobile Money treasury module design](mobile-money-treasury-design.md) — generalized PME module: DB schema, accounting engine, API routes, invoice payment dialog, Trésorerie dashboard page.
 - [Dépenses & Achats audit workflow (AIB + receipt + cabinet validation)](depenses-achats-audit-workflow.md) — AIB SYSCOHADA timing, receipt inline base64, Orval params-block gotcha, cabinet validate endpoint, two-panel review UI.
+- [Shell PUBLIC_ROUTES must include all unauthenticated pages](shell-public-routes.md) — forgot-password and reset-password must be in PUBLIC_ROUTES or the Shell instantly redirects to /login, making the link appear unresponsive.
+- [FRONTEND_URL fallback must match the real production domain](frontend-url-fallback.md) — hardcoded fallback was m15-audit.vercel.app; real domain is audit.m15-edutech.ci; wrong fallback causes DEPLOYMENT_NOT_FOUND in email links.
