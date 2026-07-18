@@ -119,9 +119,9 @@ async function main() {
   console.log(`Seeded ${RULES.length} DSF mapping rules.`);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+export { main as seed };
+
+// Auto-run uniquement si exécuté directement (pas importé)
+if (process.argv[1]?.endsWith("seed-dsf-mapping-rules.ts") || process.argv[1]?.endsWith("seed-dsf-mapping-rules.js")) {
+  main().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
+}

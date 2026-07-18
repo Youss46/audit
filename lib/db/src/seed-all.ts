@@ -172,20 +172,9 @@ async function seedAccounts() {
 }
 
 // ─── 3–5. Seeds délégués aux fichiers existants ───────────────────────────────
-// On importe dynamiquement pour ne pas dupliquer le code des seeds spécialisés.
-
-async function runSeed(name: string, scriptPath: string) {
-  try {
-    // tsx exécute les scripts TypeScript directement — on spawne un process fils
-    // pour que chaque seed garde son propre process.exit() sans tuer le script maître.
-    const { execSync } = await import("child_process");
-    execSync(`npx tsx ${scriptPath}`, { stdio: "inherit", env: process.env });
-    console.log(`✓ ${name} : terminé.`);
-  } catch (err) {
-    console.error(`✗ ${name} : échec —`, err);
-    throw err;
-  }
-}
+import { seed as seedDsf } from "./seed-dsf-mapping-rules";
+import { seed as seedPayroll } from "./seed-payroll-settings";
+import { seed as seedTemplates } from "./seed-report-document-templates";
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -194,9 +183,15 @@ async function main() {
 
   await seedRoles();
   await seedAccounts();
-  await runSeed("Mappings DSF", "lib/db/src/seed-dsf-mapping-rules.ts");
-  await runSeed("Paramètres paie", "lib/db/src/seed-payroll-settings.ts");
-  await runSeed("Modèles de documents", "lib/db/src/seed-report-document-templates.ts");
+
+  await seedDsf();
+  console.log("✓ Mappings DSF : terminé.");
+
+  await seedPayroll();
+  console.log("✓ Paramètres paie : terminé.");
+
+  await seedTemplates();
+  console.log("✓ Modèles de documents : terminé.");
 
   console.log("\n✅ Bootstrap terminé.\n");
 }

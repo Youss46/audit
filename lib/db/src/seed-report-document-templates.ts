@@ -150,7 +150,8 @@ async function main() {
   process.exit(0);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+export { main as seed };
+
+if (process.argv[1]?.endsWith("seed-report-document-templates.ts") || process.argv[1]?.endsWith("seed-report-document-templates.js")) {
+  main().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
+}

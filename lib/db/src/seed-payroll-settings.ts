@@ -43,9 +43,8 @@ async function main() {
   console.log(`Done. Seeded payroll settings for ${seeded}/${firms.length} firm(s).`);
 }
 
-main()
-  .then(() => process.exit(0))
-  .catch((err) => {
-    console.error(err);
-    process.exit(1);
-  });
+export { main as seed };
+
+if (process.argv[1]?.endsWith("seed-payroll-settings.ts") || process.argv[1]?.endsWith("seed-payroll-settings.js")) {
+  main().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
+}
