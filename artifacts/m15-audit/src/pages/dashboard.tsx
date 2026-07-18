@@ -29,7 +29,7 @@ import { formatCurrencyFCFA } from "@/lib/utils"
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { data: summary, isLoading } = useGetDashboardSummary()
+  const { data: summary, isLoading, isError, error } = useGetDashboardSummary()
   const { data: missions, isLoading: isLoadingMissions } = useListMissions()
 
   // The control center only tracks dossiers still under review -- a mission
@@ -37,6 +37,26 @@ export default function Dashboard() {
   const activeMissions = (missions ?? [])
     .filter((m) => m.status !== "visa_emis")
     .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+
+  if (isError) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4 text-center">
+        <AlertTriangle className="h-10 w-10 text-destructive" />
+        <div>
+          <p className="font-semibold text-destructive">Erreur lors du chargement du tableau de bord</p>
+          <p className="text-sm text-muted-foreground mt-1 font-mono">
+            {error instanceof Error ? error.message : String(error)}
+          </p>
+        </div>
+        <button
+          className="text-sm text-primary underline"
+          onClick={() => window.location.reload()}
+        >
+          Réessayer
+        </button>
+      </div>
+    )
+  }
 
   if (isLoading || !summary) {
     return (
