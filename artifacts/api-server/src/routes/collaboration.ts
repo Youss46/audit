@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, desc, eq } from "drizzle-orm";
+import { sendMail, mailThreadResolu } from "../lib/mailer";
 import {
   db,
   clientsTable,
@@ -400,12 +401,23 @@ router.patch("/collaboration/threads/:targetType/:targetId/resolve", async (req,
 
   const clientUsers = await db.query.usersTable.findMany({
     where: and(eq(usersTable.clientId, owner.clientId), eq(usersTable.role, "client_pme")),
-    columns: { id: true },
+    columns: { id: true, email: true, fullName: true },
   });
   pushToUsers(
     clientUsers.map((u) => u.id),
     { type: "thread:resolved", payload: { targetType, targetId, clientId: owner.clientId } },
   );
+
+  const loginUrl = `${process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app"}/login`;
+  for (const cu of clientUsers) {
+    sendMail(mailThreadResolu({
+      to: cu.email,
+      fullName: cu.fullName,
+      targetLabel: owner.label,
+      resolvedByName: req.user!.fullName,
+      loginUrl,
+    })).catch(() => {});
+  }
 
   await logAudit({
     firmId: req.user!.firmId,

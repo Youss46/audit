@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, usersTable, clientsTable } from "@workspace/db";
+import { db, usersTable, clientsTable, firmsTable } from "@workspace/db";
 import {
   ListUsersResponse,
   CreateUserBody,
@@ -13,6 +13,7 @@ import {
 import { generateTemporaryPassword, hashPassword } from "../lib/auth";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+import { sendMail, mailInvitation } from "../lib/mailer";
 import { auditInterceptor } from "../middlewares/audit-interceptor";
 
 const router: IRouter = Router();
@@ -111,6 +112,19 @@ router.post("/users", requireRole("expert_comptable"), async (req, res) => {
     details: `Invitation de ${user.fullName} (${user.role})`,
     ipAddress: req.ip,
   });
+
+  const firm = await db.query.firmsTable.findFirst({
+    where: eq(firmsTable.id, req.user!.firmId),
+    columns: { name: true },
+  });
+  const loginUrl = `${process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app"}/login`;
+  sendMail(mailInvitation({
+    to: user.email,
+    fullName: user.fullName,
+    firmName: firm?.name ?? "M15-AUDIT",
+    temporaryPassword,
+    loginUrl,
+  })).catch(() => {});
 
   res
     .status(201)

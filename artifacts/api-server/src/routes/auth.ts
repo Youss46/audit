@@ -19,6 +19,7 @@ import {
 } from "../lib/auth";
 import { requireAuth, requirePasswordResetAuth } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
+import { sendMail, mailPasswordChanged } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -346,6 +347,11 @@ router.post(
       permissions: staffRole?.permissions ?? [],
       stationId: updated.stationId ?? null,
     });
+
+    sendMail(mailPasswordChanged({
+      to: updated.email,
+      fullName: updated.fullName,
+    })).catch(() => {});
 
     res.json(
       ResetFirstPasswordResponse.parse({

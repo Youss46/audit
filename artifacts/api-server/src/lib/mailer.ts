@@ -154,6 +154,121 @@ export function mailLicenceExpiree(opts: {
   };
 }
 
+export function mailInvitation(opts: {
+  to: string;
+  fullName: string;
+  firmName: string;
+  temporaryPassword: string;
+  loginUrl: string;
+}): MailOptions {
+  return {
+    to: opts.to,
+    subject: `Bienvenue sur M15-AUDIT — Vos accès`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a2e">
+        <div style="background:#0f3460;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#ffffff;margin:0;font-size:20px">M15 <strong>AUDIT</strong></h1>
+        </div>
+        <div style="background:#f8f9fa;padding:32px;border-radius:0 0 8px 8px">
+          <h2 style="margin-top:0;color:#0f3460">Bienvenue, ${opts.fullName} !</h2>
+          <p>
+            Vous avez été invité(e) à rejoindre <strong>${opts.firmName}</strong>
+            sur la plateforme <strong>M15-AUDIT</strong>.
+          </p>
+          <p>Voici vos identifiants de première connexion :</p>
+          <div style="background:#e8f4fd;border-left:4px solid #0f3460;padding:16px;margin:24px 0;border-radius:4px">
+            <p style="margin:4px 0">📧 <strong>Email :</strong> ${opts.to}</p>
+            <p style="margin:4px 0">🔑 <strong>Mot de passe temporaire :</strong> <code style="background:#fff;padding:2px 6px;border-radius:4px">${opts.temporaryPassword}</code></p>
+          </div>
+          <p>
+            <a href="${opts.loginUrl}" style="display:inline-block;background:#0f3460;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+              Se connecter
+            </a>
+          </p>
+          <p style="color:#856404;background:#fff3cd;border-radius:4px;padding:12px">
+            ⚠️ Vous devrez choisir un nouveau mot de passe lors de votre première connexion.
+          </p>
+          <hr style="border:none;border-top:1px solid #dee2e6;margin:24px 0"/>
+          <p style="font-size:12px;color:#6c757d;margin:0">
+            Ce message est envoyé automatiquement par la plateforme M15-AUDIT.
+            Si vous n'attendiez pas cette invitation, ignorez ce message.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function mailPasswordChanged(opts: {
+  to: string;
+  fullName: string;
+}): MailOptions {
+  return {
+    to: opts.to,
+    subject: `M15-AUDIT — Mot de passe mis à jour`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a2e">
+        <div style="background:#0f3460;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#ffffff;margin:0;font-size:20px">M15 <strong>AUDIT</strong></h1>
+        </div>
+        <div style="background:#f8f9fa;padding:32px;border-radius:0 0 8px 8px">
+          <h2 style="margin-top:0;color:#0f3460">Mot de passe mis à jour</h2>
+          <p>Bonjour <strong>${opts.fullName}</strong>,</p>
+          <p>
+            Votre mot de passe sur <strong>M15-AUDIT</strong> a été modifié avec succès.
+            Votre compte est maintenant actif.
+          </p>
+          <p>
+            Si vous n'êtes pas à l'origine de cette modification, contactez immédiatement
+            votre administrateur.
+          </p>
+          <hr style="border:none;border-top:1px solid #dee2e6;margin:24px 0"/>
+          <p style="font-size:12px;color:#6c757d;margin:0">
+            Ce message est envoyé automatiquement par la plateforme M15-AUDIT.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+}
+
+export function mailThreadResolu(opts: {
+  to: string;
+  fullName: string;
+  targetLabel: string;
+  resolvedByName: string;
+  loginUrl: string;
+}): MailOptions {
+  return {
+    to: opts.to,
+    subject: `M15-AUDIT — Votre demande a été traitée`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a2e">
+        <div style="background:#0f3460;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#ffffff;margin:0;font-size:20px">M15 <strong>AUDIT</strong></h1>
+        </div>
+        <div style="background:#f8f9fa;padding:32px;border-radius:0 0 8px 8px">
+          <h2 style="margin-top:0;color:#155724">✅ Demande traitée</h2>
+          <p>Bonjour <strong>${opts.fullName}</strong>,</p>
+          <p>
+            Votre discussion concernant <strong>${opts.targetLabel}</strong>
+            a été marquée comme résolue par <strong>${opts.resolvedByName}</strong>.
+          </p>
+          <p>
+            <a href="${opts.loginUrl}" style="display:inline-block;background:#0f3460;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:bold">
+              Voir mon espace
+            </a>
+          </p>
+          <hr style="border:none;border-top:1px solid #dee2e6;margin:24px 0"/>
+          <p style="font-size:12px;color:#6c757d;margin:0">
+            Ce message est envoyé automatiquement par la plateforme M15-AUDIT.
+          </p>
+        </div>
+      </div>
+    `,
+  };
+}
+
 export function mailEssaiExpire(opts: {
   to: string;
   firmName: string;
