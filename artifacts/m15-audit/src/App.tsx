@@ -1,4 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { PWAInstallBanner } from '@/components/PWAInstallBanner';
 import { Route, Switch, Router as WouterRouter } from 'wouter';
 import { Toaster } from '@/components/ui/toaster';
 import { TooltipProvider } from '@/components/ui/tooltip';
@@ -138,6 +139,7 @@ function App() {
           <Router />
         </WouterRouter>
         <Toaster />
+        <PWAInstallBanner />
       </TooltipProvider>
     </QueryClientProvider>
   );

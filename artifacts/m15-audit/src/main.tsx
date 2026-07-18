@@ -11,6 +11,15 @@ if (apiUrl) {
   setBaseUrl(apiUrl)
 }
 
+// Register PWA service worker
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register(import.meta.env.BASE_URL + "sw.js").catch(() => {
+      // SW registration failed — non-blocking, app still works
+    });
+  });
+}
+
 const root = document.getElementById("root")
 
 if (!root) {
