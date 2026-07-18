@@ -56,7 +56,10 @@ export default defineConfig(async ({ command }) => {
     },
     root: path.resolve(import.meta.dirname),
     build: {
-      outDir: path.resolve(import.meta.dirname, 'dist/public'),
+      // En production (Vercel) on sort à la racine du monorepo dans /dist
+      // pour que Vercel trouve le dossier sans ambiguïté (outputDirectory: "dist").
+      // En dev (Replit) le dossier n'est pas servi, donc le chemin importe peu.
+      outDir: path.resolve(import.meta.dirname, '..', '..', 'dist'),
       emptyOutDir: true,
     },
     server: {
