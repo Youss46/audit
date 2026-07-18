@@ -27,3 +27,20 @@ if (!root) {
 }
 
 createRoot(root).render(<App />)
+
+// Dismiss the splash screen once React has painted the first frame.
+// We wait for the progress-bar animation (≈2 s) before hiding so the
+// animation always completes even on a fast connection.
+const splash = document.getElementById("splash")
+if (splash) {
+  const MIN_SPLASH_MS = 2000 // match bar-fill animation duration
+  const start = performance.now()
+  requestAnimationFrame(() => {
+    const elapsed = performance.now() - start
+    const remaining = Math.max(0, MIN_SPLASH_MS - elapsed)
+    setTimeout(() => {
+      splash.classList.add("splash-hidden")
+      splash.addEventListener("transitionend", () => splash.remove(), { once: true })
+    }, remaining)
+  })
+}
