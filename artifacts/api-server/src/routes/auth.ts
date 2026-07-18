@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, firmsTable, usersTable, rolesTable, stationsTable } from "@workspace/db";
+import { and, eq, gte, lt } from "drizzle-orm";
+import { db, firmsTable, usersTable, rolesTable, stationsTable, subscriptionLicensesTable } from "@workspace/db";
 import {
   RegisterBody,
   RegisterResponse,
@@ -149,19 +149,65 @@ router.post("/auth/login", async (req, res) => {
     return;
   }
 
-  // Super Admin Console: if the firm is suspended, immediately block every
-  // user belonging to that firm (cabinet staff, PME owners, client staff).
-  // super_admin accounts bypass this check (they manage all firms).
+  // Super Admin Console: if the firm is suspended, or the trial/licence has
+  // expired, immediately block login. super_admin bypasses all these checks.
   if (user.role !== "super_admin") {
+    const now = new Date();
+
     const userFirm = await db.query.firmsTable.findFirst({
       where: eq(firmsTable.id, user.firmId),
     });
+
+    // 1. Cabinet suspendu manuellement par le super admin.
     if (userFirm?.status === "suspended") {
       res.status(403).json({
         error:
           "Ce cabinet est suspendu. Veuillez contacter l'administrateur système M15-AUDIT.",
       });
       return;
+    }
+
+    // 2. Période d'essai expirée (> 30 jours sans licence).
+    if (userFirm?.status === "trial") {
+      const TRIAL_DAYS = 30;
+      const trialStart = new Date(userFirm.createdAt);
+      const trialEnd = new Date(trialStart);
+      trialEnd.setDate(trialEnd.getDate() + TRIAL_DAYS);
+
+      if (now > trialEnd) {
+        // Suspend the firm immediately so subsequent logins also fast-fail.
+        await db
+          .update(firmsTable)
+          .set({ status: "suspended" })
+          .where(eq(firmsTable.id, userFirm.id));
+
+        res.status(403).json({
+          error:
+            "Votre période d'essai de 30 jours est terminée. " +
+            "Veuillez contacter l'administrateur M15-AUDIT pour activer votre abonnement.",
+        });
+        return;
+      }
+    }
+
+    // 3. Cabinet activé mais sans licence valide (endDate dépassée ou révoquée).
+    if (userFirm?.status === "active") {
+      const activeLicense = await db.query.subscriptionLicensesTable.findFirst({
+        where: and(
+          eq(subscriptionLicensesTable.firmId, userFirm.id),
+          eq(subscriptionLicensesTable.status, "active"),
+          gte(subscriptionLicensesTable.endDate, now),
+        ),
+      });
+
+      if (!activeLicense) {
+        res.status(403).json({
+          error:
+            "Votre licence M15-AUDIT est expirée ou révoquée. " +
+            "Veuillez contacter l'administrateur système pour renouveler votre abonnement.",
+        });
+        return;
+      }
     }
   }
 

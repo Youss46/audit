@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
-import { and, eq } from "drizzle-orm";
-import { db, clientsTable, isPortalRole } from "@workspace/db";
+import { and, count, eq } from "drizzle-orm";
+import { db, clientsTable, firmsTable, isPortalRole } from "@workspace/db";
 import {
   ListClientsQueryParams,
   ListClientsResponse,
@@ -145,6 +145,26 @@ router.get("/clients", async (req, res) => {
 
 router.post("/clients", requireRole("expert_comptable", "collaborateur"), async (req, res) => {
   const body = CreateClientBody.parse(req.body);
+
+  // ── Limite PME par abonnement ──────────────────────────────────────────────
+  // Vérifie que le cabinet n'a pas déjà atteint son quota de dossiers PME avant
+  // d'autoriser la création d'un nouveau dossier client.
+  const firm = await db.query.firmsTable.findFirst({
+    where: eq(firmsTable.id, req.user!.firmId),
+  });
+  if (firm) {
+    const [{ pmeCount }] = await db
+      .select({ pmeCount: count() })
+      .from(clientsTable)
+      .where(eq(clientsTable.firmId, req.user!.firmId));
+
+    if (pmeCount >= firm.maxPmeAllowed) {
+      res.status(403).json({
+        error: `Quota PME atteint. Votre abonnement autorise ${firm.maxPmeAllowed} dossier(s) client au maximum. Contactez l'administrateur M15-AUDIT pour augmenter votre limite.`,
+      });
+      return;
+    }
+  }
 
   // Compute the applicable SYSCOHADA system immediately if the turnover is
   // already known, so the dossier reflects it from the moment of creation.

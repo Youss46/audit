@@ -2,6 +2,7 @@ import { createServer } from "http";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
+import { startLicenseScheduler } from "./lib/license-scheduler";
 
 const rawPort = process.env["PORT"];
 
@@ -30,4 +31,8 @@ server.listen(port, (err?: Error) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Démarre le scheduler de licences : expire les licences échues, suspend
+  // les cabinets sans licence active, envoie les emails d'avertissement.
+  startLicenseScheduler();
 });
