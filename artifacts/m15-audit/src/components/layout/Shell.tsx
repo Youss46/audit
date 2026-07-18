@@ -888,7 +888,9 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 </span>
               </div>
               <a
-                href="mailto:contact@m15-edutech.ci"
+                href="https://wa.me/2250714174082"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="shrink-0 text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
               >
                 Activer mon abonnement
