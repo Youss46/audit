@@ -1,43 +1,30 @@
 /**
- * Mailer — envoi d'emails transactionnels via SMTP.
+ * Mailer — envoi d'emails transactionnels via Resend.
  *
- * Variables d'environnement requises (optionnelles — si absentes, les emails
- * sont simplement journalisés sans être envoyés) :
- *   SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM
+ * Variable d'environnement requise :
+ *   RESEND_API_KEY   — clé API Resend (https://resend.com/api-keys)
  *
- * Exemple de configuration Brevo / Mailtrap / Gmail :
- *   SMTP_HOST=smtp-relay.brevo.com
- *   SMTP_PORT=587
- *   SMTP_USER=votre@email.com
- *   SMTP_PASS=votre_mot_de_passe_smtp
- *   SMTP_FROM="M15-AUDIT <noreply@m15-audit.ci>"
+ * Variable optionnelle :
+ *   SMTP_FROM        — adresse expéditrice (défaut : "M15-AUDIT <noreply@m15-audit.ci>")
+ *                      Doit correspondre à un domaine vérifié dans votre dashboard Resend.
+ *
+ * Si RESEND_API_KEY est absente, les emails sont journalisés dans la console
+ * sans être envoyés — le serveur ne plante jamais sur un échec d'email.
  */
 
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import { logger } from "./logger";
 
-// ── Configuration SMTP ────────────────────────────────────────────────────────
+// ── Initialisation ────────────────────────────────────────────────────────────
 
-const SMTP_HOST = process.env["SMTP_HOST"];
-const SMTP_PORT = Number(process.env["SMTP_PORT"] ?? "587");
-const SMTP_USER = process.env["SMTP_USER"];
-const SMTP_PASS = process.env["SMTP_PASS"];
-const SMTP_FROM = process.env["SMTP_FROM"] ?? "M15-AUDIT <noreply@m15-audit.ci>";
+const RESEND_API_KEY = process.env["RESEND_API_KEY"];
+const FROM = process.env["SMTP_FROM"] ?? "M15-AUDIT <noreply@m15-audit.ci>";
 
-const isSmtpConfigured = Boolean(SMTP_HOST && SMTP_USER && SMTP_PASS);
+const resend = RESEND_API_KEY ? new Resend(RESEND_API_KEY) : null;
 
-const transporter = isSmtpConfigured
-  ? nodemailer.createTransport({
-      host: SMTP_HOST,
-      port: SMTP_PORT,
-      secure: SMTP_PORT === 465,
-      auth: { user: SMTP_USER, pass: SMTP_PASS },
-    })
-  : null;
-
-if (!isSmtpConfigured) {
+if (!resend) {
   logger.warn(
-    "SMTP non configuré (SMTP_HOST/SMTP_USER/SMTP_PASS manquants). " +
+    "Resend non configuré (RESEND_API_KEY manquant). " +
     "Les emails seront journalisés mais non envoyés.",
   );
 }
@@ -51,24 +38,34 @@ interface MailOptions {
 }
 
 export async function sendMail(opts: MailOptions): Promise<void> {
-  if (!transporter) {
+  if (!resend) {
     logger.info(
       { to: opts.to, subject: opts.subject },
-      "[MAILER-DRY-RUN] Email non envoyé (SMTP non configuré)",
+      "[MAILER-DRY-RUN] Email non envoyé (RESEND_API_KEY non configuré)",
     );
     return;
   }
 
   try {
-    await transporter.sendMail({ from: SMTP_FROM, ...opts });
-    logger.info({ to: opts.to, subject: opts.subject }, "Email envoyé");
+    const { error } = await resend.emails.send({
+      from: FROM,
+      to: opts.to,
+      subject: opts.subject,
+      html: opts.html,
+    });
+
+    if (error) {
+      logger.error({ error, to: opts.to, subject: opts.subject }, "Resend — erreur d'envoi");
+    } else {
+      logger.info({ to: opts.to, subject: opts.subject }, "Email envoyé via Resend");
+    }
   } catch (err) {
-    // Non-fatal : on ne laisse jamais un échec d'email planter le serveur.
-    logger.error({ err, to: opts.to, subject: opts.subject }, "Échec envoi email");
+    // Non-fatal : un échec d'email ne doit jamais planter le serveur.
+    logger.error({ err, to: opts.to, subject: opts.subject }, "Resend — exception inattendue");
   }
 }
 
-// ── Templates ─────────────────────────────────────────────────────────────────
+// ── Templates HTML ────────────────────────────────────────────────────────────
 
 export function mailLicenceExpirationProche(opts: {
   to: string;
