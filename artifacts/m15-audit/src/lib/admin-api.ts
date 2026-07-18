@@ -15,7 +15,10 @@ import type {
   ResultatGenerationLicence,
 } from "@/lib/admin-types"
 
-const BASE = "/api"
+// En production (Vercel), VITE_API_URL pointe vers le backend Railway,
+// ex : "https://api.m15-audit.ci". En dev (Replit), la variable est absente
+// et les appels restent relatifs, acheminés par le proxy Replit.
+const BASE = `${import.meta.env.VITE_API_URL ?? ""}/api`
 
 async function apiFetch<T>(chemin: string, opts?: RequestInit): Promise<T> {
   const token = getToken()

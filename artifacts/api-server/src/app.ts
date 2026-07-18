@@ -30,7 +30,14 @@ app.use(
     },
   }),
 );
-app.use(cors());
+// CORS_ORIGIN liste les origines autorisées séparées par des virgules,
+// ex : "https://m15-audit.vercel.app,https://m15-audit.ci"
+// Si la variable est absente (dev / Replit), toutes les origines sont acceptées.
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
+  : true; // true = wildcard en développement
+
+app.use(cors({ origin: corsOrigins, credentials: true }));
 // Raised limit accommodates base64-encoded document uploads (module M6).
 app.use(express.json({ limit: "15mb" }));
 app.use(express.urlencoded({ extended: true, limit: "15mb" }));
