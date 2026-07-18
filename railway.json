@@ -6,7 +6,7 @@
   "deploy": {
     "releaseCommand": "pnpm --filter @workspace/db run push",
     "startCommand": "node --enable-source-maps ./artifacts/api-server/dist/index.mjs",
-    "healthcheckPath": "/api",
+    "healthcheckPath": "/api/healthz",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
