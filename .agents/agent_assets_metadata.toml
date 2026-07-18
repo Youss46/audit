@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "sn0pgo0Rg9QIjRFI0VIWx"
+uri = "file://attached_assets/m15-audit-logo.png"
+type = "image"
+title = "Logo M15 Audit"
