@@ -97,6 +97,7 @@ export default function ForgotPassword() {
                   </p>
                 </div>
               ) : (
+                <>
                 {networkError && (
                   <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 p-3 mb-4 text-sm text-destructive">
                     <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
@@ -128,6 +129,7 @@ export default function ForgotPassword() {
                     </Button>
                   </form>
                 </Form>
+                </>
               )}
             </CardContent>
 
