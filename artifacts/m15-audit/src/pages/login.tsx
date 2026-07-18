@@ -89,13 +89,13 @@ export default function Login() {
                   <Button type="submit" className="w-full" disabled={isLoggingIn} data-testid="button-submit">
                     {isLoggingIn ? "Connexion en cours..." : "Se connecter"}
                   </Button>
-                  <div className="text-center">
-                    <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary transition-colors">
-                      Mot de passe oublié ?
-                    </Link>
-                  </div>
                 </form>
               </Form>
+              <div className="text-center mt-4">
+                <Link href="/forgot-password" className="text-sm text-muted-foreground hover:text-primary transition-colors">
+                  Mot de passe oublié ?
+                </Link>
+              </div>
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 p-6 bg-muted/20">
               <div className="text-sm text-muted-foreground text-center">
