@@ -32,7 +32,9 @@ import { randomBytes } from "crypto";
 const router: IRouter = Router();
 
 // Every route in this file is gated behind both middlewares.
-router.use(requireAuth, requireSuperAdmin);
+// Scoped to /admin/* so the middleware does not fire for unrelated routes
+// that share the same top-level Express router (see memory: unscoped-router-middleware).
+router.use("/admin", requireAuth, requireSuperAdmin);
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
