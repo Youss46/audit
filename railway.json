@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "releaseCommand": "pnpm --filter @workspace/db run push",
+    "releaseCommand": "pnpm --filter @workspace/db run push && pnpm --filter @workspace/db run seed:all",
     "startCommand": "node --enable-source-maps ./artifacts/api-server/dist/index.mjs",
     "healthcheckPath": "/api/healthz",
     "healthcheckTimeout": 300,
