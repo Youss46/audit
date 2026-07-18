@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Link, useLocation } from "wouter"
-import { CheckCircle, ArrowLeft } from "lucide-react"
+import { CheckCircle, ArrowLeft, AlertCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -17,8 +17,10 @@ import {
 import { PasswordInput } from "@/components/ui/password-input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoginHeroSlider } from "@/components/auth/LoginHeroSlider"
-import { useToast } from "@/hooks/use-toast"
 import { PASSWORD_POLICY_HINT, PASSWORD_POLICY_REGEX } from "@/lib/password"
+
+// En production (Vercel), VITE_API_URL pointe vers le backend Railway.
+const API_BASE = import.meta.env.VITE_API_URL ?? ""
 
 const schema = z
   .object({
@@ -35,9 +37,9 @@ const schema = z
 
 export default function ResetPassword() {
   const [, setLocation] = useLocation()
-  const { toast } = useToast()
   const [done, setDone] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [apiError, setApiError] = useState<string | null>(null)
 
   // Read token from the URL query string.
   const token = new URLSearchParams(window.location.search).get("token") ?? ""
@@ -48,23 +50,22 @@ export default function ResetPassword() {
   })
 
   async function onSubmit(values: z.infer<typeof schema>) {
-    if (!token) {
-      toast({ title: "Lien invalide", description: "Aucun token de réinitialisation trouvé.", variant: "destructive" })
-      return
-    }
     setSubmitting(true)
+    setApiError(null)
     try {
-      const res = await fetch(`/api/auth/reset-password`, {
+      const res = await fetch(`${API_BASE}/api/auth/reset-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ token, newPassword: values.newPassword, confirmPassword: values.confirmPassword }),
       })
-      const data = await res.json()
+      const data = await res.json().catch(() => ({})) as { error?: string }
       if (!res.ok) {
-        toast({ title: "Erreur", description: data.error ?? "Une erreur est survenue.", variant: "destructive" })
+        setApiError(data.error ?? `Erreur serveur (${res.status})`)
         return
       }
       setDone(true)
+    } catch {
+      setApiError("Impossible de contacter le serveur. Vérifiez votre connexion.")
     } finally {
       setSubmitting(false)
     }
@@ -128,6 +129,13 @@ export default function ResetPassword() {
                   </Button>
                 </div>
               ) : (
+                <>
+                {apiError && (
+                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 p-3 mb-4 text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{apiError}</span>
+                  </div>
+                )}
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
@@ -162,6 +170,7 @@ export default function ResetPassword() {
                     </Button>
                   </form>
                 </Form>
+                </>
               )}
             </CardContent>
 

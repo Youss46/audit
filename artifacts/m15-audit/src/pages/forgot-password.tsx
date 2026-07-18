@@ -3,7 +3,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import * as z from "zod"
 import { Link } from "wouter"
-import { ArrowLeft, Mail } from "lucide-react"
+import { ArrowLeft, Mail, AlertCircle } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
 import {
@@ -18,6 +18,10 @@ import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { LoginHeroSlider } from "@/components/auth/LoginHeroSlider"
 
+// En production (Vercel), VITE_API_URL pointe vers le backend Railway.
+// En dev (Replit), la variable est absente : les appels restent relatifs.
+const API_BASE = import.meta.env.VITE_API_URL ?? ""
+
 const schema = z.object({
   email: z.string().email({ message: "Email invalide" }),
 })
@@ -25,6 +29,7 @@ const schema = z.object({
 export default function ForgotPassword() {
   const [sent, setSent] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [networkError, setNetworkError] = useState<string | null>(null)
 
   const form = useForm<z.infer<typeof schema>>({
     resolver: zodResolver(schema),
@@ -33,14 +38,22 @@ export default function ForgotPassword() {
 
   async function onSubmit(values: z.infer<typeof schema>) {
     setSubmitting(true)
+    setNetworkError(null)
     try {
-      await fetch(`/api/auth/forgot-password`, {
+      const res = await fetch(`${API_BASE}/api/auth/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: values.email }),
       })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({})) as { error?: string }
+        setNetworkError(data.error ?? `Erreur serveur (${res.status})`)
+        return
+      }
       // Always show success — server never leaks whether the email exists.
       setSent(true)
+    } catch (err) {
+      setNetworkError("Impossible de contacter le serveur. Vérifiez votre connexion.")
     } finally {
       setSubmitting(false)
     }
@@ -84,6 +97,12 @@ export default function ForgotPassword() {
                   </p>
                 </div>
               ) : (
+                {networkError && (
+                  <div className="flex items-start gap-2 rounded-md bg-destructive/10 border border-destructive/30 p-3 mb-4 text-sm text-destructive">
+                    <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                    <span>{networkError}</span>
+                  </div>
+                )}
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     <FormField
