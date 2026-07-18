@@ -15,11 +15,13 @@ import {
   hashPassword,
   isStrongPassword,
   signRestrictedPasswordResetToken,
+  signForgotPasswordToken,
+  verifyForgotPasswordToken,
   signToken,
 } from "../lib/auth";
 import { requireAuth, requirePasswordResetAuth } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
-import { sendMail, mailPasswordChanged } from "../lib/mailer";
+import { sendMail, mailPasswordChanged, mailResetPassword } from "../lib/mailer";
 
 const router: IRouter = Router();
 
@@ -362,6 +364,113 @@ router.post(
     );
   },
 );
+
+// ── Forgot-password flow ──────────────────────────────────────────────────────
+//
+// Step 1: POST /auth/forgot-password  — receives an email, sends a reset link.
+//         Always returns 200 (no email enumeration).
+// Step 2: POST /auth/reset-password   — receives the token + new password.
+// ─────────────────────────────────────────────────────────────────────────────
+
+router.post("/auth/forgot-password", async (req, res) => {
+  const email: string = (req.body as { email?: string }).email?.trim() ?? "";
+  if (!email) {
+    res.status(400).json({ error: "Email requis." });
+    return;
+  }
+
+  // Always respond 200 to avoid email enumeration.
+  res.json({ status: "OK" });
+
+  // Fire-and-forget after response so the client isn't blocked.
+  (async () => {
+    const user = await db.query.usersTable.findFirst({
+      where: and(eq(usersTable.email, email), eq(usersTable.status, "active")),
+    });
+    if (!user) return; // silently ignore unknown / disabled accounts
+
+    const pwdFingerprint = user.passwordHash.slice(0, 16);
+    const token = signForgotPasswordToken({ id: user.id, email: user.email, pwdFingerprint });
+    const frontendUrl = process.env.FRONTEND_URL ?? "https://m15-audit.vercel.app";
+    const resetUrl = `${frontendUrl}/reset-password?token=${token}`;
+
+    await sendMail(mailResetPassword({ to: user.email, fullName: user.fullName, resetUrl }));
+  })().catch(() => {});
+});
+
+router.post("/auth/reset-password", async (req, res) => {
+  const { token, newPassword, confirmPassword } = req.body as {
+    token?: string;
+    newPassword?: string;
+    confirmPassword?: string;
+  };
+
+  if (!token || !newPassword || !confirmPassword) {
+    res.status(400).json({ error: "Paramètres manquants." });
+    return;
+  }
+
+  if (newPassword !== confirmPassword) {
+    res.status(400).json({ error: "Les deux mots de passe ne correspondent pas." });
+    return;
+  }
+  if (!isStrongPassword(newPassword)) {
+    res.status(400).json({
+      error: "Le mot de passe doit contenir au moins 8 caractères, un chiffre et un caractère spécial.",
+    });
+    return;
+  }
+
+  let payload: ReturnType<typeof verifyForgotPasswordToken>;
+  try {
+    payload = verifyForgotPasswordToken(token);
+  } catch {
+    res.status(400).json({ error: "Ce lien de réinitialisation est invalide ou expiré." });
+    return;
+  }
+
+  if (payload.scope !== "forgot_password") {
+    res.status(400).json({ error: "Token invalide." });
+    return;
+  }
+
+  const user = await db.query.usersTable.findFirst({
+    where: eq(usersTable.id, payload.id),
+  });
+  if (!user || user.status !== "active") {
+    res.status(400).json({ error: "Compte introuvable ou désactivé." });
+    return;
+  }
+
+  // Fingerprint check: if the password was already changed (by another reset
+  // or by the user themselves) the token is automatically invalidated.
+  if (user.passwordHash.slice(0, 16) !== payload.pwdFingerprint) {
+    res.status(400).json({ error: "Ce lien de réinitialisation a déjà été utilisé." });
+    return;
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await db
+    .update(usersTable)
+    .set({ passwordHash, requiresPasswordChange: false, temporaryPasswordPlain: null })
+    .where(eq(usersTable.id, user.id));
+
+  await logAudit({
+    firmId: user.firmId,
+    userId: user.id,
+    userName: user.fullName,
+    userRole: user.role,
+    action: AuditAction.AUTH_FORCED_PASSWORD_RESET,
+    entityType: "user",
+    entityId: user.id,
+    details: "Réinitialisation du mot de passe via lien email.",
+    ipAddress: req.ip,
+  });
+
+  sendMail(mailPasswordChanged({ to: user.email, fullName: user.fullName })).catch(() => {});
+
+  res.json({ status: "OK" });
+});
 
 router.get("/auth/me", requireAuth, async (req, res) => {
   const user = await db.query.usersTable.findFirst({

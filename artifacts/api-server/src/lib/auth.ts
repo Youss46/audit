@@ -84,6 +84,36 @@ export function isStrongPassword(password: string): boolean {
   return PASSWORD_POLICY_REGEX.test(password);
 }
 
+// Forgot-password flow: signs a short-lived token whose validity is tied to
+// the current password hash fingerprint (first 16 chars of the bcrypt hash).
+// Changing the password automatically invalidates all outstanding tokens for
+// that user — no DB column needed.
+export function signForgotPasswordToken(opts: {
+  id: number;
+  email: string;
+  pwdFingerprint: string; // slice(0, 16) of the current bcrypt hash
+}): string {
+  return jwt.sign(
+    { id: opts.id, email: opts.email, pwdFingerprint: opts.pwdFingerprint, scope: "forgot_password" },
+    JWT_SECRET as string,
+    { expiresIn: "1h" },
+  );
+}
+
+export function verifyForgotPasswordToken(token: string): {
+  id: number;
+  email: string;
+  pwdFingerprint: string;
+  scope: string;
+} {
+  return jwt.verify(token, JWT_SECRET as string) as {
+    id: number;
+    email: string;
+    pwdFingerprint: string;
+    scope: string;
+  };
+}
+
 // Module M33: generates a random temporary password for admin-created
 // accounts (cabinet staff via POST /users, PME staff via POST /staff), e.g.
 // "M15-Temp4821!". Always satisfies PASSWORD_POLICY_REGEX.

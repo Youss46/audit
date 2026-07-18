@@ -269,6 +269,52 @@ export function mailThreadResolu(opts: {
   };
 }
 
+export function mailResetPassword(opts: {
+  to: string;
+  fullName: string;
+  resetUrl: string;
+}): MailOptions {
+  return {
+    to: opts.to,
+    subject: `M15-AUDIT — Réinitialisation de votre mot de passe`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:auto;color:#1a1a2e">
+        <div style="background:#0f3460;padding:24px 32px;border-radius:8px 8px 0 0">
+          <h1 style="color:#ffffff;margin:0;font-size:20px">M15 <strong>AUDIT</strong></h1>
+        </div>
+        <div style="background:#f8f9fa;padding:32px;border-radius:0 0 8px 8px">
+          <h2 style="margin-top:0;color:#0f3460">Réinitialisation de mot de passe</h2>
+          <p>Bonjour <strong>${opts.fullName}</strong>,</p>
+          <p>
+            Vous avez demandé à réinitialiser votre mot de passe sur <strong>M15-AUDIT</strong>.
+          </p>
+          <p>Cliquez sur le bouton ci-dessous pour choisir un nouveau mot de passe :</p>
+          <p style="text-align:center;margin:32px 0">
+            <a href="${opts.resetUrl}" style="display:inline-block;background:#0f3460;color:#fff;padding:14px 28px;border-radius:6px;text-decoration:none;font-weight:bold;font-size:15px">
+              Réinitialiser mon mot de passe
+            </a>
+          </p>
+          <div style="background:#fff3cd;border-left:4px solid #ffc107;padding:12px 16px;border-radius:4px;margin-bottom:24px">
+            <p style="margin:0;font-size:13px">
+              ⏳ Ce lien est valable <strong>1 heure</strong> et ne peut être utilisé qu'une seule fois.
+            </p>
+          </div>
+          <p style="font-size:13px;color:#6c757d">
+            Si vous n'avez pas fait cette demande, ignorez simplement ce message.
+            Votre mot de passe ne sera pas modifié.
+          </p>
+          <hr style="border:none;border-top:1px solid #dee2e6;margin:24px 0"/>
+          <p style="font-size:12px;color:#6c757d;margin:0">
+            Ce message est envoyé automatiquement par la plateforme M15-AUDIT.
+            Si le bouton ne fonctionne pas, copiez ce lien dans votre navigateur :<br/>
+            <span style="word-break:break-all;color:#0f3460">${opts.resetUrl}</span>
+          </p>
+        </div>
+      </div>
+    `,
+  };
+}
+
 export function mailEssaiExpire(opts: {
   to: string;
   firmName: string;
