@@ -25,12 +25,22 @@ import { sendMail, mailPasswordChanged, mailResetPassword } from "../lib/mailer"
 
 const router: IRouter = Router();
 
+const TRIAL_DAYS = 30;
+
 function serializeUser(
   user: typeof usersTable.$inferSelect,
-  firmName?: string | null,
+  firm?: typeof firmsTable.$inferSelect | null,
   role?: typeof rolesTable.$inferSelect | null,
   station?: typeof stationsTable.$inferSelect | null,
 ) {
+  // Compute trialEndsAt for cabinet users still in trial period.
+  let trialEndsAt: string | null = null;
+  if (firm?.status === "trial" && firm.createdAt) {
+    const end = new Date(firm.createdAt);
+    end.setDate(end.getDate() + TRIAL_DAYS);
+    trialEndsAt = end.toISOString();
+  }
+
   return {
     id: user.id,
     firmId: user.firmId,
@@ -39,7 +49,9 @@ function serializeUser(
     role: user.role,
     status: user.status,
     clientId: user.clientId ?? null,
-    firmName: firmName ?? null,
+    firmName: firm?.name ?? null,
+    firmStatus: firm?.status ?? null,
+    trialEndsAt,
     createdAt: user.createdAt,
     // Module M29: only populated for "client_staff" accounts.
     roleId: user.roleId ?? null,
@@ -128,7 +140,7 @@ router.post("/auth/register", async (req, res) => {
   });
 
   res.status(201).json(
-    RegisterResponse.parse({ status: "OK", token, user: serializeUser(user, firm.name) }),
+    RegisterResponse.parse({ status: "OK", token, user: serializeUser(user, firm) }),
   );
 });
 
@@ -262,7 +274,7 @@ router.post("/auth/login", async (req, res) => {
     LoginResponse.parse({
       status: "OK",
       token,
-      user: serializeUser(user, firm?.name, staffRole, station),
+      user: serializeUser(user, firm, staffRole, station),
     }),
   );
 });
@@ -485,7 +497,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     resolveStaffRole(user),
     resolveStation(user),
   ]);
-  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm?.name, staffRole, station)));
+  res.json(GetCurrentUserResponse.parse(serializeUser(user, firm, staffRole, station)));
 });
 
 export default router;

@@ -56,7 +56,9 @@ export const RegisterResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Status of the accounting firm (trial, active, suspended).'),
+  "trialEndsAt": zod.string().nullish().describe('ISO date when the 30-day trial ends. Null for non-trial firms.')
 }).optional()
 })
 
@@ -93,7 +95,9 @@ export const LoginResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Status of the accounting firm (trial, active, suspended).'),
+  "trialEndsAt": zod.string().nullish().describe('ISO date when the 30-day trial ends. Null for non-trial firms.')
 }).optional()
 })
 
@@ -132,7 +136,9 @@ export const ResetFirstPasswordResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Status of the accounting firm (trial, active, suspended).'),
+  "trialEndsAt": zod.string().nullish().describe('ISO date when the 30-day trial ends. Null for non-trial firms.')
 }).optional()
 })
 
@@ -156,7 +162,9 @@ export const GetCurrentUserResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Status of the accounting firm (trial, active, suspended).'),
+  "trialEndsAt": zod.string().nullish().describe('ISO date when the 30-day trial ends. Null for non-trial firms.')
 })
 
 

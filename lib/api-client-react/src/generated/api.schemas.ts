@@ -80,6 +80,10 @@ export interface User {
      * @nullable
      */
   temporaryPassword?: string | null;
+  /** Status of the accounting firm (trial, active, suspended). @nullable */
+  firmStatus?: string | null;
+  /** ISO date when the 30-day trial ends. Null for non-trial firms. @nullable */
+  trialEndsAt?: string | null;
 }
 
 export interface RegisterInput {

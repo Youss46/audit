@@ -873,6 +873,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Badge>
           </div>
         </header>
+        {/* Trial banner — shown to all cabinet staff during the 30-day trial */}
+        {user?.firmStatus === "trial" && user.trialEndsAt && (() => {
+          const daysLeft = Math.max(0, Math.ceil(
+            (new Date(user.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+          ))
+          return (
+            <div className="shrink-0 bg-amber-50 border-b border-amber-200 px-4 py-2.5 flex items-center justify-between gap-4 text-sm">
+              <div className="flex items-center gap-2 text-amber-800">
+                <span className="text-base">⏳</span>
+                <span>
+                  <strong>Période d'essai</strong> — il vous reste{" "}
+                  <strong>{daysLeft} jour{daysLeft > 1 ? "s" : ""}</strong> sur votre essai gratuit de 30 jours.
+                </span>
+              </div>
+              <a
+                href="mailto:contact@m15-edutech.ci"
+                className="shrink-0 text-xs font-medium text-amber-700 underline underline-offset-2 hover:text-amber-900"
+              >
+                Activer mon abonnement
+              </a>
+            </div>
+          )
+        })()}
         <div className="flex-1 overflow-y-auto p-4 md:p-8">
           <div className="mx-auto max-w-6xl">
             {children}
