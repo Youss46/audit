@@ -9,9 +9,10 @@
 
 import { Router } from "express";
 import { z } from "zod";
-import { and, eq } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { db, documentsTable, isPortalRole } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
+import Tesseract from "tesseract.js";
 
 class HttpError extends Error {
   constructor(public readonly statusCode: number, message: string) {
@@ -111,14 +112,30 @@ router.post(
       throw new HttpError(422, "Ce document ne contient pas de données lisibles.");
     }
 
-    // PDF not supported by DeepSeek Vision — reject early with a clear message.
+    // PDF not supported by Tesseract — reject early with a clear message.
     const mimeType = doc.mimeType ?? "image/jpeg";
     if (mimeType === "application/pdf") {
       throw new HttpError(422, "Les PDF ne sont pas pris en charge par le service OCR. Veuillez importer une image (PNG ou JPEG).");
     }
 
-    // Call DeepSeek Vision via OpenAI-compatible chat/completions endpoint.
-    const dataUrl = `data:${mimeType};base64,${doc.fileData}`;
+    // Step 1 — local OCR via Tesseract.js (French + English).
+    const imageBuffer = Buffer.from(doc.fileData, "base64");
+    let ocrText: string;
+    try {
+      const result = await Tesseract.recognize(imageBuffer, "fra+eng", { logger: () => {} });
+      ocrText = result.data.text.trim();
+    } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error("[OCR] Tesseract error:", detail);
+      throw new HttpError(502, `Erreur lors de la lecture de l'image : ${detail}`);
+    }
+
+    if (!ocrText) {
+      throw new HttpError(422, "Aucun texte détecté dans cette image. Vérifiez la qualité du document.");
+    }
+
+    // Step 2 — DeepSeek structures the extracted text into accounting fields.
+    const structurePrompt = `${GEMINI_PROMPT}\n\nTexte extrait du document :\n"""\n${ocrText}\n"""`;
 
     let rawText: string;
     try {
@@ -129,18 +146,11 @@ router.post(
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model:       "deepseek-v4-pro",
-          messages: [
-            {
-              role:    "user",
-              content: [
-                { type: "image_url", image_url: { url: dataUrl } },
-                { type: "text",      text: GEMINI_PROMPT },
-              ],
-            },
-          ],
-          temperature:  0.1,
-          max_tokens:   512,
+          model:           "deepseek-v4-pro",
+          messages:        [{ role: "user", content: structurePrompt }],
+          temperature:     0.1,
+          max_tokens:      512,
+          response_format: { type: "json_object" },
         }),
       });
 
