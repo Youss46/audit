@@ -12,7 +12,7 @@ import { z } from "zod";
 import { eq } from "drizzle-orm";
 import { db, documentsTable, isPortalRole } from "@workspace/db";
 import { requireAuth } from "../middlewares/auth";
-import Tesseract from "tesseract.js";
+import { recognizeImage } from "../lib/tesseract-worker";
 
 class HttpError extends Error {
   constructor(public readonly statusCode: number, message: string) {
@@ -122,8 +122,7 @@ router.post(
     const imageBuffer = Buffer.from(doc.fileData, "base64");
     let ocrText: string;
     try {
-      const result = await Tesseract.recognize(imageBuffer, "fra+eng", { logger: () => {} });
-      ocrText = result.data.text.trim();
+      ocrText = await recognizeImage(imageBuffer);
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
       console.error("[OCR] Tesseract error:", detail);

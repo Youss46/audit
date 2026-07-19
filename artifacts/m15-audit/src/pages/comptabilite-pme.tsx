@@ -195,10 +195,13 @@ export default function ComptabilitePme() {
         try {
           const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
           const token = getToken()
+          const abort = new AbortController()
+          const timeoutId = setTimeout(() => abort.abort(), 90_000) // 90s — Tesseract peut être lent
           const res = await fetch(`${baseUrl}/api/ocr/process/${doc.id}`, {
-            method: 'POST',
+            method:  'POST',
             headers: token ? { Authorization: `Bearer ${token}` } : {},
-          })
+            signal:  abort.signal,
+          }).finally(() => clearTimeout(timeoutId))
           if (!res.ok) {
             const err = await res.json().catch(() => ({})) as { error?: string }
             setOcrError(err.error ?? 'Impossible de lire ce document.')

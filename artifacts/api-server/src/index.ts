@@ -3,6 +3,7 @@ import app from "./app";
 import { logger } from "./lib/logger";
 import { initRealtime } from "./lib/realtime";
 import { startLicenseScheduler } from "./lib/license-scheduler";
+import { warmTesseract } from "./lib/tesseract-worker";
 import { runMigrations } from "./lib/ci-migrate";
 
 const rawPort = process.env["PORT"];
@@ -42,6 +43,9 @@ server.listen(port, (err?: Error) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Pré-charge les modèles Tesseract en arrière-plan dès le démarrage.
+  warmTesseract();
 
   // Démarre le scheduler de licences : expire les licences échues, suspend
   // les cabinets sans licence active, envoie les emails d'avertissement.
