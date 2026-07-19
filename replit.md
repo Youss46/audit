@@ -1,41 +1,45 @@
-# M15-AUDIT
+# [Project name]
 
-Multi-tenant SaaS accounting platform for accounting firms in French-speaking Africa. Digitizes SYSCOHADA visa processes, accounting workflows, fiscal year closing, payroll (ITS/CNPS), fixed assets, and collaborative revision.
+_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+
+## Run & Operate
+
+- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm run typecheck` — full typecheck across all packages
+- `pnpm run build` — typecheck + build all packages
+- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
+- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
+- Required env: `DATABASE_URL` — Postgres connection string
 
 ## Stack
 
-- **Monorepo**: pnpm workspaces
-- **Backend**: Node.js 24 + Express 5 (`artifacts/api-server`)
-- **Frontend**: React 19 + Vite 7 + Tailwind CSS 4 + shadcn/ui + wouter (`artifacts/m15-audit`)
-- **Database**: PostgreSQL via Drizzle ORM (`lib/db`)
-- **API contract**: OpenAPI spec (`lib/api-spec/openapi.yaml`) → Orval codegen → React Query hooks + Zod schemas
-- **Auth**: Custom JWT RBAC (bcryptjs, jsonwebtoken)
+- pnpm workspaces, Node.js 24, TypeScript 5.9
+- API: Express 5
+- DB: PostgreSQL + Drizzle ORM
+- Validation: Zod (`zod/v4`), `drizzle-zod`
+- API codegen: Orval (from OpenAPI spec)
+- Build: esbuild (CJS bundle)
 
-## How to run
+## Where things live
 
-Two workflows start automatically:
-- **API Server** (`artifacts/api-server: API Server`): `pnpm --filter @workspace/api-server run dev`
-- **Frontend** (`artifacts/m15-audit: web`): `pnpm --filter @workspace/m15-audit run dev`
+_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
 
-## Environment
+## Architecture decisions
 
-- `DATABASE_URL` — Replit-managed PostgreSQL (runtime-provided, do not set manually)
-- `SESSION_SECRET` — Replit Secret (already configured)
+_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
 
-## Database setup (first time or after re-import)
+## Product
 
-```bash
-# Push schema
-pnpm --filter @workspace/db run push
-
-# Seed reference data
-pnpm --filter @workspace/db run seed:roles
-pnpm --filter @workspace/db run seed:accounts
-pnpm --filter @workspace/db run seed:dsf-mapping-rules
-pnpm --filter @workspace/db run seed:payroll-settings
-pnpm --filter @workspace/db run seed:report-document-templates
-```
+_Describe the high-level user-facing capabilities of this app once they exist._
 
 ## User preferences
 
-- Keep existing project structure — do not restructure or migrate the monorepo layout.
+_Populate as you build — explicit user instructions worth remembering across sessions._
+
+## Gotchas
+
+_Populate as you build — sharp edges, "always run X before Y" rules._
+
+## Pointers
+
+- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details

@@ -1,0 +1,33 @@
+{
+  "name": "@workspace/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./schema": "./src/schema/index.ts"
+  },
+  "scripts": {
+    "push": "drizzle-kit push --config ./drizzle.config.ts",
+    "push-force": "drizzle-kit push --force --config ./drizzle.config.ts",
+    "seed:all": "tsx src/seed-all.ts",
+    "seed:accounts": "tsx src/seed-accounts.ts",
+    "seed:dsf-mapping-rules": "tsx src/seed-dsf-mapping-rules.ts",
+    "seed:roles": "tsx src/seed-roles.ts",
+    "seed:report-document-templates": "tsx src/seed-report-document-templates.ts",
+    "seed:payroll-settings": "tsx src/seed-payroll-settings.ts",
+    "enforce:audit-immutability": "tsx src/enforce-audit-immutability.ts"
+  },
+  "dependencies": {
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "catalog:",
+    "drizzle-zod": "^0.8.3",
+    "pg": "^8.22.0",
+    "tsx": "catalog:",
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/pg": "^8.20.0"
+  }
+}

@@ -5,18 +5,10 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
-    "seed:super-admin": "tsx seed-super-admin.ts",
-    "update:super-admin": "tsx update-super-admin.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
-  "dependencies": {
-    "@workspace/db": "workspace:*",
-    "bcryptjs": "^2.4.3",
-    "drizzle-orm": "catalog:",
-    "tsx": "catalog:"
-  },
   "devDependencies": {
-    "@types/bcryptjs": "^2.4.6",
-    "@types/node": "catalog:"
+    "@types/node": "catalog:",
+    "tsx": "catalog:"
   }
 }

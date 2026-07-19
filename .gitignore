@@ -47,6 +47,3 @@ Thumbs.db
 # Replit
 .cache/
 .local/
-
-# Screenshots uploadés via Replit (débug/support) — pas des assets de l'app
-attached_assets/Screenshot_*.png
