@@ -8,7 +8,6 @@
  * in the permanent audit file.
  */
 import { Router, type IRouter } from "express";
-import { GoogleGenAI } from "@google/genai";
 import { and, eq } from "drizzle-orm";
 import {
   db,
@@ -27,15 +26,6 @@ import {
 
 const router: IRouter = Router();
 router.use(requireAuth);
-
-// ---------------------------------------------------------------------------
-// Gemini client — instantiated per-request so it picks up runtime env vars.
-// ---------------------------------------------------------------------------
-function getGeminiClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY environment variable is not set.");
-  return new GoogleGenAI({ apiKey });
-}
 
 // ---------------------------------------------------------------------------
 // Data fetching helpers — mirrors the pattern in reporting.ts exactly.
@@ -268,24 +258,33 @@ ${anomalySummary}
     // ── 5. Call Gemini ────────────────────────────────────────────────────────
     let rawResponse: string;
     try {
-      const ai       = getGeminiClient();
-      const response = await ai.models.generateContent({
-        model:    "gemini-2.0-flash",
-        contents: [
-          {
-            role:  "user",
-            parts: [{ text: `${SYSTEM_PROMPT}\n\n${payload}` }],
-          },
-        ],
-        config: {
-          responseMimeType: "application/json",
-          maxOutputTokens:  8192,
+      const apiKey = process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) throw new Error("DEEPSEEK_API_KEY environment variable is not set.");
+      const dsResponse = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${apiKey}`,
         },
+        body: JSON.stringify({
+          model:            "deepseek-chat",
+          messages:         [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user",   content: payload },
+          ],
+          max_tokens:       8192,
+          response_format:  { type: "json_object" },
+        }),
       });
-      rawResponse = response.text ?? "";
+      if (!dsResponse.ok) {
+        const errBody = await dsResponse.text();
+        throw new Error(`DeepSeek ${dsResponse.status}: ${errBody}`);
+      }
+      const dsData = await dsResponse.json() as { choices: { message: { content: string } }[] };
+      rawResponse = dsData.choices[0]?.message?.content ?? "";
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      req.log.error({ err }, "Gemini audit API call failed");
+      req.log.error({ err }, "DeepSeek audit API call failed");
       res
         .status(502)
         .json({ error: `Le service d'audit IA est temporairement indisponible. (${detail})` });

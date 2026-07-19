@@ -1,6 +1,5 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { GoogleGenAI } from "@google/genai";
 import {
   checklistItemsTable,
   clientsTable,
@@ -540,9 +539,9 @@ router.post(
   "/missions/:id/analyze",
   requireRole("expert_comptable", "collaborateur"),
   async (req, res) => {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) {
-      res.status(503).json({ error: "GEMINI_API_KEY n'est pas configuré sur ce serveur." });
+      res.status(503).json({ error: "DEEPSEEK_API_KEY n'est pas configuré sur ce serveur." });
       return;
     }
 
@@ -607,16 +606,31 @@ router.post(
 
     let rawResponse: string;
     try {
-      const ai       = new GoogleGenAI({ apiKey });
-      const response = await ai.models.generateContent({
-        model:    "gemini-2.0-flash",
-        contents: [{ role: "user", parts: [{ text: `${CHECKLIST_SYSTEM_PROMPT}\n\n${prompt}` }] }],
-        config:   { responseMimeType: "application/json", maxOutputTokens: 8192 },
+      const dsResponse = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model:       "deepseek-chat",
+          messages:    [
+            { role: "system",  content: CHECKLIST_SYSTEM_PROMPT },
+            { role: "user",    content: prompt },
+          ],
+          max_tokens:       8192,
+          response_format:  { type: "json_object" },
+        }),
       });
-      rawResponse = response.text ?? "";
+      if (!dsResponse.ok) {
+        const errBody = await dsResponse.text();
+        throw new Error(`DeepSeek ${dsResponse.status}: ${errBody}`);
+      }
+      const dsData = await dsResponse.json() as { choices: { message: { content: string } }[] };
+      rawResponse = dsData.choices[0]?.message?.content ?? "";
     } catch (err) {
       const detail = err instanceof Error ? err.message : String(err);
-      req.log.error({ err }, "Gemini checklist analysis API call failed");
+      req.log.error({ err }, "DeepSeek checklist analysis API call failed");
       res.status(502).json({ error: `Le service d'analyse IA est temporairement indisponible. (${detail})` });
       return;
     }
