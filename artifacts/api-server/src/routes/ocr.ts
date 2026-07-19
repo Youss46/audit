@@ -129,19 +129,18 @@ router.post(
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model:       "deepseek-chat",
+          model:       "deepseek-vl2",
           messages: [
             {
               role:    "user",
               content: [
-                { type: "text",      text: GEMINI_PROMPT },
                 { type: "image_url", image_url: { url: dataUrl } },
+                { type: "text",      text: GEMINI_PROMPT },
               ],
             },
           ],
-          temperature:      0.1,
-          max_tokens:       512,
-          response_format:  { type: "json_object" },
+          temperature:  0.1,
+          max_tokens:   512,
         }),
       });
 
