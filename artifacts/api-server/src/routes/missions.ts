@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
+import { GoogleGenAI } from "@google/genai";
 import {
   checklistItemsTable,
   clientsTable,
@@ -33,6 +34,93 @@ import {
   generateVisaStampCode,
   VisaWorkflowError,
 } from "../lib/visa-engine";
+import { fetchValidatedLedgerLines, fetchAnomalyTransactions } from "../lib/ledger";
+import { computeBalanceDesComptes } from "../lib/reporting-engine";
+
+// ---------------------------------------------------------------------------
+// AI checklist analysis — shape of each item returned to the frontend
+// ---------------------------------------------------------------------------
+interface AIChecklistResult {
+  checklist_item_id: number;
+  label: string;
+  status: "CONFORME" | "ALERTE" | "NON_APPLICABLE";
+  justification: string;
+}
+
+// SYSCOHADA auditor system prompt — all data in English, all output in French
+const CHECKLIST_SYSTEM_PROMPT = `You are a senior SYSCOHADA-certified auditor with 20 years of experience in West African accounting, operating under OHADA Uniform Acts.
+
+You will receive:
+1. A client profile (name, sector, annual turnover, accounting system, fiscal year)
+2. A Balance des Comptes (trial balance) for the fiscal year
+3. Key financial metrics
+4. A list of anomalous transactions flagged by the system
+5. A numbered list of SYSCOHADA control checklist items, each with an "id" and a "label"
+
+YOUR TASK: For each checklist item, analyze the trial balance and metrics to determine if the requirement is satisfied.
+
+CLASSIFICATION RULES:
+- "CONFORME": The ledger evidence clearly satisfies this control point. There is a positive finding supported by specific account data.
+- "ALERTE": Evidence is missing, contradictory, or raises a significant audit concern. Flag specific account numbers and amounts.
+- "NON_APPLICABLE": The control point is structurally inapplicable to this client (e.g., no foreign operations for an FX check, no subsidiaries for a consolidation check). Only use this when it is truly irrelevant — never as a shortcut.
+
+RESPONSE FORMAT: Return ONLY a valid JSON array with exactly one object per checklist item. No markdown, no prose outside the array.
+
+Schema:
+[
+  {
+    "checklist_item_id": <integer — the id field from the input item>,
+    "status": "CONFORME" | "ALERTE" | "NON_APPLICABLE",
+    "justification": "<2-4 sentences in pristine professional French. For CONFORME: cite the specific accounts and amounts that confirm compliance. For ALERTE: name the exact accounts, amounts, and the specific irregularity. For NON_APPLICABLE: one concise sentence stating why it does not apply.>"
+  }
+]
+
+LANGUAGE RULE: The "justification" field must always be written in formal, professional French suitable for an audit dossier. Account numbers must be cited when relevant (e.g., "Le compte 521100 présente un solde débiteur de 4 250 000 FCFA").`;
+
+function buildChecklistPrompt(
+  client: { name: string; sector: string; annualTurnover: number; accountingSystem: string },
+  fiscalYear: number,
+  balance: ReturnType<typeof computeBalanceDesComptes>,
+  anomalyCount: number,
+  checklistItems: { id: number; label: string }[],
+): string {
+  const totalRevenue  = balance.filter((r) => r.accountNumber.startsWith("7")).reduce((s, r) => s + r.finalBalance, 0);
+  const totalExpenses = balance.filter((r) => r.accountNumber.startsWith("6")).reduce((s, r) => s + r.finalBalance, 0);
+  const expenseRatio  = totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : "N/A";
+
+  const negativeCash = balance
+    .filter((r) => r.accountNumber.startsWith("5") && r.finalBalanceSide === "crediteur")
+    .map((r) => `${r.accountNumber} (${r.accountName}): solde créditeur = ${r.finalBalance.toLocaleString("fr-FR")} FCFA`);
+
+  const balanceSummary = balance
+    .map((r) =>
+      `${r.accountNumber} | ${r.accountName} | D=${r.totalDebit.toLocaleString("fr-FR")} | C=${r.totalCredit.toLocaleString("fr-FR")} | ${r.finalBalanceSide === "crediteur" ? "SC" : "SD"}=${r.finalBalance.toLocaleString("fr-FR")}`,
+    )
+    .join("\n");
+
+  return `=== CLIENT PROFILE ===
+Name: ${client.name}
+Sector: ${client.sector}
+Annual Turnover: ${client.annualTurnover.toLocaleString("fr-FR")} XOF
+SYSCOHADA Accounting System: ${client.accountingSystem}
+Fiscal Year Under Review: ${fiscalYear}
+
+=== BALANCE DES COMPTES — ${balance.length} accounts ===
+Account | Name | Total Debit | Total Credit | Balance (SD=debiteur, SC=crediteur)
+${balanceSummary}
+
+=== KEY FINANCIAL METRICS ===
+Total Revenue (Class 7): ${totalRevenue.toLocaleString("fr-FR")} XOF
+Total Expenses (Class 6): ${totalExpenses.toLocaleString("fr-FR")} XOF
+Expense-to-Revenue Ratio: ${expenseRatio}%
+Anomaly-flagged Transactions: ${anomalyCount}
+Cash Violations (negative Class 5 balances): ${negativeCash.length > 0 ? negativeCash.join("; ") : "None detected"}
+
+=== CONTROL CHECKLIST TO EVALUATE ===
+${JSON.stringify(checklistItems.map((i) => ({ id: i.id, label: i.label })), null, 2)}
+
+Now evaluate every checklist item and return the JSON array.`;
+}
 
 const router: IRouter = Router();
 
@@ -438,5 +526,161 @@ router.patch(
 
   res.json(UpdateMissionChecklistItemResponse.parse(updated));
 });
+
+// ---------------------------------------------------------------------------
+// POST /missions/:id/analyze
+// AI-powered checklist pre-fill: calls Gemini to evaluate each control point
+// against the client's trial balance for the mission's fiscal year.
+//
+// CONFORME items are automatically applied to the DB (status = "conforme",
+// note = AI justification). ALERTE / NON_APPLICABLE items are returned as-is
+// for the accountant to review and act on manually.
+// ---------------------------------------------------------------------------
+router.post(
+  "/missions/:id/analyze",
+  requireRole("expert_comptable", "collaborateur"),
+  async (req, res) => {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      res.status(503).json({ error: "GEMINI_API_KEY n'est pas configuré sur ce serveur." });
+      return;
+    }
+
+    // ── 1. Fetch mission + checklist items ──────────────────────────────────
+    const missionId = parseInt(String(req.params.id), 10);
+    if (isNaN(missionId)) {
+      res.status(400).json({ error: "Identifiant de mission invalide." });
+      return;
+    }
+
+    const mission = await db.query.missionsTable.findFirst({
+      where: and(eq(missionsTable.id, missionId), eq(missionsTable.firmId, req.user!.firmId)),
+      with: { client: true },
+    });
+    if (!mission) {
+      res.status(404).json({ error: "Mission introuvable." });
+      return;
+    }
+    if (mission.status === "visa_emis") {
+      res.status(409).json({ error: "Le visa a déjà été émis : la grille est verrouillée." });
+      return;
+    }
+
+    const items = await db.query.checklistItemsTable.findMany({
+      where: eq(checklistItemsTable.missionId, missionId),
+      orderBy: (t, { asc }) => [asc(t.orderIndex)],
+    });
+    if (items.length === 0) {
+      res.status(422).json({ error: "Aucun point de contrôle à analyser." });
+      return;
+    }
+
+    const client = mission.client;
+    if (!client || client.annualTurnover == null) {
+      res.status(422).json({ error: "Le profil client est incomplet (CA manquant)." });
+      return;
+    }
+
+    // ── 2. Fetch ledger data ────────────────────────────────────────────────
+    const [ledgerLines, anomalyTxs] = await Promise.all([
+      fetchValidatedLedgerLines(client.id, req.user!.firmId),
+      fetchAnomalyTransactions(client.id, req.user!.firmId),
+    ]);
+
+    const yearStart        = new Date(Date.UTC(mission.fiscalYear, 0, 1));
+    const yearEndExclusive = new Date(Date.UTC(mission.fiscalYear + 1, 0, 1));
+    const balance          = computeBalanceDesComptes(ledgerLines, yearStart, yearEndExclusive);
+
+    // ── 3. Call Gemini ──────────────────────────────────────────────────────
+    const prompt = buildChecklistPrompt(
+      {
+        name:              client.name,
+        sector:            client.sector,
+        annualTurnover:    client.annualTurnover,
+        accountingSystem:  mission.accountingSystem,
+      },
+      mission.fiscalYear,
+      balance,
+      anomalyTxs.length,
+      items.map((i) => ({ id: i.id, label: i.label })),
+    );
+
+    let rawResponse: string;
+    try {
+      const ai       = new GoogleGenAI({ apiKey });
+      const response = await ai.models.generateContent({
+        model:    "gemini-2.5-pro",
+        contents: [{ role: "user", parts: [{ text: `${CHECKLIST_SYSTEM_PROMPT}\n\n${prompt}` }] }],
+        config:   { responseMimeType: "application/json", maxOutputTokens: 8192 },
+      });
+      rawResponse = response.text ?? "";
+    } catch (err) {
+      req.log.error({ err }, "Gemini checklist analysis API call failed");
+      res.status(502).json({ error: "Le service d'analyse IA est temporairement indisponible." });
+      return;
+    }
+
+    // ── 4. Parse & validate Gemini response ────────────────────────────────
+    let parsed: AIChecklistResult[];
+    try {
+      const raw = JSON.parse(rawResponse);
+      if (!Array.isArray(raw)) throw new Error("Expected a JSON array");
+      parsed = raw.map((r) => ({
+        checklist_item_id: Number(r.checklist_item_id),
+        label:             String(r.label ?? ""),
+        status:            r.status as "CONFORME" | "ALERTE" | "NON_APPLICABLE",
+        justification:     String(r.justification ?? ""),
+      }));
+    } catch (err) {
+      req.log.error({ err, raw: rawResponse.slice(0, 400) }, "Failed to parse Gemini checklist response");
+      res.status(502).json({ error: "L'IA a retourné une réponse invalide. Veuillez réessayer." });
+      return;
+    }
+
+    // ── 5. Bulk-apply CONFORME items to DB ──────────────────────────────────
+    // ALERTE and NON_APPLICABLE items are NOT written to DB here; the
+    // accountant reviews them manually and decides the final status.
+    const conformeResults = parsed.filter((r) => r.status === "CONFORME");
+    if (conformeResults.length > 0) {
+      await Promise.all(
+        conformeResults.map((r) =>
+          db
+            .update(checklistItemsTable)
+            .set({ status: "conforme", note: r.justification })
+            .where(
+              and(
+                eq(checklistItemsTable.id, r.checklist_item_id),
+                eq(checklistItemsTable.missionId, missionId),
+              ),
+            ),
+        ),
+      );
+      // Sync anomaly state (may clear anomalie flag if all items are now conforme)
+      await syncMissionAnomalyState(mission);
+    }
+
+    // ── 6. Enrich results with labels from DB (AI may not return label) ─────
+    const itemById = new Map(items.map((i) => [i.id, i]));
+    const enriched: AIChecklistResult[] = parsed.map((r) => ({
+      ...r,
+      label: itemById.get(r.checklist_item_id)?.label ?? r.label,
+    }));
+
+    // ── 7. Audit log ────────────────────────────────────────────────────────
+    await logAudit({
+      firmId:    req.user!.firmId,
+      userId:    req.user!.id,
+      userName:  req.user!.fullName,
+      userRole:  req.user!.role,
+      action:    AuditAction.CHECKLIST_VALIDATE,
+      entityType: "mission",
+      entityId:  missionId,
+      details:   `Pré-remplissage IA (Gemini) — ${conformeResults.length}/${items.length} points conformes appliqués automatiquement pour "${client.name}" exercice ${mission.fiscalYear}.`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ results: enriched });
+  },
+);
 
 export default router;
