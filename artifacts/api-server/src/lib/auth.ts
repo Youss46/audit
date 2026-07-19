@@ -9,7 +9,9 @@ if (!JWT_SECRET) {
   throw new Error("SESSION_SECRET must be set to sign authentication tokens.");
 }
 
-const JWT_EXPIRES_IN = "7d";
+// Maximum session duration — even active users must re-authenticate after this.
+// Configurable via SESSION_MAX_AGE (e.g. "8h", "12h", "24h"). Defaults to 8h.
+const JWT_EXPIRES_IN = (process.env.SESSION_MAX_AGE as string) || "8h";
 
 export interface AuthTokenPayload {
   id: number;

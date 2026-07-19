@@ -1,5 +1,7 @@
 import * as React from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { useIdleTimeout } from "@/hooks/use-idle-timeout"
+import { SessionTimeoutDialog } from "@/components/SessionTimeoutDialog"
 import { Link, useLocation, useSearch } from "wouter"
 import { 
   Building2, 
@@ -106,6 +108,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // WebSocket push (see use-realtime.ts) invalidates this query on every
   // create/approve/reject, with a 30s poll as a fallback if the socket
   // never connects.
+  // Session timeout: 15 min inactivity warning + auto-logout.
+  // Only active when a user is authenticated and not on a public route.
+  const isAuthenticated = !!user && !isPublicRoute
+  const { showWarning, secondsLeft, stayConnected } = useIdleTimeout(logout, isAuthenticated)
+
   const isCabinetStaff = !!user && !isPortalRole(user.role)
   const { data: firmPendingCounts } = useGetFirmPendingCounts({
     query: { queryKey: getGetFirmPendingCountsQueryKey(), enabled: isCabinetStaff, refetchInterval: 30_000 },
@@ -904,6 +911,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
       </main>
+      {/* Session timeout warning dialog */}
+      <SessionTimeoutDialog
+        open={showWarning}
+        secondsLeft={secondsLeft}
+        onStay={stayConnected}
+        onLogout={logout}
+      />
     </div>
   )
 }
