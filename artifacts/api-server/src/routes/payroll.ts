@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq } from "drizzle-orm";
-import { db, clientsTable, employeesTable, payslipsTable } from "@workspace/db";
+import { db, clientsTable, employeesTable, payslipsTable, firmsTable } from "@workspace/db";
 import {
   ListEmployeesQueryParams,
   ListEmployeesResponse,
@@ -21,6 +21,7 @@ import {
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { calculatePayroll, computePrimeAnciennete, loadFirmPayrollRates, postPayrollLedger, PayrollAlreadyPostedError, NoPayslipsToPostError } from "../lib/payroll-engine";
+import { generateCnpsBordereau } from "../lib/export-engine";
 import { isPeriodLocked } from "../lib/closing-engine";
 
 const router: IRouter = Router();
@@ -462,5 +463,100 @@ router.post(
     }
   },
 );
+
+// ---------------------------------------------------------------------------
+// GET /payroll/cnps-bordereau/:clientId/:period
+// Génère et télécharge le bordereau CNPS mensuel au format PDF.
+// ---------------------------------------------------------------------------
+
+router.get("/payroll/cnps-bordereau/:clientId/:period", async (req, res) => {
+  const clientId = Number(req.params.clientId);
+  const period = req.params.period; // YYYY-MM
+
+  if (!clientId || !/^\d{4}-\d{2}$/.test(period)) {
+    res.status(400).json({ error: "Paramètres invalides (clientId ou période)." });
+    return;
+  }
+
+  const [client, firm] = await Promise.all([
+    db.query.clientsTable.findFirst({
+      where: and(eq(clientsTable.id, clientId), eq(clientsTable.firmId, req.user!.firmId)),
+    }),
+    db.query.firmsTable.findFirst({
+      where: eq(firmsTable.id, req.user!.firmId),
+    }),
+  ]);
+
+  if (!client) {
+    res.status(404).json({ error: "Client introuvable." });
+    return;
+  }
+
+  // Récupérer les bulletins du mois + les employés du client
+  const [payslips, employees] = await Promise.all([
+    db.query.payslipsTable.findMany({
+      where: and(
+        eq(payslipsTable.firmId, req.user!.firmId),
+        eq(payslipsTable.clientId, clientId),
+        eq(payslipsTable.period, period),
+      ),
+    }),
+    db.query.employeesTable.findMany({
+      where: and(
+        eq(employeesTable.firmId, req.user!.firmId),
+        eq(employeesTable.clientId, clientId),
+      ),
+    }),
+  ]);
+
+  if (payslips.length === 0) {
+    res.status(404).json({
+      error: `Aucun bulletin de paie trouvé pour la période ${period}. Calculez d'abord la paie du mois.`,
+    });
+    return;
+  }
+
+  const empMap = new Map(employees.map((e) => [e.id, e]));
+
+  const rows = payslips.map((p) => {
+    const emp = empMap.get(p.employeeId);
+    const totalEmployer =
+      p.cnpsEmployerRetraite +
+      p.cnpsEmployerPrestationsFamiliales +
+      p.cnpsEmployerAccidentTravail;
+    return {
+      employeeName: emp
+        ? `${emp.lastName.toUpperCase()} ${emp.firstName}`
+        : `Employé #${p.employeeId}`,
+      cnpsNumber: emp?.cnpsNumber ?? null,
+      grossCapped: p.grossTaxable,
+      cnpsEmployee: p.cnpsEmployeeAmount,
+      cnpsEmployerRetraite: p.cnpsEmployerRetraite,
+      cnpsEmployerPf: p.cnpsEmployerPrestationsFamiliales,
+      cnpsEmployerAt: p.cnpsEmployerAccidentTravail,
+      totalEmployer,
+      totalCnps: p.cnpsEmployeeAmount + totalEmployer,
+    };
+  });
+
+  // Trier par nom
+  rows.sort((a, b) => a.employeeName.localeCompare(b.employeeName));
+
+  const pdfBuffer = await generateCnpsBordereau({
+    firmName: firm?.name ?? "Cabinet",
+    clientName: client.name,
+    period,
+    rows,
+  });
+
+  const safeName = client.name.replace(/[^a-zA-Z0-9-_]/g, "-").toLowerCase();
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="bordereau-cnps-${safeName}-${period}.pdf"`,
+    "Content-Length": String(pdfBuffer.length),
+    "Cache-Control": "no-store",
+  });
+  res.end(pdfBuffer);
+});
 
 export default router;

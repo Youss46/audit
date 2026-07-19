@@ -1656,3 +1656,190 @@ export async function generateInvoicePdf(inv: InvoiceForPdf): Promise<Buffer> {
 
   return renderPdf(docDef);
 }
+
+// ---------------------------------------------------------------------------
+// Bordereau des cotisations CNPS — Module M20
+// Landscape A4 : tableau par employé avec détail salarié/patronal.
+// ---------------------------------------------------------------------------
+
+export interface CnpsPayslipRow {
+  employeeName: string;
+  cnpsNumber: string | null;
+  grossCapped: number;             // salaire brut plafonné CNPS
+  cnpsEmployee: number;            // part salariale 6,3 %
+  cnpsEmployerRetraite: number;    // retraite patronale 7,7 %
+  cnpsEmployerPf: number;          // prestations familiales 5,75 %
+  cnpsEmployerAt: number;          // accident travail (variable)
+  totalEmployer: number;           // somme 3 parts patronales
+  totalCnps: number;               // salariale + patronale totale
+}
+
+const FR_MONTHS = [
+  "Janvier","Février","Mars","Avril","Mai","Juin",
+  "Juillet","Août","Septembre","Octobre","Novembre","Décembre",
+];
+
+export async function generateCnpsBordereau(opts: {
+  firmName: string;
+  clientName: string;
+  period: string;      // "YYYY-MM"
+  rows: CnpsPayslipRow[];
+}): Promise<Buffer> {
+  const { firmName, clientName, period, rows } = opts;
+  const [yr, mo] = period.split("-");
+  const periodLabel = `${FR_MONTHS[parseInt(mo, 10) - 1]} ${yr}`;
+
+  const T = rows.reduce(
+    (acc, r) => ({
+      grossCapped:          acc.grossCapped + r.grossCapped,
+      cnpsEmployee:         acc.cnpsEmployee + r.cnpsEmployee,
+      cnpsEmployerRetraite: acc.cnpsEmployerRetraite + r.cnpsEmployerRetraite,
+      cnpsEmployerPf:       acc.cnpsEmployerPf + r.cnpsEmployerPf,
+      cnpsEmployerAt:       acc.cnpsEmployerAt + r.cnpsEmployerAt,
+      totalEmployer:        acc.totalEmployer + r.totalEmployer,
+      totalCnps:            acc.totalCnps + r.totalCnps,
+    }),
+    { grossCapped:0, cnpsEmployee:0, cnpsEmployerRetraite:0,
+      cnpsEmployerPf:0, cnpsEmployerAt:0, totalEmployer:0, totalCnps:0 },
+  );
+
+  // Column widths for landscape A4 (usable ≈ 777 pt)
+  const cols = [20, "*", 72, 64, 56, 56, 52, 42, 56, 64];
+
+  const headerRow: PdfCell[] = [
+    headerCell("N°"),
+    headerCell("Nom & Prénom", "left"),
+    headerCell("N° CNPS", "left"),
+    headerCell("Brut plafonné", "right"),
+    headerCell("Part sal.\n6,3 %", "right"),
+    headerCell("Retraite\n7,7 %", "right"),
+    headerCell("PF\n5,75 %", "right"),
+    headerCell("AT", "right"),
+    headerCell("Total pat.", "right"),
+    headerCell("TOTAL CNPS", "right"),
+  ];
+
+  const bodyRows: PdfCell[][] = rows.map((r, i) => [
+    { text: String(i + 1), style: "cell", alignment: "center" },
+    { text: r.employeeName, style: "cell", alignment: "left" },
+    { text: r.cnpsNumber ?? "—", style: "cell", alignment: "left",
+      color: r.cnpsNumber ? THEME.text : "#bbb" },
+    { text: fmtNum(r.grossCapped),          style: "mono", alignment: "right" },
+    { text: fmtNum(r.cnpsEmployee),         style: "mono", alignment: "right" },
+    { text: fmtNum(r.cnpsEmployerRetraite), style: "mono", alignment: "right" },
+    { text: fmtNum(r.cnpsEmployerPf),       style: "mono", alignment: "right" },
+    { text: fmtNum(r.cnpsEmployerAt),       style: "mono", alignment: "right" },
+    { text: fmtNum(r.totalEmployer),        style: "mono", alignment: "right" },
+    { text: fmtNum(r.totalCnps), style: "mono", alignment: "right",
+      bold: true, color: THEME.primary },
+  ]);
+
+  const totalRow: PdfCell[] = [
+    totalCell(""),
+    totalCell("TOTAL GÉNÉRAL", "left"),
+    totalCell(""),
+    totalCell(fmtNum(T.grossCapped)),
+    totalCell(fmtNum(T.cnpsEmployee)),
+    totalCell(fmtNum(T.cnpsEmployerRetraite)),
+    totalCell(fmtNum(T.cnpsEmployerPf)),
+    totalCell(fmtNum(T.cnpsEmployerAt)),
+    totalCell(fmtNum(T.totalEmployer)),
+    totalCell(fmtNum(T.totalCnps)),
+  ];
+
+  const docDef: Record<string, unknown> = {
+    pageSize: "A4",
+    pageOrientation: "landscape",
+    pageMargins: [30, 45, 30, 50],
+    defaultStyle: { font: "Helvetica", fontSize: 8.5 },
+    styles: BASE_STYLES,
+    footer: (page: number, pages: number) => ({
+      text: `Bordereau CNPS — ${clientName} — ${periodLabel}  |  Généré par M15-AUDIT  |  Page ${page}/${pages}`,
+      style: "footer",
+      margin: [30, 10],
+    }),
+    content: [
+      // ── En-tête ──────────────────────────────────────────────────────────
+      {
+        columns: [
+          {
+            stack: [
+              { text: firmName, style: "firmName" },
+              { text: "BORDEREAU DES COTISATIONS CNPS",
+                fontSize: 12, bold: true, color: THEME.primary, marginTop: 2 },
+              { text: `Entreprise : ${clientName}`,
+                fontSize: 9, color: THEME.text, marginTop: 4 },
+              { text: `Période de déclaration : ${periodLabel}`,
+                fontSize: 9, color: THEME.text },
+              { text: "Devise : Francs CFA (XOF)", style: "devise", marginTop: 3 },
+            ],
+            width: "*",
+          },
+          {
+            stack: [
+              { text: "Montant total à reverser à la CNPS",
+                fontSize: 8, color: "#666", alignment: "right" },
+              { text: `${fmtNum(T.totalCnps)} FCFA`,
+                fontSize: 20, bold: true, color: THEME.primary,
+                alignment: "right", marginTop: 3 },
+              { text: `Part salariale : ${fmtNum(T.cnpsEmployee)} FCFA`,
+                fontSize: 8, color: "#666", alignment: "right", marginTop: 5 },
+              { text: `Part patronale : ${fmtNum(T.totalEmployer)} FCFA`,
+                fontSize: 8, color: "#666", alignment: "right" },
+              { text: `Effectif déclaré : ${rows.length} salarié(s)`,
+                fontSize: 8, color: "#888", alignment: "right", marginTop: 6 },
+            ],
+            width: 240,
+          },
+        ],
+        margin: [0, 0, 0, 8],
+      },
+      // ── Séparateur ───────────────────────────────────────────────────────
+      {
+        canvas: [
+          { type: "line", x1: 0, y1: 2, x2: 777, y2: 2,
+            lineWidth: 2, lineColor: THEME.primary },
+          { type: "line", x1: 0, y1: 6, x2: 777, y2: 6,
+            lineWidth: 0.5, lineColor: THEME.accent },
+        ],
+        margin: [0, 0, 0, 14],
+      },
+      // ── Tableau ──────────────────────────────────────────────────────────
+      {
+        table: {
+          headerRows: 1,
+          widths: cols,
+          body: [headerRow, ...bodyRows, totalRow],
+        },
+        layout: tableLayout(),
+      },
+      // ── Zone de signatures ────────────────────────────────────────────────
+      {
+        margin: [0, 36, 0, 0],
+        columns: [
+          {
+            stack: [
+              { text: "Établi par (Employeur) :", fontSize: 8, color: "#555" },
+              { canvas: [{ type: "line", x1: 0, y1: 32, x2: 180, y2: 32,
+                  lineWidth: 0.5, lineColor: "#ccc" }] },
+              { text: "Signature — Cachet — Date", fontSize: 7, color: "#aaa", marginTop: 3 },
+            ],
+          },
+          { width: "*", text: "" },
+          {
+            stack: [
+              { text: "Reçu par la CNPS :", fontSize: 8, color: "#555", alignment: "right" },
+              { canvas: [{ type: "line", x1: 0, y1: 32, x2: 180, y2: 32,
+                  lineWidth: 0.5, lineColor: "#ccc" }] },
+              { text: "Cachet — Date de réception", fontSize: 7,
+                color: "#aaa", marginTop: 3, alignment: "right" },
+            ],
+            alignment: "right",
+          },
+        ],
+      },
+    ],
+  };
+
+  return renderPdf(docDef);
+}

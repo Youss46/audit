@@ -17,6 +17,7 @@ import { getMaritalStatusLabel, getEmployeeStatusLabel, getEmployeeStatusColor }
 import { cn } from "@/lib/utils"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
 import { useAuth } from "@/hooks/use-auth"
+import { getToken } from "@/lib/auth"
 import {
   Users,
   Plus,
@@ -28,6 +29,7 @@ import {
   Landmark,
   TrendingDown,
   Receipt,
+  Download,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -149,6 +151,7 @@ export default function Paie() {
 
   // -- Bulk payroll processing state --
   const [period, setPeriod] = useState<string>(currentPeriod())
+  const [isExportingCnps, setIsExportingCnps] = useState(false)
 
   // -------------------------------------------------------------------------
   // Queries
@@ -283,6 +286,38 @@ export default function Paie() {
   // -------------------------------------------------------------------------
   // Handlers
   // -------------------------------------------------------------------------
+
+  async function handleExportCnps() {
+    if (!clientId || slip.length === 0) return
+    setIsExportingCnps(true)
+    try {
+      const token = getToken()
+      const apiBase = (import.meta.env.VITE_API_URL as string | undefined) ?? ""
+      const url = `${apiBase}/api/payroll/cnps-bordereau/${clientId}/${period}`
+      const res = await fetch(url, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        credentials: "include",
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({})) as { error?: string }
+        throw new Error(body.error ?? "Erreur lors de la génération du bordereau CNPS.")
+      }
+      const blob = await res.blob()
+      const anchor = document.createElement("a")
+      anchor.href = URL.createObjectURL(blob)
+      anchor.download = `bordereau-cnps-${period}.pdf`
+      anchor.click()
+      URL.revokeObjectURL(anchor.href)
+    } catch (err) {
+      toast({
+        title: "Export CNPS impossible",
+        description: err instanceof Error ? err.message : "Une erreur s'est produite.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsExportingCnps(false)
+    }
+  }
 
   function openCreateEmployee() {
     setEditingEmployeeId(null)
@@ -517,6 +552,21 @@ export default function Paie() {
                     )}
                     Calculer la paie
                   </Button>
+                  {slip.length > 0 && (
+                    <Button
+                      variant="outline"
+                      onClick={handleExportCnps}
+                      disabled={isExportingCnps}
+                      title="Télécharger le bordereau CNPS mensuel en PDF"
+                    >
+                      {isExportingCnps ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <Download className="h-4 w-4 mr-2" />
+                      )}
+                      Bordereau CNPS
+                    </Button>
+                  )}
                   {activeEmployees.length === 0 && (
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <AlertTriangle className="h-3.5 w-3.5" />
