@@ -12,7 +12,7 @@ import {
   useGetClient,
   getGetClientQueryKey,
 } from "@workspace/api-client-react"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import {
   ChevronLeft,
   AlertTriangle,
@@ -240,7 +240,7 @@ export default function AuditVisa() {
     try {
       const token    = getToken()
       const response = await fetch(
-        `/api/audit/visa-check/${clientId}?year=${selectedYear}`,
+        `${getApiBase()}/api/audit/visa-check/${clientId}?year=${selectedYear}`,
         {
           method:  "POST",
           headers: {
