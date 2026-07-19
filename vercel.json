@@ -1,6 +1,6 @@
 {
   "buildCommand": "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/m15-audit run build",
-  "outputDirectory": "public",
+  "outputDirectory": "artifacts/m15-audit/dist",
   "installCommand": "pnpm install --no-frozen-lockfile",
   "framework": null,
   "rewrites": [
