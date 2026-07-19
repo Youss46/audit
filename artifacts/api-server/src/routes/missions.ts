@@ -609,14 +609,15 @@ router.post(
     try {
       const ai       = new GoogleGenAI({ apiKey });
       const response = await ai.models.generateContent({
-        model:    "gemini-2.5-pro",
+        model:    "gemini-2.0-flash",
         contents: [{ role: "user", parts: [{ text: `${CHECKLIST_SYSTEM_PROMPT}\n\n${prompt}` }] }],
         config:   { responseMimeType: "application/json", maxOutputTokens: 8192 },
       });
       rawResponse = response.text ?? "";
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       req.log.error({ err }, "Gemini checklist analysis API call failed");
-      res.status(502).json({ error: "Le service d'analyse IA est temporairement indisponible." });
+      res.status(502).json({ error: `Le service d'analyse IA est temporairement indisponible. (${detail})` });
       return;
     }
 

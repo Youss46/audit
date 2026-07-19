@@ -270,7 +270,7 @@ ${anomalySummary}
     try {
       const ai       = getGeminiClient();
       const response = await ai.models.generateContent({
-        model:    "gemini-2.5-pro",
+        model:    "gemini-2.0-flash",
         contents: [
           {
             role:  "user",
@@ -284,10 +284,11 @@ ${anomalySummary}
       });
       rawResponse = response.text ?? "";
     } catch (err) {
+      const detail = err instanceof Error ? err.message : String(err);
       req.log.error({ err }, "Gemini audit API call failed");
       res
         .status(502)
-        .json({ error: "Le service d'audit IA est temporairement indisponible. Veuillez réessayer." });
+        .json({ error: `Le service d'audit IA est temporairement indisponible. (${detail})` });
       return;
     }
 
