@@ -92,13 +92,13 @@ export default function Login() {
                 </form>
               </Form>
               <div className="text-center mt-4">
-                <a
+                <Link
                   href="/forgot-password"
                   style={{ display: "block", padding: "12px 0", fontSize: "0.875rem", color: "inherit", textDecoration: "none" }}
                   className="text-muted-foreground hover:text-primary transition-colors"
                 >
                   Mot de passe oublié ?
-                </a>
+                </Link>
               </div>
             </CardContent>
             <CardFooter className="flex justify-center border-t border-border/50 p-6 bg-muted/20">
