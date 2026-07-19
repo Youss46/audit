@@ -129,7 +129,7 @@ router.post(
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model:       "deepseek-vl2",
+          model:       "deepseek-v4-pro",
           messages: [
             {
               role:    "user",

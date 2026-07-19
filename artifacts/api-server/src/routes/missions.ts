@@ -613,7 +613,7 @@ router.post(
           "Authorization": `Bearer ${apiKey}`,
         },
         body: JSON.stringify({
-          model:       "deepseek-chat",
+          model:       "deepseek-v4-pro",
           messages:    [
             { role: "system",  content: CHECKLIST_SYSTEM_PROMPT },
             { role: "user",    content: prompt },
