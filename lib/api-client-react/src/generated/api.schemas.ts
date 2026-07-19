@@ -80,6 +80,16 @@ export interface User {
      * @nullable
      */
   temporaryPassword?: string | null;
+  /**
+     * Subscription status of the firm (e.g. "trial", "active", "expired"). Null for client accounts.
+     * @nullable
+     */
+  firmStatus?: string | null;
+  /**
+     * ISO timestamp when the firm's trial period ends. Null when not in trial.
+     * @nullable
+     */
+  trialEndsAt?: string | null;
 }
 
 export interface RegisterInput {
@@ -697,6 +707,21 @@ export interface TransactionInput {
      * @nullable
      */
   stationId?: number | null;
+}
+
+export interface UpdateTransactionInput {
+  /** @minLength 1 */
+  label?: string;
+  /** @minimum 1 */
+  amount?: number;
+  date?: string;
+  /** @nullable */
+  category?: string | null;
+  paymentType?: PaymentType;
+  /** @nullable */
+  paymentMethod?: string | null;
+  /** @nullable */
+  dueDate?: string | null;
 }
 
 export interface TransactionRejectInput {
@@ -1437,6 +1462,22 @@ export interface FinancialItemInput {
      */
   termMonths: number;
   paymentFrequency: PaymentFrequency;
+}
+
+export interface RenegotiateFinancialItemInput {
+  /** @minimum 0 */
+  newAnnualInterestRate: number;
+  /** @minimum 1 */
+  newTermMonths: number;
+  renegotiationDate: string;
+  note?: string;
+}
+
+export interface PrepayFinancialItemInput {
+  /** @minimum 1 */
+  amount: number;
+  date: string;
+  note?: string;
 }
 
 export interface FinancialItemUpdate {
@@ -2328,12 +2369,90 @@ export interface NotificationItem {
   createdAt: string;
 }
 
+export interface InvoiceProduct {
+  id: number;
+  firmId: number;
+  designation: string;
+  defaultUnitPrice: number;
+  vatRate: number;
+  /** @nullable */
+  description?: string | null;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CreateInvoiceProductInput {
+  /** @minLength 1 */
+  designation: string;
+  /** @minimum 0 */
+  defaultUnitPrice: number;
+  /**
+     * @minimum 0
+     * @maximum 100
+     */
+  vatRate?: number;
+  description?: string;
+}
+
+export type MissionExpenseCategory = typeof MissionExpenseCategory[keyof typeof MissionExpenseCategory];
+
+
+export const MissionExpenseCategory = {
+  DEPLACEMENT: 'DEPLACEMENT',
+  HEBERGEMENT: 'HEBERGEMENT',
+  RESTAURATION: 'RESTAURATION',
+  AUTRE: 'AUTRE',
+} as const;
+
+export interface MissionExpense {
+  id: number;
+  firmId: number;
+  clientId: number;
+  userId: number;
+  year: number;
+  month: number;
+  label: string;
+  amount: number;
+  category: MissionExpenseCategory;
+  /** @nullable */
+  addedByName?: string | null;
+  createdAt: string;
+}
+
+export type CreateMissionExpenseInputCategory = typeof CreateMissionExpenseInputCategory[keyof typeof CreateMissionExpenseInputCategory];
+
+
+export const CreateMissionExpenseInputCategory = {
+  DEPLACEMENT: 'DEPLACEMENT',
+  HEBERGEMENT: 'HEBERGEMENT',
+  RESTAURATION: 'RESTAURATION',
+  AUTRE: 'AUTRE',
+} as const;
+
+export interface CreateMissionExpenseInput {
+  /** @minimum 1 */
+  clientId: number;
+  /** @minimum 1 */
+  year: number;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  month: number;
+  /** @minLength 1 */
+  label: string;
+  /** @minimum 1 */
+  amount: number;
+  category: CreateMissionExpenseInputCategory;
+}
+
 export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
 
 
 export const InvoiceStatus = {
   BROUILLON: 'BROUILLON',
   VALIDE: 'VALIDE',
+  PARTIELLEMENT_PAYE: 'PARTIELLEMENT_PAYE',
   PAYE: 'PAYE',
   ANNULE: 'ANNULE',
 } as const;
@@ -2429,6 +2548,12 @@ export const MarkInvoicePaidBodyPaymentMethod = {
 } as const;
 
 export interface MarkInvoicePaidBody {
+  /**
+     * Optional partial payment amount (FCFA). When omitted, defaults to the full remaining balance. Must not exceed the remaining balance.
+     * @minimum 1
+     * @nullable
+     */
+  amount?: number | null;
   /**
      * Optional. When 'mobile_money', the Mobile Money settlement fields below are required and the entry is posted automatically.
      * @nullable
@@ -2972,6 +3097,11 @@ status?: TransactionStatus;
 stationId?: number;
 };
 
+export type DeleteTransaction200 = {
+  ok: boolean;
+  id: number;
+};
+
 export type ListCashRegistersParams = {
 clientId?: number;
 };
@@ -3114,6 +3244,11 @@ clientId: number;
 type?: FinancialItemType;
 };
 
+export type PrepayFinancialItem200 = FinancialItem & {
+  prepaidAmount?: number;
+  newPrincipal?: number;
+};
+
 export type ListEmployeesParams = {
 clientId: number;
 };
@@ -3184,6 +3319,21 @@ axisId: number;
 year: number;
 };
 
+export type ListMissionExpensesParams = {
+clientId: number;
+year: number;
+/**
+ * @minimum 1
+ * @maximum 12
+ */
+month: number;
+};
+
+export type DeleteMissionExpense200 = {
+  ok: boolean;
+  id: number;
+};
+
 export type ListGeneratedDocumentsParams = {
 clientId: number;
 year?: number;
@@ -3197,5 +3347,14 @@ unresolvedOnly?: boolean;
 export type ListInvoicesParams = {
 clientId?: number;
 status?: InvoiceStatus;
+};
+
+export type DeleteInvoiceProduct200 = {
+  ok: boolean;
+};
+
+export type RemindInvoice200 = {
+  ok: boolean;
+  emailSent: boolean;
 };
 

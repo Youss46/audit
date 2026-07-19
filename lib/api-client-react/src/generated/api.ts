@@ -70,6 +70,8 @@ import type {
   ConfirmMobileMoneyRepatriationReceptionResult,
   ContextualComment,
   ContextualCommentInput,
+  CreateInvoiceProductInput,
+  CreateMissionExpenseInput,
   CreateMobileMoneyAccountBody,
   CreateMobileMoneyRepatriationBody,
   CreateMobileMoneyRepatriationResult,
@@ -81,6 +83,9 @@ import type {
   CreditNoteInput,
   DailyClosure,
   DashboardSummary,
+  DeleteInvoiceProduct200,
+  DeleteMissionExpense200,
+  DeleteTransaction200,
   DepreciationSchedule,
   Document,
   DocumentDetail,
@@ -121,6 +126,7 @@ import type {
   InvoiceDetail,
   InvoiceInput,
   InvoicePdfResponse,
+  InvoiceProduct,
   LastPumpIndexResult,
   ListAccountsParams,
   ListAnalyticalAllocationsParams,
@@ -137,6 +143,7 @@ import type {
   ListFuelPricesParams,
   ListGeneratedDocumentsParams,
   ListInvoicesParams,
+  ListMissionExpensesParams,
   ListMissionsParams,
   ListMobileMoneyAccountsParams,
   ListMobileMoneyTransactionsParams,
@@ -155,6 +162,7 @@ import type {
   MarkInvoicePaidBody,
   Mission,
   MissionDetail,
+  MissionExpense,
   MissionInput,
   MissionUpdate,
   MobileMoneyAccount,
@@ -174,6 +182,8 @@ import type {
   PlanComptableAccount,
   PostPayrollLedgerResult,
   PostVatLiquidationResult,
+  PrepayFinancialItem200,
+  PrepayFinancialItemInput,
   ProfitabilityReport,
   Pump,
   PumpAssignmentItem,
@@ -187,6 +197,8 @@ import type {
   RecordMobileMoneySaleBody,
   RecordMobileMoneySaleResult,
   RegisterInput,
+  RemindInvoice200,
+  RenegotiateFinancialItemInput,
   ResetFirstPasswordInput,
   Role,
   ScoringDashboardResult,
@@ -209,6 +221,7 @@ import type {
   UpdateMobileMoneyAccountBody,
   UpdatePumpInput,
   UpdateStationInput,
+  UpdateTransactionInput,
   UpsertFuelPriceInput,
   User,
   UserInput,
@@ -3420,6 +3433,149 @@ export function useGetTransaction<TData = Awaited<ReturnType<typeof getTransacti
 
 
 
+
+export const getUpdateTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}`
+}
+
+/**
+ * @summary Edit a pending or anomalie transaction's mutable fields (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const updateTransaction = async (id: number,
+    updateTransactionInput: UpdateTransactionInput, options?: RequestInit): Promise<TransactionDetail> => {
+
+  return customFetch<TransactionDetail>(getUpdateTransactionUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(updateTransactionInput)
+  }
+);}
+
+
+
+
+
+export const getUpdateTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransaction>>, TError,{id: number;data: BodyType<UpdateTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof updateTransaction>>, TError,{id: number;data: BodyType<UpdateTransactionInput>}, TContext> => {
+
+const mutationKey = ['updateTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof updateTransaction>>, {id: number;data: BodyType<UpdateTransactionInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  updateTransaction(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UpdateTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof updateTransaction>>>
+    export type UpdateTransactionMutationBody = BodyType<UpdateTransactionInput>
+    export type UpdateTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Edit a pending or anomalie transaction's mutable fields (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const useUpdateTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof updateTransaction>>, TError,{id: number;data: BodyType<UpdateTransactionInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof updateTransaction>>,
+        TError,
+        {id: number;data: BodyType<UpdateTransactionInput>},
+        TContext
+      > => {
+      return useMutation(getUpdateTransactionMutationOptions(options));
+    }
+
+export const getDeleteTransactionUrl = (id: number,) => {
+
+
+
+
+  return `/api/transactions/${id}`
+}
+
+/**
+ * @summary Delete a pending or anomalie transaction (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const deleteTransaction = async (id: number, options?: RequestInit): Promise<DeleteTransaction200> => {
+
+  return customFetch<DeleteTransaction200>(getDeleteTransactionUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTransactionMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTransaction>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteTransaction'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTransaction>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTransaction(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTransactionMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTransaction>>>
+
+    export type DeleteTransactionMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a pending or anomalie transaction (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const useDeleteTransaction = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTransaction>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTransaction>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteTransactionMutationOptions(options));
+    }
 
 export const getApproveTransactionUrl = (id: number,) => {
 
@@ -8136,6 +8292,150 @@ export const useUpdateFinancialItem = <TError = ErrorType<ErrorResponse>,
       return useMutation(getUpdateFinancialItemMutationOptions(options));
     }
 
+export const getRenegotiateFinancialItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/financial-items/${id}/renegotiate`
+}
+
+/**
+ * @summary Renegotiate an active loan — resets principal to remaining capital with a new rate and term (M18)
+ */
+export const renegotiateFinancialItem = async (id: number,
+    renegotiateFinancialItemInput: RenegotiateFinancialItemInput, options?: RequestInit): Promise<FinancialItem> => {
+
+  return customFetch<FinancialItem>(getRenegotiateFinancialItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(renegotiateFinancialItemInput)
+  }
+);}
+
+
+
+
+
+export const getRenegotiateFinancialItemMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renegotiateFinancialItem>>, TError,{id: number;data: BodyType<RenegotiateFinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof renegotiateFinancialItem>>, TError,{id: number;data: BodyType<RenegotiateFinancialItemInput>}, TContext> => {
+
+const mutationKey = ['renegotiateFinancialItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof renegotiateFinancialItem>>, {id: number;data: BodyType<RenegotiateFinancialItemInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  renegotiateFinancialItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RenegotiateFinancialItemMutationResult = NonNullable<Awaited<ReturnType<typeof renegotiateFinancialItem>>>
+    export type RenegotiateFinancialItemMutationBody = BodyType<RenegotiateFinancialItemInput>
+    export type RenegotiateFinancialItemMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Renegotiate an active loan — resets principal to remaining capital with a new rate and term (M18)
+ */
+export const useRenegotiateFinancialItem = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof renegotiateFinancialItem>>, TError,{id: number;data: BodyType<RenegotiateFinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof renegotiateFinancialItem>>,
+        TError,
+        {id: number;data: BodyType<RenegotiateFinancialItemInput>},
+        TContext
+      > => {
+      return useMutation(getRenegotiateFinancialItemMutationOptions(options));
+    }
+
+export const getPrepayFinancialItemUrl = (id: number,) => {
+
+
+
+
+  return `/api/financial-items/${id}/prepay`
+}
+
+/**
+ * @summary Partial early repayment — reduces remaining capital and resets the amortization schedule (M18)
+ */
+export const prepayFinancialItem = async (id: number,
+    prepayFinancialItemInput: PrepayFinancialItemInput, options?: RequestInit): Promise<PrepayFinancialItem200> => {
+
+  return customFetch<PrepayFinancialItem200>(getPrepayFinancialItemUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(prepayFinancialItemInput)
+  }
+);}
+
+
+
+
+
+export const getPrepayFinancialItemMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepayFinancialItem>>, TError,{id: number;data: BodyType<PrepayFinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof prepayFinancialItem>>, TError,{id: number;data: BodyType<PrepayFinancialItemInput>}, TContext> => {
+
+const mutationKey = ['prepayFinancialItem'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof prepayFinancialItem>>, {id: number;data: BodyType<PrepayFinancialItemInput>}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  prepayFinancialItem(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PrepayFinancialItemMutationResult = NonNullable<Awaited<ReturnType<typeof prepayFinancialItem>>>
+    export type PrepayFinancialItemMutationBody = BodyType<PrepayFinancialItemInput>
+    export type PrepayFinancialItemMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Partial early repayment — reduces remaining capital and resets the amortization schedule (M18)
+ */
+export const usePrepayFinancialItem = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof prepayFinancialItem>>, TError,{id: number;data: BodyType<PrepayFinancialItemInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof prepayFinancialItem>>,
+        TError,
+        {id: number;data: BodyType<PrepayFinancialItemInput>},
+        TContext
+      > => {
+      return useMutation(getPrepayFinancialItemMutationOptions(options));
+    }
+
 export const getGetFinancialItemScheduleUrl = (id: number,) => {
 
 
@@ -11350,6 +11650,232 @@ export function useGetAnalyticalReport<TData = Awaited<ReturnType<typeof getAnal
 
 
 
+export const getListMissionExpensesUrl = (params: ListMissionExpensesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cabinet-analytics/expenses?${stringifiedParams}` : `/api/cabinet-analytics/expenses`
+}
+
+/**
+ * @summary List mission expenses (frais directs / débours) for a client in a given month (M22)
+ */
+export const listMissionExpenses = async (params: ListMissionExpensesParams, options?: RequestInit): Promise<MissionExpense[]> => {
+
+  return customFetch<MissionExpense[]>(getListMissionExpensesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListMissionExpensesQueryKey = (params?: ListMissionExpensesParams,) => {
+    return [
+    `/api/cabinet-analytics/expenses`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListMissionExpensesQueryOptions = <TData = Awaited<ReturnType<typeof listMissionExpenses>>, TError = ErrorType<unknown>>(params: ListMissionExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMissionExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListMissionExpensesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listMissionExpenses>>> = ({ signal }) => listMissionExpenses(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listMissionExpenses>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListMissionExpensesQueryResult = NonNullable<Awaited<ReturnType<typeof listMissionExpenses>>>
+export type ListMissionExpensesQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List mission expenses (frais directs / débours) for a client in a given month (M22)
+ */
+
+export function useListMissionExpenses<TData = Awaited<ReturnType<typeof listMissionExpenses>>, TError = ErrorType<unknown>>(
+ params: ListMissionExpensesParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listMissionExpenses>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListMissionExpensesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateMissionExpenseUrl = () => {
+
+
+
+
+  return `/api/cabinet-analytics/expenses`
+}
+
+/**
+ * @summary Record a new mission expense (frais direct / débours) for a client-month (M22)
+ */
+export const createMissionExpense = async (createMissionExpenseInput: CreateMissionExpenseInput, options?: RequestInit): Promise<MissionExpense> => {
+
+  return customFetch<MissionExpense>(getCreateMissionExpenseUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createMissionExpenseInput)
+  }
+);}
+
+
+
+
+
+export const getCreateMissionExpenseMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMissionExpense>>, TError,{data: BodyType<CreateMissionExpenseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createMissionExpense>>, TError,{data: BodyType<CreateMissionExpenseInput>}, TContext> => {
+
+const mutationKey = ['createMissionExpense'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createMissionExpense>>, {data: BodyType<CreateMissionExpenseInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createMissionExpense(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateMissionExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof createMissionExpense>>>
+    export type CreateMissionExpenseMutationBody = BodyType<CreateMissionExpenseInput>
+    export type CreateMissionExpenseMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Record a new mission expense (frais direct / débours) for a client-month (M22)
+ */
+export const useCreateMissionExpense = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createMissionExpense>>, TError,{data: BodyType<CreateMissionExpenseInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createMissionExpense>>,
+        TError,
+        {data: BodyType<CreateMissionExpenseInput>},
+        TContext
+      > => {
+      return useMutation(getCreateMissionExpenseMutationOptions(options));
+    }
+
+export const getDeleteMissionExpenseUrl = (id: number,) => {
+
+
+
+
+  return `/api/cabinet-analytics/expenses/${id}`
+}
+
+/**
+ * @summary Delete a mission expense record (M22)
+ */
+export const deleteMissionExpense = async (id: number, options?: RequestInit): Promise<DeleteMissionExpense200> => {
+
+  return customFetch<DeleteMissionExpense200>(getDeleteMissionExpenseUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteMissionExpenseMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMissionExpense>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteMissionExpense>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteMissionExpense'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteMissionExpense>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteMissionExpense(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteMissionExpenseMutationResult = NonNullable<Awaited<ReturnType<typeof deleteMissionExpense>>>
+
+    export type DeleteMissionExpenseMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Delete a mission expense record (M22)
+ */
+export const useDeleteMissionExpense = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteMissionExpense>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteMissionExpense>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteMissionExpenseMutationOptions(options));
+    }
+
 export const getGetProfitabilityReportUrl = (year: number,
     month: number,) => {
 
@@ -13835,6 +14361,296 @@ export function useDownloadInvoicePdf<TData = Awaited<ReturnType<typeof download
 
 
 
+
+export const getListInvoiceProductsUrl = () => {
+
+
+
+
+  return `/api/invoice-products`
+}
+
+/**
+ * @summary List the active product/service catalog items for this firm (M28)
+ */
+export const listInvoiceProducts = async ( options?: RequestInit): Promise<InvoiceProduct[]> => {
+
+  return customFetch<InvoiceProduct[]>(getListInvoiceProductsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListInvoiceProductsQueryKey = () => {
+    return [
+    `/api/invoice-products`
+    ] as const;
+    }
+
+
+export const getListInvoiceProductsQueryOptions = <TData = Awaited<ReturnType<typeof listInvoiceProducts>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInvoiceProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListInvoiceProductsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listInvoiceProducts>>> = ({ signal }) => listInvoiceProducts({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listInvoiceProducts>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type ListInvoiceProductsQueryResult = NonNullable<Awaited<ReturnType<typeof listInvoiceProducts>>>
+export type ListInvoiceProductsQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary List the active product/service catalog items for this firm (M28)
+ */
+
+export function useListInvoiceProducts<TData = Awaited<ReturnType<typeof listInvoiceProducts>>, TError = ErrorType<unknown>>(
+  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof listInvoiceProducts>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getListInvoiceProductsQueryOptions(options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateInvoiceProductUrl = () => {
+
+
+
+
+  return `/api/invoice-products`
+}
+
+/**
+ * @summary Add a product or service to the firm's catalog (M28)
+ */
+export const createInvoiceProduct = async (createInvoiceProductInput: CreateInvoiceProductInput, options?: RequestInit): Promise<InvoiceProduct> => {
+
+  return customFetch<InvoiceProduct>(getCreateInvoiceProductUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(createInvoiceProductInput)
+  }
+);}
+
+
+
+
+
+export const getCreateInvoiceProductMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInvoiceProduct>>, TError,{data: BodyType<CreateInvoiceProductInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createInvoiceProduct>>, TError,{data: BodyType<CreateInvoiceProductInput>}, TContext> => {
+
+const mutationKey = ['createInvoiceProduct'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createInvoiceProduct>>, {data: BodyType<CreateInvoiceProductInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  createInvoiceProduct(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateInvoiceProductMutationResult = NonNullable<Awaited<ReturnType<typeof createInvoiceProduct>>>
+    export type CreateInvoiceProductMutationBody = BodyType<CreateInvoiceProductInput>
+    export type CreateInvoiceProductMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Add a product or service to the firm's catalog (M28)
+ */
+export const useCreateInvoiceProduct = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createInvoiceProduct>>, TError,{data: BodyType<CreateInvoiceProductInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof createInvoiceProduct>>,
+        TError,
+        {data: BodyType<CreateInvoiceProductInput>},
+        TContext
+      > => {
+      return useMutation(getCreateInvoiceProductMutationOptions(options));
+    }
+
+export const getDeleteInvoiceProductUrl = (id: number,) => {
+
+
+
+
+  return `/api/invoice-products/${id}`
+}
+
+/**
+ * @summary Soft-delete (deactivate) a catalog product (M28)
+ */
+export const deleteInvoiceProduct = async (id: number, options?: RequestInit): Promise<DeleteInvoiceProduct200> => {
+
+  return customFetch<DeleteInvoiceProduct200>(getDeleteInvoiceProductUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteInvoiceProductMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInvoiceProduct>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteInvoiceProduct>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['deleteInvoiceProduct'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteInvoiceProduct>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteInvoiceProduct(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteInvoiceProductMutationResult = NonNullable<Awaited<ReturnType<typeof deleteInvoiceProduct>>>
+
+    export type DeleteInvoiceProductMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Soft-delete (deactivate) a catalog product (M28)
+ */
+export const useDeleteInvoiceProduct = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteInvoiceProduct>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteInvoiceProduct>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getDeleteInvoiceProductMutationOptions(options));
+    }
+
+export const getRemindInvoiceUrl = (id: number,) => {
+
+
+
+
+  return `/api/invoices/${id}/remind`
+}
+
+/**
+ * @summary Send a payment reminder email for a validated invoice (M28)
+ */
+export const remindInvoice = async (id: number, options?: RequestInit): Promise<RemindInvoice200> => {
+
+  return customFetch<RemindInvoice200>(getRemindInvoiceUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemindInvoiceMutationOptions = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof remindInvoice>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof remindInvoice>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['remindInvoice'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof remindInvoice>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  remindInvoice(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemindInvoiceMutationResult = NonNullable<Awaited<ReturnType<typeof remindInvoice>>>
+
+    export type RemindInvoiceMutationError = ErrorType<ErrorResponse>
+
+    /**
+ * @summary Send a payment reminder email for a validated invoice (M28)
+ */
+export const useRemindInvoice = <TError = ErrorType<ErrorResponse>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof remindInvoice>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof remindInvoice>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getRemindInvoiceMutationOptions(options));
+    }
 
 export const getCreateCreditNoteUrl = (id: number,) => {
 

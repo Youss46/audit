@@ -12,6 +12,7 @@ export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
 export const InvoiceStatus = {
   BROUILLON: 'BROUILLON',
   VALIDE: 'VALIDE',
+  PARTIELLEMENT_PAYE: 'PARTIELLEMENT_PAYE',
   PAYE: 'PAYE',
   ANNULE: 'ANNULE',
 } as const;

@@ -648,7 +648,7 @@ export default function DepensesAchats() {
                           <TableCell>{new Date(p.date).toLocaleDateString("fr-FR")}</TableCell>
                           <TableCell className="font-medium">
                             {p.supplierName}
-                            {p.hasReceipt && <Paperclip className="ml-1 inline h-3 w-3 text-primary" title="Pièce jointe" />}
+                            {p.hasReceipt && <span title="Pièce jointe"><Paperclip className="ml-1 inline h-3 w-3 text-primary" /></span>}
                           </TableCell>
                           <TableCell><span className="text-xs font-mono text-muted-foreground mr-1">{p.chargeAccount}</span>{p.categoryLabel}</TableCell>
                           <TableCell className="text-right font-mono font-semibold">{formatFcfa(p.amountTtc)}</TableCell>
@@ -715,7 +715,7 @@ export default function DepensesAchats() {
                         </TableCell>
                         <TableCell>
                           {p.hasReceipt && (
-                            <Button variant="ghost" size="sm" onClick={() => setReceiptViewId({ id: p.id, fileName: p.receiptFileName })} title="Voir la pièce justificative">
+                            <Button variant="ghost" size="sm" onClick={() => setReceiptViewId({ id: p.id, fileName: p.receiptFileName ?? null })} title="Voir la pièce justificative">
                               <Eye className="h-3.5 w-3.5" />
                             </Button>
                           )}

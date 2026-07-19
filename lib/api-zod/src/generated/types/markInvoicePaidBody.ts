@@ -9,6 +9,12 @@ import type { MarkInvoicePaidBodyPaymentMethod } from './markInvoicePaidBodyPaym
 
 export interface MarkInvoicePaidBody {
   /**
+     * Optional partial payment amount (FCFA). When omitted, defaults to the full remaining balance. Must not exceed the remaining balance.
+     * @minimum 1
+     * @nullable
+     */
+  amount?: number | null;
+  /**
      * Optional. When 'mobile_money', the Mobile Money settlement fields below are required and the entry is posted automatically.
      * @nullable
      */

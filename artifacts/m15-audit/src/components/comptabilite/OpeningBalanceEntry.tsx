@@ -326,12 +326,6 @@ export function OpeningBalanceEntry({ clientId, clientName }: OpeningBalanceEntr
   const ecart       = Math.round((totalDebit - totalCredit) * 100) / 100
 
   const isBalanced = ecart === 0 && totalDebit > 0
-  const canSubmit  =
-    postableRows.length > 0 &&
-    isBalanced &&
-    incompleteRows.length === 0 &&
-    scenario === "eligible" &&
-    !createMutation.isPending
 
   // ---------------------------------------------------------------------------
   // Mutation — typed via generated OpeningBalanceResult
@@ -364,6 +358,13 @@ export function OpeningBalanceEntry({ clientId, clientName }: OpeningBalanceEntr
       },
     },
   })
+
+  const canSubmit  =
+    postableRows.length > 0 &&
+    isBalanced &&
+    incompleteRows.length === 0 &&
+    scenario === "eligible" &&
+    !createMutation.isPending
 
   const handleSubmit = useCallback(() => {
     const lines = postableRows.map((r) => ({

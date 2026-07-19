@@ -87,14 +87,14 @@ export default function TresorerieMobileMoney() {
 
   const accountsQuery = useListMobileMoneyAccounts(
     { clientId: clientId || undefined },
-    { query: { enabled: !!clientId } },
+    { query: { enabled: !!clientId, queryKey: getListMobileMoneyAccountsQueryKey({ clientId: clientId || undefined }) } },
   )
   const accounts = accountsQuery.data ?? []
   const activeAccounts = accounts.filter((a) => a.isActive !== "false")
 
   const transactionsQuery = useListMobileMoneyTransactions(
     { clientId: clientId || undefined },
-    { query: { enabled: !!clientId } },
+    { query: { enabled: !!clientId, queryKey: getListMobileMoneyTransactionsQueryKey({ clientId: clientId || undefined }) } },
   )
   const transactions = transactionsQuery.data ?? []
 

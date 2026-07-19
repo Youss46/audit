@@ -55,4 +55,14 @@ export interface User {
      * @nullable
      */
   temporaryPassword?: string | null;
+  /**
+     * Subscription status of the firm (e.g. "trial", "active", "expired"). Null for client accounts.
+     * @nullable
+     */
+  firmStatus?: string | null;
+  /**
+     * ISO timestamp when the firm's trial period ends. Null when not in trial.
+     * @nullable
+     */
+  trialEndsAt?: Date | null;
 }

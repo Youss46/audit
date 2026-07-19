@@ -14,6 +14,7 @@ import {
   useListMobileMoneyAccounts,
   getListInvoicesQueryKey,
   getGetInvoiceQueryKey,
+  getListMobileMoneyAccountsQueryKey,
   useRemindInvoice,
   useListInvoiceProducts,
   useCreateInvoiceProduct,
@@ -245,13 +246,13 @@ export default function Facturation() {
   const statusFilter = activeTab !== "tous" ? activeTab.toUpperCase() as InvoiceStatus : undefined
   const invoicesQuery = useListInvoices(
     { clientId: clientId || undefined, status: statusFilter },
-    { query: { enabled: !!clientId } },
+    { query: { enabled: !!clientId, queryKey: getListInvoicesQueryKey({ clientId: clientId || undefined, status: statusFilter }) } },
   )
   const invoices = invoicesQuery.data ?? []
 
   const viewInvoiceQuery = useGetInvoice(
     viewingId ?? 0,
-    { query: { enabled: !!viewingId } },
+    { query: { enabled: !!viewingId, queryKey: getGetInvoiceQueryKey(viewingId ?? 0) } },
   )
 
   // ── Invoice products catalog ───────────────────────────────────────────
@@ -261,7 +262,7 @@ export default function Facturation() {
   // ── Stats ──────────────────────────────────────────────────────────────
   const allInvoices = useListInvoices(
     { clientId: clientId || undefined },
-    { query: { enabled: !!clientId } },
+    { query: { enabled: !!clientId, queryKey: getListInvoicesQueryKey({ clientId: clientId || undefined }) } },
   ).data ?? []
 
   const stats = React.useMemo(() => {
@@ -379,7 +380,7 @@ export default function Facturation() {
 
   const mobileMoneyAccountsQuery = useListMobileMoneyAccounts(
     { clientId: clientId || undefined },
-    { query: { enabled: !!clientId && paymentMethod === "mobile_money" && !!paymentTargetId } },
+    { query: { enabled: !!clientId && paymentMethod === "mobile_money" && !!paymentTargetId, queryKey: getListMobileMoneyAccountsQueryKey({ clientId: clientId || undefined }) } },
   )
   const mobileMoneyAccounts = (mobileMoneyAccountsQuery.data ?? []).filter((a) => a.isActive !== "false")
 
@@ -1295,7 +1296,7 @@ export default function Facturation() {
                     designation: catalogDesig.trim(),
                     defaultUnitPrice: parseInt(catalogPrice, 10) || 0,
                     vatRate: parseInt(catalogVat, 10) || 18,
-                    description: catalogDesc.trim() || null,
+                    description: catalogDesc.trim() || undefined,
                   },
                 })
               }}

@@ -52,14 +52,13 @@ async function ensureFirmSettingsSeeded(firmId: number): Promise<void> {
   // First access: seed all statutory defaults for this firm.
   await db
     .insert(payrollSettingsTable)
-    // @ts-ignore — PAYROLL_SETTING_DEFAULTS entries spread correctly at runtime;
-    // the TS overload resolution fails on the union of the category enum literal.
     .values(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       PAYROLL_SETTING_DEFAULTS.map((d) => ({
         ...d,
         firmId,
         updatedById: null,
-      })),
+      })) as any,
     )
     .onConflictDoNothing();
 }

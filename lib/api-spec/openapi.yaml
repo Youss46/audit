@@ -1052,6 +1052,72 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateTransaction
+      tags: [accounting]
+      summary: "Edit a pending or anomalie transaction's mutable fields (module P3). Only allowed while status is à_valider or anomalie."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateTransactionInput"
+      responses:
+        "200":
+          description: Updated transaction
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionDetail"
+        "400":
+          description: Transaction is not in an editable state or period is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteTransaction
+      tags: [accounting]
+      summary: "Delete a pending or anomalie transaction (module P3). Only allowed while status is à_valider or anomalie."
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id]
+                properties:
+                  ok: { type: boolean }
+                  id: { type: integer }
+        "400":
+          description: Transaction cannot be deleted in its current state or period is locked
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Transaction not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 
   /transactions/{id}/approve:
     post:
@@ -2756,6 +2822,83 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /financial-items/{id}/renegotiate:
+    post:
+      operationId: renegotiateFinancialItem
+      tags: [financial-items]
+      summary: Renegotiate an active loan — resets principal to remaining capital with a new rate and term (M18)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RenegotiateFinancialItemInput"
+      responses:
+        "200":
+          description: Updated financial item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FinancialItem"
+        "400":
+          description: Item is not active or capital is zero
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /financial-items/{id}/prepay:
+    post:
+      operationId: prepayFinancialItem
+      tags: [financial-items]
+      summary: Partial early repayment — reduces remaining capital and resets the amortization schedule (M18)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PrepayFinancialItemInput"
+      responses:
+        "200":
+          description: Updated financial item with prepaid amount and new principal
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/FinancialItem"
+                  - type: object
+                    properties:
+                      prepaidAmount: { type: integer }
+                      newPrincipal: { type: integer }
+        "400":
+          description: Amount exceeds remaining capital or item is not active
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /financial-items/{id}/schedule:
     get:
       operationId: getFinancialItemSchedule
@@ -3962,6 +4105,85 @@ paths:
               schema:
                 $ref: "#/components/schemas/AnalyticalReport"
 
+  /cabinet-analytics/expenses:
+    get:
+      operationId: listMissionExpenses
+      tags: [cabinet-analytics]
+      summary: List mission expenses (frais directs / débours) for a client in a given month (M22)
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: year
+          in: query
+          required: true
+          schema: { type: integer }
+        - name: month
+          in: query
+          required: true
+          schema: { type: integer, minimum: 1, maximum: 12 }
+      responses:
+        "200":
+          description: List of mission expenses
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/MissionExpense"
+    post:
+      operationId: createMissionExpense
+      tags: [cabinet-analytics]
+      summary: Record a new mission expense (frais direct / débours) for a client-month (M22)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMissionExpenseInput"
+      responses:
+        "201":
+          description: Created mission expense
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MissionExpense"
+        "404":
+          description: Client not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /cabinet-analytics/expenses/{id}:
+    delete:
+      operationId: deleteMissionExpense
+      tags: [cabinet-analytics]
+      summary: Delete a mission expense record (M22)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, id]
+                properties:
+                  ok: { type: boolean }
+                  id: { type: integer }
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /cabinet-analytics/profitability/{year}/{month}:
     get:
       operationId: getProfitabilityReport
@@ -4765,6 +4987,99 @@ paths:
               schema:
                 $ref: "#/components/schemas/InvoicePdfResponse"
 
+  /invoice-products:
+    get:
+      operationId: listInvoiceProducts
+      tags: [invoicing]
+      summary: List the active product/service catalog items for this firm (M28)
+      responses:
+        "200":
+          description: List of invoice products
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/InvoiceProduct"
+    post:
+      operationId: createInvoiceProduct
+      tags: [invoicing]
+      summary: Add a product or service to the firm's catalog (M28)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateInvoiceProductInput"
+      responses:
+        "201":
+          description: Created product
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InvoiceProduct"
+
+  /invoice-products/{id}:
+    delete:
+      operationId: deleteInvoiceProduct
+      tags: [invoicing]
+      summary: Soft-delete (deactivate) a catalog product (M28)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Deletion confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok: { type: boolean }
+        "404":
+          description: Product not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /invoices/{id}/remind:
+    post:
+      operationId: remindInvoice
+      tags: [invoicing]
+      summary: Send a payment reminder email for a validated invoice (M28)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        "200":
+          description: Reminder sent (or logged if email not configured)
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok, emailSent]
+                properties:
+                  ok: { type: boolean }
+                  emailSent: { type: boolean }
+        "400":
+          description: Invoice is not in a remindable state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Invoice not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /invoices/{id}/credit-note:
     post:
       operationId: createCreditNote
@@ -4866,6 +5181,13 @@ components:
         temporaryPassword:
           type: ["string", "null"]
           description: Module M33 - only ever populated in the response of POST /users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.
+        firmStatus:
+          type: ["string", "null"]
+          description: Subscription status of the firm (e.g. "trial", "active", "expired"). Null for client accounts.
+        trialEndsAt:
+          type: ["string", "null"]
+          format: date-time
+          description: ISO timestamp when the firm's trial period ends. Null when not in trial.
 
     RegisterInput:
       type: object
@@ -5561,6 +5883,18 @@ components:
         stationId:
           description: "Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually."
           type: ["integer", "null"]
+
+    UpdateTransactionInput:
+      type: object
+      properties:
+        label: { type: string, minLength: 1 }
+        amount: { type: integer, minimum: 1 }
+        date: { type: string, format: date-time }
+        category: { type: ["string", "null"] }
+        paymentType:
+          $ref: "#/components/schemas/PaymentType"
+        paymentMethod: { type: ["string", "null"] }
+        dueDate: { type: ["string", "null"], format: date-time }
 
     TransactionRejectInput:
       type: object
@@ -6559,6 +6893,23 @@ components:
           maximum: 600
         paymentFrequency:
           $ref: "#/components/schemas/PaymentFrequency"
+
+    RenegotiateFinancialItemInput:
+      type: object
+      required: [newAnnualInterestRate, newTermMonths, renegotiationDate]
+      properties:
+        newAnnualInterestRate: { type: number, minimum: 0 }
+        newTermMonths: { type: integer, minimum: 1 }
+        renegotiationDate: { type: string, format: date }
+        note: { type: string }
+
+    PrepayFinancialItemInput:
+      type: object
+      required: [amount, date]
+      properties:
+        amount: { type: integer, minimum: 1 }
+        date: { type: string, format: date }
+        note: { type: string }
 
     FinancialItemUpdate:
       type: object
@@ -7559,9 +7910,62 @@ components:
 
   # -------------------------------------------------------------------------
 
+    InvoiceProduct:
+      type: object
+      required: [id, firmId, designation, defaultUnitPrice, vatRate, isActive, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        designation: { type: string }
+        defaultUnitPrice: { type: number }
+        vatRate: { type: number }
+        description: { type: ["string", "null"] }
+        isActive: { type: boolean }
+        createdAt: { type: string, format: date-time }
+
+    CreateInvoiceProductInput:
+      type: object
+      required: [designation, defaultUnitPrice]
+      properties:
+        designation: { type: string, minLength: 1 }
+        defaultUnitPrice: { type: number, minimum: 0 }
+        vatRate: { type: number, minimum: 0, maximum: 100 }
+        description: { type: string }
+
+    MissionExpense:
+      type: object
+      required: [id, firmId, clientId, userId, year, month, label, amount, category, createdAt]
+      properties:
+        id: { type: integer }
+        firmId: { type: integer }
+        clientId: { type: integer }
+        userId: { type: integer }
+        year: { type: integer }
+        month: { type: integer }
+        label: { type: string }
+        amount: { type: integer }
+        category:
+          type: string
+          enum: [DEPLACEMENT, HEBERGEMENT, RESTAURATION, AUTRE]
+        addedByName: { type: ["string", "null"] }
+        createdAt: { type: string, format: date-time }
+
+    CreateMissionExpenseInput:
+      type: object
+      required: [clientId, year, month, label, amount, category]
+      properties:
+        clientId: { type: integer, minimum: 1 }
+        year: { type: integer, minimum: 1 }
+        month: { type: integer, minimum: 1, maximum: 12 }
+        label: { type: string, minLength: 1 }
+        amount: { type: integer, minimum: 1 }
+        category:
+          type: string
+          enum: [DEPLACEMENT, HEBERGEMENT, RESTAURATION, AUTRE]
+
     InvoiceStatus:
       type: string
-      enum: [BROUILLON, VALIDE, PAYE, ANNULE]
+      enum: [BROUILLON, VALIDE, PARTIELLEMENT_PAYE, PAYE, ANNULE]
 
     InvoiceItem:
       type: object
@@ -7645,6 +8049,10 @@ components:
     MarkInvoicePaidBody:
       type: object
       properties:
+        amount:
+          type: ["integer", "null"]
+          minimum: 1
+          description: "Optional partial payment amount (FCFA). When omitted, defaults to the full remaining balance. Must not exceed the remaining balance."
         paymentMethod:
           type: ["string", "null"]
           enum: [especes, mobile_money, cheque, virement, null]

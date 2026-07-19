@@ -56,7 +56,9 @@ export const RegisterResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 }).optional()
 })
 
@@ -93,7 +95,9 @@ export const LoginResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 }).optional()
 })
 
@@ -132,7 +136,9 @@ export const ResetFirstPasswordResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 }).optional()
 })
 
@@ -156,7 +162,9 @@ export const GetCurrentUserResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 })
 
 
@@ -179,7 +187,9 @@ export const ListUsersResponseItem = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 })
 export const ListUsersResponse = zod.array(ListUsersResponseItem)
 
@@ -216,7 +226,9 @@ export const CreateUserResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 })
 
 
@@ -254,7 +266,9 @@ export const UpdateUserResponse = zod.object({
   "permissions": zod.array(zod.string()).optional().describe('Module M29 - the effective permission keys for a client_staff account, resolved from its Role at login time. Empty for every other role.'),
   "stationId": zod.number().nullish().describe('Multi-station (P8): set for POMPISTE and site-level staff; restricts the account to one physical station. Null for client_pme owners and cabinet staff (cross-station access).'),
   "stationName": zod.string().nullish().describe('Multi-station (P8): display name of the assigned station, resolved at login. Null when stationId is null.'),
-  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.')
+  "temporaryPassword": zod.string().nullish().describe('Module M33 - only ever populated in the response of POST \/users, immediately after account creation; the plaintext auto-generated temporary password to hand to the new user. Always null on every other endpoint.'),
+  "firmStatus": zod.string().nullish().describe('Subscription status of the firm (e.g. \"trial\", \"active\", \"expired\"). Null for client accounts.'),
+  "trialEndsAt": zod.coerce.date().nullish().describe('ISO timestamp when the firm\'s trial period ends. Null when not in trial.')
 })
 
 
@@ -1220,6 +1234,84 @@ export const GetTransactionResponse = zod.object({
   "creditAmount": zod.number()
 }))
 }))
+
+
+/**
+ * @summary Edit a pending or anomalie transaction's mutable fields (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const UpdateTransactionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+
+export const UpdateTransactionBody = zod.object({
+  "label": zod.string().min(1).optional(),
+  "amount": zod.number().min(1).optional(),
+  "date": zod.coerce.date().optional(),
+  "category": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']).optional(),
+  "paymentMethod": zod.string().nullish(),
+  "dueDate": zod.coerce.date().nullish()
+})
+
+export const UpdateTransactionResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "date": zod.coerce.date(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "type": zod.enum(['recette', 'depense']),
+  "category": zod.string().nullish(),
+  "categoryLabel": zod.string().nullish(),
+  "paymentType": zod.enum(['cash', 'credit']),
+  "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
+  "dueDate": zod.coerce.date().nullish(),
+  "status": zod.enum(['a_valider', 'valide', 'anomalie']),
+  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "documentId": zod.number().nullish(),
+  "documentFileName": zod.string().nullish(),
+  "clarificationNote": zod.string().nullish(),
+  "settledAt": zod.coerce.date().nullish(),
+  "parentTransactionId": zod.number().nullish(),
+  "cashRegisterId": zod.number().nullish(),
+  "cashRegisterName": zod.string().nullish(),
+  "cashRegisterAccountNumber": zod.string().nullish().describe('Module P6 (Un Pompiste = Une Caisse) - the register\'s personal SYSCOHADA sub-account (e.g. \"571101\"), so the cabinet reconciliation view can show it next to the pompiste\'s name.'),
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the physical station this entry belongs to. Null for a cross-station cabinet\/PME-owner entry.'),
+  "stationName": zod.string().nullish(),
+  "createdByName": zod.string().nullish(),
+  "validatedByName": zod.string().nullish(),
+  "validatedAt": zod.coerce.date().nullish(),
+  "anomalies": zod.array(zod.string()).describe('Module M8 (Anomalie & Doublon Detector): rule-based flags computed automatically when the entry is created or its journal lines are adjusted. Empty when no anomaly was detected.'),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "journalLines": zod.array(zod.object({
+  "id": zod.number(),
+  "transactionId": zod.number(),
+  "accountNumber": zod.string(),
+  "label": zod.string().nullish(),
+  "debitAmount": zod.number(),
+  "creditAmount": zod.number()
+}))
+}))
+
+
+/**
+ * @summary Delete a pending or anomalie transaction (module P3). Only allowed while status is à_valider or anomalie.
+ */
+export const DeleteTransactionParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteTransactionResponse = zod.object({
+  "ok": zod.boolean(),
+  "id": zod.number()
+})
 
 
 /**
@@ -3679,6 +3771,96 @@ export const UpdateFinancialItemResponse = zod.object({
 
 
 /**
+ * @summary Renegotiate an active loan — resets principal to remaining capital with a new rate and term (M18)
+ */
+export const RenegotiateFinancialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const renegotiateFinancialItemBodyNewAnnualInterestRateMin = 0;
+
+
+
+
+export const RenegotiateFinancialItemBody = zod.object({
+  "newAnnualInterestRate": zod.number().min(renegotiateFinancialItemBodyNewAnnualInterestRateMin),
+  "newTermMonths": zod.number().min(1),
+  "renegotiationDate": zod.coerce.date(),
+  "note": zod.string().optional()
+})
+
+export const RenegotiateFinancialItemResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Partial early repayment — reduces remaining capital and resets the amortization schedule (M18)
+ */
+export const PrepayFinancialItemParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+
+
+
+export const PrepayFinancialItemBody = zod.object({
+  "amount": zod.number().min(1),
+  "date": zod.coerce.date(),
+  "note": zod.string().optional()
+})
+
+export const PrepayFinancialItemResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "clientName": zod.string().nullish(),
+  "type": zod.enum(['IMMOBILISATION_FINANCIERE', 'EMPRUNT_BANCAIRE']),
+  "accountNumber": zod.string(),
+  "label": zod.string(),
+  "principalAmount": zod.number(),
+  "annualInterestRate": zod.number(),
+  "startDate": zod.coerce.date(),
+  "termMonths": zod.number(),
+  "paymentFrequency": zod.enum(['MENSUEL', 'TRIMESTRIEL', 'ANNUEL']),
+  "status": zod.enum(['ACTIF', 'SOLDE']),
+  "installmentsPosted": zod.number(),
+  "totalInstallments": zod.number(),
+  "remainingCapital": zod.number(),
+  "totalInterest": zod.number(),
+  "nextDueDate": zod.coerce.date().nullish(),
+  "nextInstallmentNumber": zod.number().nullish(),
+  "createdByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date(),
+  "updatedAt": zod.coerce.date()
+}).and(zod.object({
+  "prepaidAmount": zod.number().optional(),
+  "newPrincipal": zod.number().optional()
+}))
+
+
+/**
  * @summary Get the full tableau d'amortissement for a loan or financial asset (M18)
  */
 export const GetFinancialItemScheduleParams = zod.object({
@@ -4841,6 +5023,83 @@ export const GetAnalyticalReportResponse = zod.object({
 
 
 /**
+ * @summary List mission expenses (frais directs / débours) for a client in a given month (M22)
+ */
+export const listMissionExpensesQueryMonthMax = 12;
+
+
+
+export const ListMissionExpensesQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "year": zod.coerce.number(),
+  "month": zod.coerce.number().min(1).max(listMissionExpensesQueryMonthMax)
+})
+
+export const ListMissionExpensesResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "userId": zod.number(),
+  "year": zod.number(),
+  "month": zod.number(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "category": zod.enum(['DEPLACEMENT', 'HEBERGEMENT', 'RESTAURATION', 'AUTRE']),
+  "addedByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+export const ListMissionExpensesResponse = zod.array(ListMissionExpensesResponseItem)
+
+
+/**
+ * @summary Record a new mission expense (frais direct / débours) for a client-month (M22)
+ */
+
+
+export const createMissionExpenseBodyMonthMax = 12;
+
+
+
+
+
+export const CreateMissionExpenseBody = zod.object({
+  "clientId": zod.number().min(1),
+  "year": zod.number().min(1),
+  "month": zod.number().min(1).max(createMissionExpenseBodyMonthMax),
+  "label": zod.string().min(1),
+  "amount": zod.number().min(1),
+  "category": zod.enum(['DEPLACEMENT', 'HEBERGEMENT', 'RESTAURATION', 'AUTRE'])
+})
+
+export const CreateMissionExpenseResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "clientId": zod.number(),
+  "userId": zod.number(),
+  "year": zod.number(),
+  "month": zod.number(),
+  "label": zod.string(),
+  "amount": zod.number(),
+  "category": zod.enum(['DEPLACEMENT', 'HEBERGEMENT', 'RESTAURATION', 'AUTRE']),
+  "addedByName": zod.string().nullish(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Delete a mission expense record (M22)
+ */
+export const DeleteMissionExpenseParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteMissionExpenseResponse = zod.object({
+  "ok": zod.boolean(),
+  "id": zod.number()
+})
+
+
+/**
  * @summary Compute per-client time-tracking profitability for a given month (M22, expert_comptable only)
  */
 export const GetProfitabilityReportParams = zod.object({
@@ -5450,7 +5709,7 @@ export const UploadChatAttachmentResponse = zod.object({
  */
 export const ListInvoicesQueryParams = zod.object({
   "clientId": zod.coerce.number().optional(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']).optional()
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']).optional()
 })
 
 export const ListInvoicesResponseItem = zod.object({
@@ -5468,7 +5727,7 @@ export const ListInvoicesResponseItem = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5524,7 +5783,7 @@ export const CreateInvoiceResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5566,7 +5825,7 @@ export const GetInvoiceResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5635,7 +5894,7 @@ export const UpdateInvoiceResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5677,7 +5936,7 @@ export const ValidateInvoiceResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5704,11 +5963,13 @@ export const MarkInvoicePaidParams = zod.object({
   "id": zod.coerce.number()
 })
 
+
 export const markInvoicePaidBodyFeeAmountMin = 0;
 
 
 
 export const MarkInvoicePaidBody = zod.object({
+  "amount": zod.number().min(1).nullish().describe('Optional partial payment amount (FCFA). When omitted, defaults to the full remaining balance. Must not exceed the remaining balance.'),
   "paymentMethod": zod.union([zod.literal('especes'),zod.literal('mobile_money'),zod.literal('cheque'),zod.literal('virement'),zod.literal(null)]).nullish().describe('Optional. When \'mobile_money\', the Mobile Money settlement fields below are required and the entry is posted automatically.'),
   "mobileMoneyAccountId": zod.number().nullish().describe('Required when paymentMethod is \'mobile_money\' — the receiving Trésorerie Mobile Money account.'),
   "feeAmount": zod.number().min(markInvoicePaidBodyFeeAmountMin).nullish().describe('Operator fee withheld on receipt (FCFA), books to 631700. Defaults to 0.'),
@@ -5730,7 +5991,7 @@ export const MarkInvoicePaidResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5772,7 +6033,7 @@ export const CancelInvoiceResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),
@@ -5809,6 +6070,77 @@ export const DownloadInvoicePdfResponse = zod.object({
 
 
 /**
+ * @summary List the active product/service catalog items for this firm (M28)
+ */
+export const ListInvoiceProductsResponseItem = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "designation": zod.string(),
+  "defaultUnitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "description": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+export const ListInvoiceProductsResponse = zod.array(ListInvoiceProductsResponseItem)
+
+
+/**
+ * @summary Add a product or service to the firm's catalog (M28)
+ */
+
+export const createInvoiceProductBodyDefaultUnitPriceMin = 0;
+
+export const createInvoiceProductBodyVatRateMin = 0;
+export const createInvoiceProductBodyVatRateMax = 100;
+
+
+
+export const CreateInvoiceProductBody = zod.object({
+  "designation": zod.string().min(1),
+  "defaultUnitPrice": zod.number().min(createInvoiceProductBodyDefaultUnitPriceMin),
+  "vatRate": zod.number().min(createInvoiceProductBodyVatRateMin).max(createInvoiceProductBodyVatRateMax).optional(),
+  "description": zod.string().optional()
+})
+
+export const CreateInvoiceProductResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "designation": zod.string(),
+  "defaultUnitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "description": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Soft-delete (deactivate) a catalog product (M28)
+ */
+export const DeleteInvoiceProductParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const DeleteInvoiceProductResponse = zod.object({
+  "ok": zod.boolean()
+})
+
+
+/**
+ * @summary Send a payment reminder email for a validated invoice (M28)
+ */
+export const RemindInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RemindInvoiceResponse = zod.object({
+  "ok": zod.boolean(),
+  "emailSent": zod.boolean()
+})
+
+
+/**
  * @summary Generate a structured credit note (avoir) reversing a validated invoice — M28
  */
 export const CreateCreditNoteParams = zod.object({
@@ -5837,7 +6169,7 @@ export const CreateCreditNoteResponse = zod.object({
   "totalTtc": zod.number(),
   "invoiceDate": zod.coerce.date(),
   "dueDate": zod.coerce.date().nullish(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']),
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']),
   "notes": zod.string().nullish(),
   "pdfDocumentId": zod.number().nullish(),
   "postedTransactionId": zod.number().nullish(),

@@ -31,6 +31,7 @@ import {
   KeyRound,
   LayoutDashboard,
   ShieldAlert,
+  MapPin,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, isSuperAdmin, hasPermission } from "@/lib/status"
