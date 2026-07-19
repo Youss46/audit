@@ -1,0 +1,1 @@
+- [Frontend API URL pattern](frontend-api-url.md) — toutes les pages frontend doivent utiliser getApiBase() pour les fetch vers /api/..., jamais de chemin relatif nu.
