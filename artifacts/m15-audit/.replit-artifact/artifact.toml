@@ -1,0 +1,27 @@
+kind = "web"
+previewPath = "/"
+title = "M15-AUDIT"
+version = "1.0.0"
+id = "artifacts/m15-audit"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22104
+
+[services.development]
+run = "pnpm --filter @workspace/m15-audit run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/m15-audit", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/m15-audit/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22104"
+BASE_PATH = "/"
