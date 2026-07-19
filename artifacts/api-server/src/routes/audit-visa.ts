@@ -147,7 +147,7 @@ router.post(
   requirePermission("pilotage.view"),
   async (req, res) => {
     // ── 1. Parse & validate parameters ──────────────────────────────────────
-    const clientId = parseInt(req.params.clientId, 10);
+    const clientId = parseInt(String(req.params.clientId), 10);
     if (isNaN(clientId)) {
       res.status(400).json({ error: "Invalid clientId parameter." });
       return;
@@ -188,35 +188,36 @@ router.post(
     // ── 4. Build the structured text payload for the AI ───────────────────────
     const totalRevenue  = balance
       .filter((r) => r.accountNumber.startsWith("7"))
-      .reduce((s, r) => s + Math.abs(r.balance), 0);
+      .reduce((s, r) => s + r.finalBalance, 0);
     const totalExpenses = balance
       .filter((r) => r.accountNumber.startsWith("6"))
-      .reduce((s, r) => s + Math.abs(r.balance), 0);
+      .reduce((s, r) => s + r.finalBalance, 0);
     const expenseRatioPct =
       totalRevenue > 0 ? ((totalExpenses / totalRevenue) * 100).toFixed(1) : "N/A";
 
+    // A Class-5 (Trésorerie) account with a "crediteur" final balance is an overdraft — critical violation.
     const negativeCashAccounts = balance.filter(
-      (r) => r.accountNumber.startsWith("5") && r.balance < 0,
+      (r) => r.accountNumber.startsWith("5") && r.finalBalanceSide === "crediteur",
     );
 
     const balanceSummary = balance
       .map(
         (r) =>
-          `${r.accountNumber} | ${r.accountName} | D=${r.debitTotal.toLocaleString("fr-FR")} | C=${r.creditTotal.toLocaleString("fr-FR")} | Solde=${r.balance.toLocaleString("fr-FR")}`,
+          `${r.accountNumber} | ${r.accountName} | D=${r.totalDebit.toLocaleString("fr-FR")} | C=${r.totalCredit.toLocaleString("fr-FR")} | Solde=${r.finalBalanceSide === "crediteur" ? "-" : ""}${r.finalBalance.toLocaleString("fr-FR")} (${r.finalBalanceSide})`,
       )
       .join("\n");
 
-    // Grand Livre: first 40 accounts, up to 8 lines each — keeps payload lean.
+    // Grand Livre: first 40 accounts, up to 8 movements each — keeps payload lean.
     const grandLivreSample = grandLivreAccounts
       .slice(0, 40)
       .map((acc) => {
-        const linesSample = acc.lines
+        const movementsSample = acc.movements
           .slice(0, 8)
-          .map((l) => `    ${l.date} | ${l.label ?? "—"} | D=${l.debit} | C=${l.credit} | Solde=${l.runningBalance}`)
+          .map((m) => `    ${m.date.toLocaleDateString("fr-FR")} | ${m.label ?? "—"} | D=${m.debitAmount.toLocaleString("fr-FR")} | C=${m.creditAmount.toLocaleString("fr-FR")} | Solde=${m.runningBalance.toLocaleString("fr-FR")} (${m.runningBalanceSide})`)
           .join("\n");
         return (
-          `Compte ${acc.accountNumber} (${acc.accountName}) — Solde ouverture: ${acc.openingBalance.toLocaleString("fr-FR")} | Solde clôture: ${acc.closingBalance.toLocaleString("fr-FR")}\n` +
-          (linesSample || "    (aucun mouvement sur l'exercice)")
+          `Compte ${acc.accountNumber} (${acc.accountName}) — Solde ouverture: ${acc.initialBalance.toLocaleString("fr-FR")} (${acc.initialBalanceSide}) | Solde clôture: ${acc.finalBalance.toLocaleString("fr-FR")} (${acc.finalBalanceSide})\n` +
+          (movementsSample || "    (aucun mouvement sur l'exercice)")
         );
       })
       .join("\n\n");
@@ -252,7 +253,7 @@ Ratio charges/CA    : ${expenseRatioPct} %
 ${
   negativeCashAccounts.length > 0
     ? negativeCashAccounts
-        .map((r) => `VIOLATION : Compte ${r.accountNumber} (${r.accountName}) = ${r.balance.toLocaleString("fr-FR")} FCFA`)
+        .map((r) => `VIOLATION : Compte ${r.accountNumber} (${r.accountName}) = ${r.finalBalance.toLocaleString("fr-FR")} FCFA (solde créditeur)`)
         .join("\n")
     : "Aucun solde de trésorerie négatif détecté."
 }
