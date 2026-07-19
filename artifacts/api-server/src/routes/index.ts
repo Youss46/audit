@@ -38,6 +38,7 @@ import documentFoldersRouter from "./document-folders";
 import stationsRouter from "./stations";
 import accountsRouter from "./accounts";
 import ocrRouter from "./ocr";
+import auditVisaRouter from "./audit-visa";
 
 const router: IRouter = Router();
 
@@ -80,5 +81,6 @@ router.use(purchasesRouter);
 router.use(documentFoldersRouter);
 router.use(accountsRouter);
 router.use(ocrRouter);
+router.use(auditVisaRouter);
 
 export default router;

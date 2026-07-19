@@ -59,6 +59,7 @@ import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin/dashboard';
 import AdminCabinets from '@/pages/admin/firms';
 import AdminLicences from '@/pages/admin/licenses';
+import AuditVisa from '@/pages/audit-visa';
 
 const queryClient = new QueryClient();
 
@@ -130,6 +131,7 @@ function Router() {
         <Route path="/cabinet/client/:clientId/dsf" component={Dsf} />
         <Route path="/cabinet/client/:clientId/revision" component={ComptabiliteRevision} />
         <Route path="/cabinet/client/:clientId/scoring" component={Scoring} />
+        <Route path="/cabinet/client/:clientId/audit-visa" component={AuditVisa} />
         <Route path="/cabinet/settings/payroll" component={PayrollSettings} />
         <Route path="/cabinet/settings/vat" component={VatSettings} />
         <Route path="/cabinet/interne/rentabilite" component={Rentabilite} />
