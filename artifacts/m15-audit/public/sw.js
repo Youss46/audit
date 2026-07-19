@@ -1,12 +1,17 @@
 // M15-AUDIT Service Worker — minimal, enables PWA install prompt
-const CACHE = "m15-audit-v1";
+const CACHE = "m15-audit-v2";
 
 self.addEventListener("install", (e) => {
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (e) => {
-  e.waitUntil(clients.claim());
+  // Purge old caches (e.g. m15-audit-v1) to force fresh assets after update
+  e.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))
+    ).then(() => clients.claim())
+  );
 });
 
 // Network-first strategy — always fetch fresh, fall back to cache
