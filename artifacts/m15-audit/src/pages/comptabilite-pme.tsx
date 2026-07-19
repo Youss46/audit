@@ -32,6 +32,7 @@ import {
 import {
   Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign,
   Upload, Camera, X, CheckCircle2, AlertCircle, Loader2, Pencil, Trash2,
+  ScanLine, Sparkles,
 } from "lucide-react"
 import {
   AlertDialog,
@@ -120,6 +121,26 @@ export default function ComptabilitePme() {
   const [editTargetId, setEditTargetId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState(emptyForm("recette"))
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+  // Phase 3 (OCR): tracks whether the current form was pre-filled by AI OCR.
+  const [isAiAssisted, setIsAiAssisted] = useState(false)
+  // Phase 3 (OCR): scanner dialog state.
+  const [isOcrDialogOpen, setIsOcrDialogOpen] = useState(false)
+  const [isOcrUploading, setIsOcrUploading] = useState(false)
+  const [isOcrProcessing, setIsOcrProcessing] = useState(false)
+  const [ocrError, setOcrError] = useState<string | null>(null)
+  type OcrResult = {
+    extracted_vendor_name: string | null
+    extracted_date: string | null
+    extracted_amount: number | null
+    suggested_type: 'depense' | 'recette' | null
+    suggested_category: string | null
+    suggested_label: string | null
+    documentId: number
+    documentFileName: string
+  }
+  const [ocrResult, setOcrResult] = useState<OcrResult | null>(null)
+  const ocrFileRef = useRef<HTMLInputElement>(null)
+  const ocrCameraRef = useRef<HTMLInputElement>(null)
 
   const { data: transactions, isLoading } = useListTransactions(
     { clientId },
@@ -162,6 +183,54 @@ export default function ComptabilitePme() {
     },
   })
 
+  // Phase 3 (OCR): separate upload mutation for the scanner dialog so its
+  // state never bleeds into the main form attachment state.
+  const ocrUploadMutation = useUploadClientDocument({
+    mutation: {
+      onSuccess: async (doc) => {
+        setIsOcrUploading(false)
+        setIsOcrProcessing(true)
+        setOcrError(null)
+        try {
+          const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+          const res = await fetch(`${baseUrl}/ocr/process/${doc.id}`, {
+            method: 'POST',
+            credentials: 'include',
+          })
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({})) as { error?: string }
+            setOcrError(err.error ?? 'Impossible de lire ce document.')
+            return
+          }
+          const data = await res.json() as {
+            extracted_vendor_name: string | null
+            extracted_date: string | null
+            extracted_amount: number | null
+            suggested_type: 'depense' | 'recette' | null
+            suggested_category: string | null
+            suggested_label: string | null
+          }
+          setOcrResult({
+            ...data,
+            documentId: doc.id,
+            documentFileName: doc.fileName,
+          })
+        } catch {
+          setOcrError('Impossible de joindre le service de reconnaissance.')
+        } finally {
+          setIsOcrProcessing(false)
+        }
+      },
+      onError: (error) => {
+        setIsOcrUploading(false)
+        setOcrError(
+          (error as { data?: { error?: string } }).data?.error ||
+          'Impossible de télécharger le fichier.',
+        )
+      },
+    },
+  })
+
   const createRegisterMutation = useCreateCashRegister({
     mutation: {
       onSuccess: (register) => {
@@ -187,6 +256,7 @@ export default function ComptabilitePme() {
           description: "Votre cabinet comptable va la vérifier et la comptabiliser.",
         })
         setIsFormOpen(false)
+        setIsAiAssisted(false)
         setForm(emptyForm(activeTab === "en_attente" ? "recette" : activeTab))
         queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey({ clientId }) })
       },
@@ -273,7 +343,58 @@ export default function ComptabilitePme() {
     setAttachmentError(null)
     setUploadedFileName(null)
     setIsUploadingAttachment(false)
+    setIsAiAssisted(false)
     setIsFormOpen(true)
+  }
+
+  /** Read a file and kick off OCR upload → Gemini Vision extraction. */
+  const handleOcrFile = (file: File) => {
+    const accepted = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg']
+    if (!accepted.includes(file.type)) {
+      setOcrError('Seuls les fichiers PDF, PNG ou JPEG sont acceptés.')
+      return
+    }
+    setIsOcrUploading(true)
+    setOcrError(null)
+    setOcrResult(null)
+    const reader = new FileReader()
+    reader.onload = () => {
+      const base64 = (reader.result as string).split(',')[1]
+      ocrUploadMutation.mutate({
+        id: clientId,
+        data: { fileName: file.name, mimeType: file.type, fileData: base64, category: 'Pièces comptables' },
+      })
+    }
+    reader.readAsDataURL(file)
+  }
+
+  /** Pre-fill the entry form with OCR results and flag the entry as AI-assisted. */
+  const confirmOcrResult = () => {
+    if (!ocrResult) return
+    const type = ocrResult.suggested_type ?? 'depense'
+    setForm({
+      ...emptyForm(type),
+      label: ocrResult.suggested_label ?? '',
+      amount: ocrResult.extracted_amount ? String(Math.round(ocrResult.extracted_amount)) : '',
+      date: ocrResult.extracted_date ?? new Date().toISOString().slice(0, 10),
+      category: ocrResult.suggested_category ?? '',
+      documentId: String(ocrResult.documentId),
+    })
+    setUploadedFileName(ocrResult.documentFileName)
+    setAttachmentError(null)
+    setIsAiAssisted(true)
+    setIsOcrDialogOpen(false)
+    setOcrResult(null)
+    setOcrError(null)
+    setIsFormOpen(true)
+  }
+
+  const closeOcrDialog = () => {
+    setIsOcrDialogOpen(false)
+    setOcrResult(null)
+    setOcrError(null)
+    setIsOcrUploading(false)
+    setIsOcrProcessing(false)
   }
 
   /** Read a file as base64 then POST it to the document store. */
@@ -325,6 +446,9 @@ export default function ComptabilitePme() {
           form.paymentType === "cash" && form.paymentMethod === "especes"
             ? parseInt(form.cashRegisterId, 10)
             : null,
+        // Phase 3 (OCR): signals that this entry was pre-filled by Gemini
+        // Vision so the backend sets source = "ocr_entry" instead of "pme_entry".
+        isAiAssisted: isAiAssisted || undefined,
       },
     })
   }
@@ -365,13 +489,32 @@ export default function ComptabilitePme() {
             comptabilise automatiquement.
           </p>
         </div>
-        <Button
-          data-testid="button-new-operation"
-          onClick={() => openForm(activeTab === "en_attente" ? "recette" : activeTab)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Nouvelle opération
-        </Button>
+        <div className="flex gap-2">
+          {/* Phase 3: OCR scanner — open Gemini Vision flow before the
+              regular form so the AI can pre-fill the fields. */}
+          <Button
+            variant="outline"
+            className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30"
+            onClick={() => {
+              setOcrResult(null)
+              setOcrError(null)
+              setIsOcrUploading(false)
+              setIsOcrProcessing(false)
+              setIsOcrDialogOpen(true)
+            }}
+            data-testid="button-scanner-ocr"
+          >
+            <ScanLine className="mr-2 h-4 w-4" />
+            Scanner une pièce
+          </Button>
+          <Button
+            data-testid="button-new-operation"
+            onClick={() => openForm(activeTab === "en_attente" ? "recette" : activeTab)}
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Nouvelle opération
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -1058,6 +1201,162 @@ export default function ComptabilitePme() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ---- Phase 3: OCR Scanner Dialog ---- */}
+      <Dialog open={isOcrDialogOpen} onOpenChange={(open) => { if (!open) closeOcrDialog() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanLine className="h-5 w-5 text-violet-600" />
+              Scanner une pièce comptable
+            </DialogTitle>
+            <DialogDescription>
+              Photographiez ou importez une facture ou un reçu. L'IA extrait les informations et pré-remplit votre opération.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Step 1: Upload buttons (shown when idle and no result yet) */}
+          {!isOcrUploading && !isOcrProcessing && !ocrResult && (
+            <div className="space-y-4 py-2">
+              <div className="flex flex-col items-center gap-3 rounded-md border-2 border-dashed border-muted-foreground/25 p-8 text-center">
+                <ScanLine className="h-10 w-10 text-violet-400" />
+                <p className="text-sm text-muted-foreground">
+                  Prenez en photo ou importez la pièce
+                  <br />
+                  <span className="text-xs opacity-70">PDF, PNG ou JPEG — max 10 Mo</span>
+                </p>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-violet-600 hover:bg-violet-700 text-white"
+                    onClick={() => ocrCameraRef.current?.click()}
+                  >
+                    <Camera className="mr-1.5 h-3.5 w-3.5" />
+                    Prendre en photo
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-violet-300 text-violet-700"
+                    onClick={() => ocrFileRef.current?.click()}
+                  >
+                    <Upload className="mr-1.5 h-3.5 w-3.5" />
+                    Choisir un fichier
+                  </Button>
+                </div>
+              </div>
+              {ocrError && (
+                <div className="flex items-start gap-1.5 text-destructive" role="alert">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p className="text-sm">{ocrError}</p>
+                </div>
+              )}
+              {/* Hidden inputs */}
+              <input
+                ref={ocrCameraRef}
+                type="file"
+                accept="image/*"
+                {...{ capture: "environment" }}
+                className="sr-only"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleOcrFile(f); e.target.value = "" }}
+              />
+              <input
+                ref={ocrFileRef}
+                type="file"
+                accept="application/pdf,image/png,image/jpeg"
+                className="sr-only"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) handleOcrFile(f); e.target.value = "" }}
+              />
+            </div>
+          )}
+
+          {/* Step 2: Processing */}
+          {(isOcrUploading || isOcrProcessing) && (
+            <div className="flex flex-col items-center gap-3 py-10 text-center">
+              <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
+              <p className="text-sm font-medium">
+                {isOcrUploading ? "Envoi du document…" : "Analyse par l'IA en cours…"}
+              </p>
+              <p className="text-xs text-muted-foreground">Cela prend généralement moins de 5 secondes.</p>
+            </div>
+          )}
+
+          {/* Step 3: Results */}
+          {ocrResult && !isOcrProcessing && (
+            <div className="space-y-4 py-2">
+              <div className="rounded-md bg-violet-50 dark:bg-violet-950/30 border border-violet-200 dark:border-violet-800 p-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-violet-600" />
+                  <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">Résultats de l'analyse</span>
+                </div>
+                <dl className="space-y-2 text-sm">
+                  {ocrResult.extracted_vendor_name && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Fournisseur / Client</dt>
+                      <dd className="font-medium text-right">{ocrResult.extracted_vendor_name}</dd>
+                    </div>
+                  )}
+                  {ocrResult.suggested_label && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Libellé suggéré</dt>
+                      <dd className="font-medium text-right max-w-[60%] truncate">{ocrResult.suggested_label}</dd>
+                    </div>
+                  )}
+                  {ocrResult.extracted_date && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Date</dt>
+                      <dd className="font-medium">{ocrResult.extracted_date}</dd>
+                    </div>
+                  )}
+                  {ocrResult.extracted_amount != null && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Montant</dt>
+                      <dd className="font-medium">{ocrResult.extracted_amount.toLocaleString('fr-FR')} FCFA</dd>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <dt className="text-muted-foreground">Type</dt>
+                    <dd className="font-medium">{ocrResult.suggested_type === 'recette' ? 'Recette' : 'Dépense'}</dd>
+                  </div>
+                  {ocrResult.suggested_category && (
+                    <div className="flex justify-between">
+                      <dt className="text-muted-foreground">Catégorie</dt>
+                      <dd className="font-medium">{ocrResult.suggested_category.replace(/_/g, ' ')}</dd>
+                    </div>
+                  )}
+                </dl>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Ces valeurs seront pré-remplies dans le formulaire. Vous pourrez les corriger avant d'envoyer.
+              </p>
+              {ocrError && (
+                <div className="flex items-start gap-1.5 text-destructive" role="alert">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                  <p className="text-sm">{ocrError}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeOcrDialog}>
+              Annuler
+            </Button>
+            {ocrResult && (
+              <Button
+                type="button"
+                className="bg-violet-600 hover:bg-violet-700 text-white"
+                onClick={confirmOcrResult}
+              >
+                <CheckCircle2 className="mr-1.5 h-4 w-4" />
+                Utiliser ces données
+              </Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={settleTarget != null} onOpenChange={(open) => !open && setSettleTarget(null)}>
         <DialogContent>

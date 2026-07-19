@@ -36,7 +36,7 @@ import {
   formatFcfa,
   isVatAccount,
 } from "@/lib/status"
-import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert, GitMerge, Trash2, Plus } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert, GitMerge, Trash2, Plus, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -603,6 +603,16 @@ export default function ComptabiliteCabinet() {
                     {t.source === "settlement" && (
                       <Badge variant="outline" className="border-transparent bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
                         Règlement de facture
+                      </Badge>
+                    )}
+                    {/* Phase 3: OCR-sourced entries get a violet "Scan IA" badge;
+                        regular PME declarations get a neutral "Manuel" badge
+                        so the accountant knows immediately whether to expect
+                        AI pre-fill artefacts that might need review. */}
+                    {t.source === "ocr_entry" && (
+                      <Badge variant="outline" className="border-transparent bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300">
+                        <Sparkles className="mr-1 h-3 w-3" />
+                        Scan IA
                       </Badge>
                     )}
                     {/* Module M8: explicit warning tooltip per detected

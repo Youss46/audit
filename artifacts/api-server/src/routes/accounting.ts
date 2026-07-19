@@ -299,7 +299,9 @@ export async function createTransactionEntry(
     }
   }
 
-  const source = isPortalRole(req.user!.role) ? "pme_entry" : "manual_cabinet";
+  const source = isPortalRole(req.user!.role)
+    ? (body.isAiAssisted ? "ocr_entry" : "pme_entry")
+    : "manual_cabinet";
 
   // Module M8: run the rule-based anomaly/duplicate detector before this
   // entry reaches the M3 review queue, so the accountant sees the warning

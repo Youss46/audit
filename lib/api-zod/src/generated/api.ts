@@ -1088,7 +1088,7 @@ export const ListTransactionsResponseItem = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "source": zod.enum(['pme_entry', 'ocr_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),
@@ -1138,7 +1138,8 @@ export const CreateTransactionBody = zod.object({
   "dueDate": zod.coerce.date().nullish().describe('Required when paymentType is \"credit\" (\"Date d\'échéance\"); ignored for \"cash\".'),
   "documentId": zod.number().nullish(),
   "cashRegisterId": zod.number().nullish().describe('Required when paymentMethod is \"especes\" (module P5 Caisse Terrain).'),
-  "stationId": zod.number().nullish().describe('Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet\/PME-owner staff picking a station manually.')
+  "stationId": zod.number().nullish().describe('Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet\/PME-owner staff picking a station manually.'),
+  "isAiAssisted": zod.boolean().optional().describe('Phase 3 OCR: when true and caller is a portal role, source is set to \"ocr_entry\" instead of \"pme_entry\".')
 })
 
 export const CreateTransactionResponse = zod.object({
@@ -1156,7 +1157,7 @@ export const CreateTransactionResponse = zod.object({
   "paymentMethod": zod.union([zod.enum(['especes', 'mobile_money', 'cheque', 'virement']),zod.null()]).optional(),
   "dueDate": zod.coerce.date().nullish(),
   "status": zod.enum(['a_valider', 'valide', 'anomalie']),
-  "source": zod.enum(['pme_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
+  "source": zod.enum(['pme_entry', 'ocr_entry', 'manual_cabinet', 'settlement', 'caisse_closure', 'closing_result', 'a_nouveaux', 'vat_liquidation', 'depreciation_closing']),
   "documentId": zod.number().nullish(),
   "documentFileName": zod.string().nullish(),
   "clarificationNote": zod.string().nullish(),

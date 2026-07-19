@@ -37,6 +37,7 @@ import purchasesRouter from "./purchases";
 import documentFoldersRouter from "./document-folders";
 import stationsRouter from "./stations";
 import accountsRouter from "./accounts";
+import ocrRouter from "./ocr";
 
 const router: IRouter = Router();
 
@@ -78,5 +79,6 @@ router.use(mobileMoneyRouter);
 router.use(purchasesRouter);
 router.use(documentFoldersRouter);
 router.use(accountsRouter);
+router.use(ocrRouter);
 
 export default router;

@@ -555,6 +555,7 @@ export type TransactionSource = typeof TransactionSource[keyof typeof Transactio
 
 export const TransactionSource = {
   pme_entry: 'pme_entry',
+  ocr_entry: 'ocr_entry',
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
   caisse_closure: 'caisse_closure',
@@ -707,6 +708,8 @@ export interface TransactionInput {
      * @nullable
      */
   stationId?: number | null;
+  /** Phase 3 OCR: when true and caller is a portal role, source is set to "ocr_entry" instead of "pme_entry". */
+  isAiAssisted?: boolean;
 }
 
 export interface UpdateTransactionInput {

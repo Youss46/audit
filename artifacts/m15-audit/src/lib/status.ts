@@ -266,6 +266,7 @@ export function getTransactionSourceLabel(source: TransactionSource | string | n
     case 'settlement': return 'Règlement de facture'
     case 'manual_cabinet': return 'Saisie cabinet'
     case 'pme_entry': return 'Déclaration client'
+    case 'ocr_entry': return 'Scan IA'
     default: return '—'
   }
 }

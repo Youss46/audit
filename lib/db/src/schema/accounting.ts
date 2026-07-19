@@ -75,6 +75,7 @@ export type TransactionStatus = (typeof TRANSACTION_STATUSES)[number];
 // other OD sources above.
 export const TRANSACTION_SOURCES = [
   "pme_entry",
+  "ocr_entry",
   "manual_cabinet",
   "settlement",
   "caisse_closure",

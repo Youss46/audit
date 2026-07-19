@@ -15,7 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime } from "@/lib/utils"
 import { getSystemDescription } from "@/lib/visa-engine"
-import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet, LogOut } from "lucide-react"
+import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet, LogOut, ScanLine } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -328,6 +328,33 @@ export default function ClientPortal() {
 
       {user?.roleCode !== 'POMPISTE' && (
         <>
+          {/* Phase 3: Scan & Go — OCR shortcut for client_pme owner only.
+              Not shown to client_staff (field agents use different flows). */}
+          {user?.role === 'client_pme' && (
+            <Card className="shadow-sm border-violet-200 dark:border-violet-800 bg-violet-50/50 dark:bg-violet-950/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-violet-800 dark:text-violet-300">
+                  <ScanLine className="h-5 w-5" />
+                  Scanner une pièce comptable
+                </CardTitle>
+                <CardDescription>
+                  Photographiez une facture ou un reçu — l'IA lit le document et pré-remplit votre opération.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button asChild size="lg" className="w-full justify-between bg-violet-600 hover:bg-violet-700 text-white h-auto py-4">
+                  <Link href="/mes-operations">
+                    <div className="text-left">
+                      <div className="font-semibold">Scan &amp; Go</div>
+                      <div className="text-xs opacity-80 font-normal mt-0.5">Photographier → Vérifier → Envoyer</div>
+                    </div>
+                    <ArrowRight className="h-4 w-4 shrink-0 ml-2" />
+                  </Link>
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Déposer un document</CardTitle>
