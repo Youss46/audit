@@ -5,7 +5,9 @@ attached_assets/
 
 # compiled output
 dist
-public
+/public
+# Un-ignore artifact static asset directories
+!artifacts/*/public/
 tmp
 out-tsc
 *.tsbuildinfo
