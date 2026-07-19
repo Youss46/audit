@@ -13,7 +13,7 @@ import {
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth } from "@/hooks/use-auth"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import {
   Lock,
@@ -92,7 +92,7 @@ function formatFcfa(amount: number) {
 async function downloadVatAnnexExcel(clientId: number, period: string): Promise<void> {
   const token = getToken()
   const params = new URLSearchParams({ clientId: String(clientId), period })
-  const response = await fetch(`/api/tax/exports/vat-annex?${params}`, {
+  const response = await fetch(`${getApiBase()}/api/tax/exports/vat-annex?${params}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {

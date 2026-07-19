@@ -28,7 +28,7 @@ import {
   useDeleteMissionExpense,
 } from "@workspace/api-client-react";
 import type { MissionExpense } from "@workspace/api-client-react";
-import { getToken } from "@/lib/auth";
+import { getToken, getApiBase } from "@/lib/auth";
 import type {
   TimesheetEntry,
   CabinetUserRate,
@@ -808,7 +808,7 @@ function ProfitabilityDashboard() {
     setExportingPdf(true);
     try {
       const token = getToken();
-      const resp = await fetch(`/api/cabinet-analytics/profitability/${year}/${month}/export-pdf`, {
+      const resp = await fetch(`${getApiBase()}/api/cabinet-analytics/profitability/${year}/${month}/export-pdf`, {
         headers: token ? { Authorization: `Bearer ${token}` } : {},
       });
       if (!resp.ok) throw new Error("Erreur lors de la génération du PDF");

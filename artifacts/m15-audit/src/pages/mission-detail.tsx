@@ -46,7 +46,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 
 // ---------------------------------------------------------------------------
 // Types
@@ -308,7 +308,7 @@ export default function MissionDetail() {
 
     try {
       const token    = getToken()
-      const response = await fetch(`/api/missions/${missionId}/analyze`, {
+      const response = await fetch(`${getApiBase()}/api/missions/${missionId}/analyze`, {
         method:  "POST",
         headers: {
           "Content-Type": "application/json",

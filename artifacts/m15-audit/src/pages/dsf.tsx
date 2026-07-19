@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useRoute, Link } from "wouter"
 import { useGetClient, getGetClientQueryKey, useGetDsf, getGetDsfQueryKey } from "@workspace/api-client-react"
 import type { DsfBilanActifLine, DsfBilanPassifLine, DsfCompteResultatLine, DsfTftLine } from "@workspace/api-client-react"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import {
   ChevronLeft,
   Loader2,
@@ -51,7 +51,7 @@ function formatFcfa(amount: number) {
 async function downloadDsfExcel(clientId: number, year: number): Promise<void> {
   const token = getToken()
   const params = new URLSearchParams({ clientId: String(clientId), year: String(year) })
-  const response = await fetch(`/api/tax/exports/dsf?${params}`, {
+  const response = await fetch(`${getApiBase()}/api/tax/exports/dsf?${params}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {

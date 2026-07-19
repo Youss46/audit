@@ -8,7 +8,7 @@ import {
   useSetValuation,
 } from "@workspace/api-client-react"
 import type { RiskCategory } from "@workspace/api-client-react"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import {
   ChevronLeft,
   Loader2,
@@ -107,7 +107,7 @@ function formatRatio(value: number | null | undefined) {
 async function downloadScoringPdf(clientId: number, year: number): Promise<void> {
   const token = getToken()
   const params = new URLSearchParams({ clientId: String(clientId), year: String(year) })
-  const response = await fetch(`/api/analytics/exports/scoring?${params}`, {
+  const response = await fetch(`${getApiBase()}/api/analytics/exports/scoring?${params}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!response.ok) {

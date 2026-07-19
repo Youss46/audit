@@ -10,7 +10,7 @@ import {
 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { formatFcfa } from "@/lib/status"
-import { getToken } from "@/lib/auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import {
   FileText,
   Sheet,
@@ -86,7 +86,7 @@ async function downloadExport(
     format,
   })
 
-  const response = await fetch(`/api/reports/exports/${endpoint}?${params}`, {
+  const response = await fetch(`${getApiBase()}/api/reports/exports/${endpoint}?${params}`, {
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
 
