@@ -16,7 +16,7 @@ import { financialAssetsLoansTable } from "./financial-assets-loans";
 import { fiscalYearClosingsTable } from "./closing";
 import { employeesTable, payslipsTable } from "./payroll";
 import { vatDeclarationsTable } from "./vat";
-import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable } from "./cabinet-ops";
+import { cabinetUserRatesTable, clientContractsTable, timesheetEntriesTable, missionExpensesTable } from "./cabinet-ops";
 import { analyticalAxesTable, analyticalCodesTable, analyticalAllocationsTable } from "./analytical";
 import { documentTemplatesTable, generatedDocumentsTable } from "./report-documents";
 import { collaborationThreadsTable, contextualCommentsTable, notificationsTable } from "./collaboration";
@@ -308,6 +308,12 @@ export const timesheetEntriesRelations = relations(timesheetEntriesTable, ({ one
     fields: [timesheetEntriesTable.clientId],
     references: [clientsTable.id],
   }),
+}));
+
+export const missionExpensesRelations = relations(missionExpensesTable, ({ one }) => ({
+  firm:   one(firmsTable,   { fields: [missionExpensesTable.firmId],   references: [firmsTable.id] }),
+  client: one(clientsTable, { fields: [missionExpensesTable.clientId], references: [clientsTable.id] }),
+  user:   one(usersTable,   { fields: [missionExpensesTable.userId],   references: [usersTable.id] }),
 }));
 
 // Module M23 (Analytical Accounting — Comptabilité Analytique).

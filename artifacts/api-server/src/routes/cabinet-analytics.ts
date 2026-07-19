@@ -1,15 +1,19 @@
 import { Router, type IRouter } from "express";
 import { and, eq, gte, isNull, lte, or } from "drizzle-orm";
+import { z } from "zod/v4";
 import {
   db,
   usersTable,
   clientsTable,
+  firmsTable,
   cabinetUserRatesTable,
   clientContractsTable,
   timesheetEntriesTable,
+  missionExpensesTable,
   TASK_TYPES,
   type TaskType,
 } from "@workspace/db";
+import { generateProfitabilityPdf } from "../lib/export-engine";
 import {
   UpsertUserRateParams,
   UpsertUserRateBody,
@@ -542,6 +546,191 @@ router.get("/cabinet-analytics/profitability/:year/:month", requireRole("expert_
     rows,
     taskBreakdown,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Mission Expenses (Frais Directs / Débours) — M22 extension
+// ---------------------------------------------------------------------------
+
+const ExpenseBodySchema = z.object({
+  clientId:  z.number().int().positive(),
+  year:      z.number().int().positive(),
+  month:     z.number().int().min(1).max(12),
+  label:     z.string().min(1),
+  amount:    z.number().int().positive(),
+  category:  z.enum(["DEPLACEMENT", "HEBERGEMENT", "RESTAURATION", "AUTRE"]),
+});
+
+router.get("/cabinet-analytics/expenses", requireRole("expert_comptable", "collaborateur", "stagiaire"), async (req, res) => {
+  const { year, month, clientId } = z.object({
+    year:     z.coerce.number().int(),
+    month:    z.coerce.number().int(),
+    clientId: z.coerce.number().int().positive(),
+  }).parse(req.query);
+
+  const expenses = await db.query.missionExpensesTable.findMany({
+    where: and(
+      eq(missionExpensesTable.firmId, req.user!.firmId),
+      eq(missionExpensesTable.clientId, clientId),
+      eq(missionExpensesTable.year, year),
+      eq(missionExpensesTable.month, month),
+    ),
+    orderBy: (t, { desc }) => [desc(t.createdAt)],
+    with: { user: true },
+  });
+
+  res.json(expenses.map((e) => ({
+    id: e.id, firmId: e.firmId, clientId: e.clientId,
+    userId: e.userId, year: e.year, month: e.month,
+    label: e.label, amount: e.amount, category: e.category,
+    addedByName: (e as any).user?.fullName ?? null,
+    createdAt: e.createdAt.toISOString(),
+  })));
+});
+
+router.post("/cabinet-analytics/expenses", requireRole("expert_comptable", "collaborateur"), async (req, res) => {
+  const body = ExpenseBodySchema.parse(req.body);
+
+  const client = await db.query.clientsTable.findFirst({
+    where: and(eq(clientsTable.id, body.clientId), eq(clientsTable.firmId, req.user!.firmId)),
+  });
+  if (!client) { res.status(404).json({ error: "Client introuvable." }); return; }
+
+  const [expense] = await db
+    .insert(missionExpensesTable)
+    .values({
+      firmId: req.user!.firmId,
+      clientId: body.clientId,
+      userId: req.user!.id,
+      year: body.year,
+      month: body.month,
+      label: body.label,
+      amount: body.amount,
+      category: body.category,
+    })
+    .returning();
+
+  res.status(201).json({
+    id: expense.id, firmId: expense.firmId, clientId: expense.clientId,
+    userId: expense.userId, year: expense.year, month: expense.month,
+    label: expense.label, amount: expense.amount, category: expense.category,
+    addedByName: req.user!.fullName,
+    createdAt: expense.createdAt.toISOString(),
+  });
+});
+
+router.delete("/cabinet-analytics/expenses/:id", requireRole("expert_comptable", "collaborateur"), async (req, res) => {
+  const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
+
+  const expense = await db.query.missionExpensesTable.findFirst({
+    where: and(eq(missionExpensesTable.id, id), eq(missionExpensesTable.firmId, req.user!.firmId)),
+  });
+  if (!expense) { res.status(404).json({ error: "Frais introuvable." }); return; }
+
+  await db.delete(missionExpensesTable).where(eq(missionExpensesTable.id, id));
+  res.json({ ok: true, id });
+});
+
+// ---------------------------------------------------------------------------
+// GET /cabinet-analytics/profitability/:year/:month/export-pdf
+// ---------------------------------------------------------------------------
+
+router.get("/cabinet-analytics/profitability/:year/:month/export-pdf", requireRole("expert_comptable"), async (req, res) => {
+  const { year, month } = z.object({
+    year: z.coerce.number().int(),
+    month: z.coerce.number().int().min(1).max(12),
+  }).parse(req.params);
+
+  // Load data (same logic as the main profitability route)
+  const monthStart = new Date(year, month - 1, 1);
+  const monthEnd = new Date(year, month, 0, 23, 59, 59, 999);
+
+  const entries = await db.query.timesheetEntriesTable.findMany({
+    where: and(
+      eq(timesheetEntriesTable.firmId, req.user!.firmId),
+      gte(timesheetEntriesTable.date, monthStart),
+      lte(timesheetEntriesTable.date, monthEnd),
+    ),
+    with: { client: true },
+  });
+
+  const firm = await db.query.firmsTable.findFirst({ where: eq(firmsTable.id, req.user!.firmId) });
+  const firmName: string = firm?.name ?? "Cabinet";
+
+  const rates = await db.query.cabinetUserRatesTable.findMany({
+    where: eq(cabinetUserRatesTable.firmId, req.user!.firmId),
+  });
+  const rateByUserId = new Map(rates.map((r) => [r.userId, r]));
+
+  const contracts = await db.query.clientContractsTable.findMany({
+    where: and(
+      eq(clientContractsTable.firmId, req.user!.firmId),
+      lte(clientContractsTable.startDate, monthEnd),
+      or(isNull(clientContractsTable.endDate), gte(clientContractsTable.endDate, monthStart)),
+    ),
+  });
+  const contractByClientId = new Map<number, typeof clientContractsTable.$inferSelect>();
+  for (const c of contracts) {
+    const existing = contractByClientId.get(c.clientId);
+    if (!existing || c.startDate > existing.startDate) contractByClientId.set(c.clientId, c);
+  }
+
+  // Load expenses for this month
+  const clientIds = [...new Set(entries.map((e) => e.clientId))];
+  const allExpenses = clientIds.length > 0
+    ? await db.query.missionExpensesTable.findMany({
+        where: and(
+          eq(missionExpensesTable.firmId, req.user!.firmId),
+          eq(missionExpensesTable.year, year),
+          eq(missionExpensesTable.month, month),
+        ),
+      })
+    : [];
+  const expensesByClient = new Map<number, number>();
+  for (const exp of allExpenses) {
+    expensesByClient.set(exp.clientId, (expensesByClient.get(exp.clientId) ?? 0) + exp.amount);
+  }
+
+  const byClient = new Map<number, { clientName: string; totalHours: number; internalCost: number }>();
+  for (const entry of entries) {
+    const rate = rateByUserId.get(entry.userId);
+    const agg = byClient.get(entry.clientId) ?? { clientName: entry.client?.name ?? "—", totalHours: 0, internalCost: 0 };
+    agg.totalHours += entry.durationHours;
+    agg.internalCost += entry.durationHours * (rate?.hourlyCostRate ?? 0);
+    byClient.set(entry.clientId, agg);
+  }
+
+  const rows = Array.from(byClient.entries()).map(([clientId, agg]) => {
+    const monthlyFlatFee = contractByClientId.get(clientId)?.monthlyFlatFee ?? 0;
+    const directExpenses = expensesByClient.get(clientId) ?? 0;
+    const netMargin = monthlyFlatFee - agg.internalCost - directExpenses;
+    const marginPct = monthlyFlatFee > 0 ? (netMargin / monthlyFlatFee) * 100 : null;
+    return {
+      clientName: agg.clientName,
+      totalHours: Math.round(agg.totalHours * 100) / 100,
+      monthlyFlatFee,
+      internalCost: Math.round(agg.internalCost),
+      directExpenses,
+      netMargin: Math.round(netMargin),
+      marginPct: marginPct !== null ? Math.round(marginPct * 10) / 10 : null,
+    };
+  }).sort((a, b) => (a.marginPct ?? 0) - (b.marginPct ?? 0));
+
+  const totalHours = rows.reduce((s, r) => s + r.totalHours, 0);
+  const totalFees = rows.reduce((s, r) => s + r.monthlyFlatFee, 0);
+  const totalCost = rows.reduce((s, r) => s + r.internalCost, 0);
+  const grossMargin = totalFees - totalCost;
+  const grossMarginPct = totalFees > 0 ? (grossMargin / totalFees) * 100 : null;
+
+  const pdfBuffer = await generateProfitabilityPdf({
+    firmName, year, month, rows,
+    globalKpis: { totalHours, totalInternalCost: totalCost, totalFees, grossMargin, grossMarginPct: grossMarginPct !== null ? Math.round(grossMarginPct * 10) / 10 : null },
+  });
+
+  const MONTH_NAMES = ["Janvier","Fevrier","Mars","Avril","Mai","Juin","Juillet","Aout","Septembre","Octobre","Novembre","Decembre"];
+  res.setHeader("Content-Type", "application/pdf");
+  res.setHeader("Content-Disposition", `attachment; filename="Rentabilite_${MONTH_NAMES[month - 1]}_${year}.pdf"`);
+  res.send(pdfBuffer);
 });
 
 export default router;

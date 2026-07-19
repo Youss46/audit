@@ -1,5 +1,6 @@
 import { Router, type IRouter } from "express";
 import { and, eq, sql } from "drizzle-orm";
+import { z } from "zod/v4";
 import {
   db,
   clientsTable,
@@ -1032,6 +1033,100 @@ router.patch(
         }),
       ),
     );
+  },
+);
+
+// ---------------------------------------------------------------------------
+// PATCH /transactions/:id — edit a pending/anomalie transaction's mutable fields
+// Only allowed on status "a_valider" or "anomalie" (no journal entries yet).
+// ---------------------------------------------------------------------------
+
+router.patch(
+  "/transactions/:id",
+  requirePermission("operations.create"),
+  async (req, res) => {
+    const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
+    const body = z.object({
+      label:         z.string().min(1).optional(),
+      amount:        z.number().int().positive().optional(),
+      date:          z.string().optional(),
+      category:      z.string().nullable().optional(),
+      paymentType:   z.enum(["cash", "credit"]).optional(),
+      paymentMethod: z.string().nullable().optional(),
+      dueDate:       z.string().nullable().optional(),
+    }).parse(req.body);
+
+    const tx = await db.query.transactionsTable.findFirst({
+      where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
+    });
+    if (!tx) { res.status(404).json({ error: "Transaction introuvable." }); return; }
+    if (tx.status !== "a_valider" && tx.status !== "anomalie") {
+      res.status(400).json({ error: "Seules les transactions en attente ou en anomalie peuvent être modifiées." });
+      return;
+    }
+    if (await isPeriodLocked(req.user!.firmId, tx.clientId, tx.date.getFullYear())) {
+      res.status(403).json({ error: `L'exercice ${tx.date.getFullYear()} est clôturé.` });
+      return;
+    }
+
+    const patch: Record<string, unknown> = {};
+    if (body.label         !== undefined) patch.label         = body.label;
+    if (body.amount        !== undefined) patch.amount        = body.amount;
+    if (body.date          !== undefined) patch.date          = new Date(body.date);
+    if (body.category      !== undefined) patch.category      = body.category;
+    if (body.paymentType   !== undefined) patch.paymentType   = body.paymentType;
+    if (body.paymentMethod !== undefined) patch.paymentMethod = body.paymentMethod;
+    if (body.dueDate       !== undefined) patch.dueDate       = body.dueDate ? new Date(body.dueDate) : null;
+
+    const [updated] = await db.update(transactionsTable).set(patch).where(eq(transactionsTable.id, id)).returning();
+
+    await logAudit({
+      firmId: req.user!.firmId, userId: req.user!.id, userName: req.user!.fullName,
+      userRole: req.user!.role, action: AuditAction.TRANSACTION_UPDATE,
+      entityType: "transaction", entityId: id,
+      details: `Transaction "${updated.label}" modifiée (${updated.amount.toLocaleString("fr")} FCFA)`,
+      ipAddress: req.ip,
+    });
+
+    res.json(serializeTransaction(updated));
+  },
+);
+
+// ---------------------------------------------------------------------------
+// DELETE /transactions/:id — delete a pending/anomalie transaction
+// Only allowed on status "a_valider" or "anomalie" (no validated entries).
+// ---------------------------------------------------------------------------
+
+router.delete(
+  "/transactions/:id",
+  requirePermission("operations.create"),
+  async (req, res) => {
+    const { id } = z.object({ id: z.coerce.number().int().positive() }).parse(req.params);
+
+    const tx = await db.query.transactionsTable.findFirst({
+      where: and(eq(transactionsTable.id, id), eq(transactionsTable.firmId, req.user!.firmId)),
+    });
+    if (!tx) { res.status(404).json({ error: "Transaction introuvable." }); return; }
+    if (tx.status !== "a_valider" && tx.status !== "anomalie") {
+      res.status(400).json({ error: "Seules les transactions en attente ou en anomalie peuvent être supprimées." });
+      return;
+    }
+    if (await isPeriodLocked(req.user!.firmId, tx.clientId, tx.date.getFullYear())) {
+      res.status(403).json({ error: `L'exercice ${tx.date.getFullYear()} est clôturé.` });
+      return;
+    }
+
+    await db.delete(transactionsTable).where(eq(transactionsTable.id, id));
+
+    await logAudit({
+      firmId: req.user!.firmId, userId: req.user!.id, userName: req.user!.fullName,
+      userRole: req.user!.role, action: AuditAction.TRANSACTION_DELETE,
+      entityType: "transaction", entityId: id,
+      details: `Transaction "${tx.label}" (${tx.amount.toLocaleString("fr")} FCFA, statut ${tx.status}) supprimée`,
+      ipAddress: req.ip,
+    });
+
+    res.json({ ok: true, id });
   },
 );
 

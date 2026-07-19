@@ -22,7 +22,13 @@ import {
   useDeleteClientContract,
   useListUserRates,
   useUpsertUserRate,
+  useListMissionExpenses,
+  getListMissionExpensesQueryKey,
+  useCreateMissionExpense,
+  useDeleteMissionExpense,
 } from "@workspace/api-client-react";
+import type { MissionExpense } from "@workspace/api-client-react";
+import { getToken } from "@/lib/auth";
 import type {
   TimesheetEntry,
   CabinetUserRate,
@@ -88,6 +94,8 @@ import {
   Pencil,
   Trash2,
   Settings,
+  Download,
+  Receipt,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
@@ -741,9 +749,36 @@ function ProfitabilityDashboard() {
   const [month, setMonth] = React.useState(now.getMonth() + 1);
   const [ratesOpen, setRatesOpen] = React.useState(false);
   const [contractsOpen, setContractsOpen] = React.useState(false);
+  const [exportingPdf, setExportingPdf] = React.useState(false);
+  // Expense management dialog
+  const [expenseDialog, setExpenseDialog] = React.useState<{ clientId: number; clientName: string } | null>(null);
+  const [expenseForm, setExpenseForm] = React.useState({ label: "", amount: "", category: "AUTRE" as MissionExpense["category"] });
+  const [expenseError, setExpenseError] = React.useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useGetProfitabilityReport(year, month, {
     query: { queryKey: ["getProfitabilityReport", year, month] },
+  });
+
+  // Expense queries/mutations (only when dialog is open)
+  const { data: expenses = [], isLoading: expensesLoading } = useListMissionExpenses(
+    { clientId: expenseDialog?.clientId ?? 0, year, month },
+    { query: { enabled: !!expenseDialog, queryKey: getListMissionExpensesQueryKey({ clientId: expenseDialog?.clientId ?? 0, year, month }) } },
+  );
+  const createExpense = useCreateMissionExpense({
+    mutation: {
+      onSuccess: () => {
+        setExpenseForm({ label: "", amount: "", category: "AUTRE" });
+        setExpenseError(null);
+        queryClient.invalidateQueries({ queryKey: getListMissionExpensesQueryKey({ clientId: expenseDialog?.clientId ?? 0, year, month }) });
+      },
+      onError: (e: unknown) => setExpenseError((e as { data?: { error?: string } }).data?.error ?? "Erreur"),
+    },
+  });
+  const deleteExpense = useDeleteMissionExpense({
+    mutation: {
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: getListMissionExpensesQueryKey({ clientId: expenseDialog?.clientId ?? 0, year, month }) }),
+    },
   });
 
   function prevMonth() {
@@ -753,6 +788,42 @@ function ProfitabilityDashboard() {
   function nextMonth() {
     if (month === 12) { setMonth(1); setYear(y => y + 1); }
     else setMonth(m => m + 1);
+  }
+
+  function handleExportCsv() {
+    if (!data) return;
+    const header = ["Client", "Forfait mensuel (FCFA)", "Heures", "Coût collaborateurs (FCFA)", "Marge nette (FCFA)", "Rentabilité (%)"];
+    const rows = data.rows.map((r) => [r.clientName, r.monthlyFlatFee, r.totalHours.toFixed(1), r.internalCost, r.netMargin, r.marginPct?.toFixed(1) ?? ""]);
+    const csv = [header, ...rows].map((r) => r.map((c) => `"${c}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Rentabilite_${MONTH_NAMES[month - 1]}_${year}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleExportPdf() {
+    setExportingPdf(true);
+    try {
+      const token = getToken();
+      const resp = await fetch(`/api/cabinet-analytics/profitability/${year}/${month}/export-pdf`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!resp.ok) throw new Error("Erreur lors de la génération du PDF");
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Rentabilite_${MONTH_NAMES[month - 1]}_${year}.pdf`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently ignore — the user sees no PDF
+    } finally {
+      setExportingPdf(false);
+    }
   }
 
   const kpis = data?.globalKpis;
@@ -772,7 +843,13 @@ function ProfitabilityDashboard() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
+          <Button variant="outline" size="sm" onClick={handleExportCsv} disabled={!data || data.rows.length === 0}>
+            <Download className="h-4 w-4 mr-1" /> CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleExportPdf} disabled={exportingPdf || !data || data.rows.length === 0}>
+            {exportingPdf ? <span className="animate-spin mr-1">⟳</span> : <Download className="h-4 w-4 mr-1" />} PDF
+          </Button>
           <Button variant="outline" size="sm" onClick={() => setRatesOpen(true)}>
             <Settings className="h-4 w-4 mr-1" /> Tarifs collaborateurs
           </Button>
@@ -882,6 +959,7 @@ function ProfitabilityDashboard() {
                       <TableHead className="text-right">Coût Collaborateurs</TableHead>
                       <TableHead className="text-right">Marge Nette</TableHead>
                       <TableHead className="text-right">Rentabilité</TableHead>
+                      <TableHead className="text-right">Débours</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -930,6 +1008,17 @@ function ProfitabilityDashboard() {
                           ) : (
                             <span className="text-muted-foreground text-xs">—</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground"
+                            onClick={() => setExpenseDialog({ clientId: row.clientId, clientName: row.clientName })}
+                          >
+                            <Receipt className="h-3.5 w-3.5" />
+                            Gérer
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}

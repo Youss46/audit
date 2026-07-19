@@ -10,6 +10,8 @@ import {
   getGetFinancialItemScheduleQueryKey,
   useGenerateFinanceJournalEntries,
   getListTransactionsQueryKey,
+  useRenegotiateFinancialItem,
+  usePrepayFinancialItem,
 } from "@workspace/api-client-react"
 import type { FinancialItemType } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
@@ -173,6 +175,16 @@ export default function Financements() {
 
   const [scheduleItemId, setScheduleItemId] = useState<number | null>(null)
   const [showSchedule, setShowSchedule]     = useState(false)
+  // Renegotiation dialog
+  const [showRenegotiateModal, setShowRenegotiateModal] = useState(false)
+  const [renegotiateItemId, setRenegotiateItemId] = useState<number | null>(null)
+  const [renegotiateForm, setRenegotiateForm] = useState({ newAnnualInterestRate: "", newTermMonths: "", renegotiationDate: "", note: "" })
+  const [renegotiateError, setRenegotiateError] = useState<string | null>(null)
+  // Prepayment dialog
+  const [showPrepayModal, setShowPrepayModal] = useState(false)
+  const [prepayItemId, setPrepayItemId] = useState<number | null>(null)
+  const [prepayForm, setPrepayForm] = useState({ amount: "", date: "", note: "" })
+  const [prepayError, setPrepayError] = useState<string | null>(null)
 
   // -------------------------------------------------------------------------
   // Queries
@@ -227,6 +239,40 @@ export default function Financements() {
         invalidateItems()
       },
       onError: () => toast({ title: "Erreur lors de la mise à jour", variant: "destructive" }),
+    },
+  })
+
+  const renegotiateMutation = useRenegotiateFinancialItem({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Renégociation effectuée", description: "Le tableau d'amortissement a été recalculé avec les nouveaux paramètres." })
+        setShowRenegotiateModal(false)
+        setRenegotiateItemId(null)
+        setRenegotiateForm({ newAnnualInterestRate: "", newTermMonths: "", renegotiationDate: "", note: "" })
+        setRenegotiateError(null)
+        invalidateItems()
+      },
+      onError: (err: unknown) => {
+        const e = err as { data?: { error?: string } }
+        setRenegotiateError(e.data?.error || "Erreur lors de la renégociation.")
+      },
+    },
+  })
+
+  const prepayMutation = usePrepayFinancialItem({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Remboursement anticipé enregistré", description: "Le capital résiduel a été recalculé." })
+        setShowPrepayModal(false)
+        setPrepayItemId(null)
+        setPrepayForm({ amount: "", date: "", note: "" })
+        setPrepayError(null)
+        invalidateItems()
+      },
+      onError: (err: unknown) => {
+        const e = err as { data?: { error?: string } }
+        setPrepayError(e.data?.error || "Erreur lors du remboursement anticipé.")
+      },
     },
   })
 
@@ -616,37 +662,67 @@ export default function Financements() {
                               onClick={(e) => e.stopPropagation()}
                             >
                               {item.status === "ACTIF" && (
-                                <AlertDialog>
-                                  <AlertDialogTrigger asChild>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="text-muted-foreground hover:text-destructive"
-                                      disabled={updateMutation.isPending}
-                                    >
-                                      Solder
-                                    </Button>
-                                  </AlertDialogTrigger>
-                                  <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                      <AlertDialogTitle>Solder «&nbsp;{item.label}&nbsp;»&nbsp;?</AlertDialogTitle>
-                                      <AlertDialogDescription>
-                                        L'élément sera marqué «&nbsp;Soldé&nbsp;». Il reste visible dans
-                                        le registre mais n'apparaîtra plus dans la génération future des
-                                        échéances.
-                                      </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                      <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                      <AlertDialogAction
-                                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                        onClick={() => handleSolde(item.id)}
+                                <div className="flex justify-end gap-1 flex-wrap">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-7 px-2 text-muted-foreground hover:text-primary"
+                                    disabled={updateMutation.isPending}
+                                    onClick={() => {
+                                      setRenegotiateItemId(item.id)
+                                      setRenegotiateForm({ newAnnualInterestRate: String(item.annualInterestRate), newTermMonths: String(item.termMonths), renegotiationDate: new Date().toISOString().slice(0, 10), note: "" })
+                                      setRenegotiateError(null)
+                                      setShowRenegotiateModal(true)
+                                    }}
+                                  >
+                                    Renégocier
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-xs h-7 px-2 text-muted-foreground hover:text-primary"
+                                    disabled={updateMutation.isPending}
+                                    onClick={() => {
+                                      setPrepayItemId(item.id)
+                                      setPrepayForm({ amount: "", date: new Date().toISOString().slice(0, 10), note: "" })
+                                      setPrepayError(null)
+                                      setShowPrepayModal(true)
+                                    }}
+                                  >
+                                    Prépayer
+                                  </Button>
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="text-xs h-7 px-2 text-muted-foreground hover:text-destructive"
+                                        disabled={updateMutation.isPending}
                                       >
-                                        Confirmer
-                                      </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                  </AlertDialogContent>
-                                </AlertDialog>
+                                        Solder
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Solder «&nbsp;{item.label}&nbsp;»&nbsp;?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          L'élément sera marqué «&nbsp;Soldé&nbsp;». Il reste visible dans
+                                          le registre mais n'apparaîtra plus dans la génération future des
+                                          échéances.
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                          onClick={() => handleSolde(item.id)}
+                                        >
+                                          Confirmer
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                </div>
                               )}
                             </TableCell>
                           </TableRow>
@@ -874,6 +950,103 @@ export default function Financements() {
       {/* ------------------------------------------------------------------ */}
       {/* Amortization Schedule Drawer                                        */}
       {/* ------------------------------------------------------------------ */}
+      {/* ---- Renegotiation Dialog ---- */}
+      <Dialog open={showRenegotiateModal} onOpenChange={(v) => { setShowRenegotiateModal(v); if (!v) setRenegotiateError(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Renégociation — {items?.find((i) => i.id === renegotiateItemId)?.label}</DialogTitle>
+            <DialogDescription>
+              Saisissez les nouveaux paramètres. Le capital restant dû actuel sera maintenu et le tableau d'amortissement sera recalculé à partir de la date de renégociation.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nouveau taux annuel (%)</Label>
+              <Input type="number" min="0" step="0.1" value={renegotiateForm.newAnnualInterestRate}
+                onChange={(e) => setRenegotiateForm((f) => ({ ...f, newAnnualInterestRate: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Nouvelle durée (mois)</Label>
+              <Input type="number" min="1" value={renegotiateForm.newTermMonths}
+                onChange={(e) => setRenegotiateForm((f) => ({ ...f, newTermMonths: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Date de renégociation</Label>
+              <Input type="date" value={renegotiateForm.renegotiationDate}
+                onChange={(e) => setRenegotiateForm((f) => ({ ...f, renegotiationDate: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Note (optionnel)</Label>
+              <Input value={renegotiateForm.note} placeholder="Motif de la renégociation…"
+                onChange={(e) => setRenegotiateForm((f) => ({ ...f, note: e.target.value }))} />
+            </div>
+            {renegotiateError && <p className="text-sm text-destructive">{renegotiateError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowRenegotiateModal(false)}>Annuler</Button>
+            <Button
+              disabled={renegotiateMutation.isPending}
+              onClick={() => {
+                if (!renegotiateItemId) return
+                const rate = parseFloat(renegotiateForm.newAnnualInterestRate)
+                const term = parseInt(renegotiateForm.newTermMonths, 10)
+                if (isNaN(rate) || rate < 0) { setRenegotiateError("Taux invalide."); return }
+                if (!term || term < 1) { setRenegotiateError("Durée invalide."); return }
+                if (!renegotiateForm.renegotiationDate) { setRenegotiateError("Date requise."); return }
+                renegotiateMutation.mutate({ id: renegotiateItemId, data: { newAnnualInterestRate: rate, newTermMonths: term, renegotiationDate: renegotiateForm.renegotiationDate, note: renegotiateForm.note || undefined } })
+              }}
+            >
+              {renegotiateMutation.isPending ? "Traitement…" : "Confirmer la renégociation"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Prepayment Dialog ---- */}
+      <Dialog open={showPrepayModal} onOpenChange={(v) => { setShowPrepayModal(v); if (!v) setPrepayError(null) }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Remboursement anticipé — {items?.find((i) => i.id === prepayItemId)?.label}</DialogTitle>
+            <DialogDescription>
+              Saisissez le montant du remboursement anticipé. Le capital résiduel sera recalculé et un nouveau tableau d'amortissement sera généré.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Montant remboursé (FCFA)</Label>
+              <AmountInput min={1} value={prepayForm.amount} placeholder="0"
+                onChange={(e) => setPrepayForm((f) => ({ ...f, amount: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Date du remboursement</Label>
+              <Input type="date" value={prepayForm.date}
+                onChange={(e) => setPrepayForm((f) => ({ ...f, date: e.target.value }))} />
+            </div>
+            <div className="space-y-2">
+              <Label>Note (optionnel)</Label>
+              <Input value={prepayForm.note} placeholder="Ex : remboursement exceptionnel S2…"
+                onChange={(e) => setPrepayForm((f) => ({ ...f, note: e.target.value }))} />
+            </div>
+            {prepayError && <p className="text-sm text-destructive">{prepayError}</p>}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowPrepayModal(false)}>Annuler</Button>
+            <Button
+              disabled={prepayMutation.isPending}
+              onClick={() => {
+                if (!prepayItemId) return
+                const amount = parseInt(prepayForm.amount, 10)
+                if (!amount || amount <= 0) { setPrepayError("Montant invalide."); return }
+                if (!prepayForm.date) { setPrepayError("Date requise."); return }
+                prepayMutation.mutate({ id: prepayItemId, data: { amount, date: prepayForm.date, note: prepayForm.note || undefined } })
+              }}
+            >
+              {prepayMutation.isPending ? "Traitement…" : "Confirmer le remboursement"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Sheet open={showSchedule} onOpenChange={setShowSchedule}>
         <SheetContent side="right" className="w-full sm:w-[760px] sm:max-w-none overflow-y-auto">
           <SheetHeader className="mb-4">

@@ -3217,3 +3217,69 @@ clientId?: number;
 status?: InvoiceStatus;
 };
 
+// ---------------------------------------------------------------------------
+// Transaction edit / delete — M3
+// ---------------------------------------------------------------------------
+export interface UpdateTransactionBody {
+  label?: string | null;
+  amount?: number | null;
+  date?: string | null;
+  category?: string | null;
+  paymentType?: 'cash' | 'credit' | null;
+  paymentMethod?: string | null;
+  dueDate?: string | null;
+}
+
+export interface DeleteTransactionResult {
+  ok: boolean;
+  id: number;
+}
+
+// ---------------------------------------------------------------------------
+// Mission expenses (frais directs / débours) — M22
+// ---------------------------------------------------------------------------
+export interface MissionExpense {
+  id: number;
+  firmId: number;
+  clientId: number;
+  userId: number | null;
+  year: number;
+  month: number;
+  label: string;
+  amount: number;
+  category: 'DEPLACEMENT' | 'HEBERGEMENT' | 'RESTAURATION' | 'AUTRE';
+  addedByName: string | null;
+  createdAt: string;
+}
+
+export interface CreateMissionExpenseBody {
+  clientId: number;
+  year: number;
+  month: number;
+  label: string;
+  amount: number;
+  category: 'DEPLACEMENT' | 'HEBERGEMENT' | 'RESTAURATION' | 'AUTRE';
+}
+
+export type ListMissionExpensesParams = {
+  clientId: number;
+  year: number;
+  month: number;
+};
+
+// ---------------------------------------------------------------------------
+// Financial item renegotiation / prepayment — M18
+// ---------------------------------------------------------------------------
+export interface RenegotiateFinancialItemBody {
+  newAnnualInterestRate: number;
+  newTermMonths: number;
+  renegotiationDate: string;
+  note?: string | null;
+}
+
+export interface PrepayFinancialItemBody {
+  amount: number;
+  date: string;
+  note?: string | null;
+}
+

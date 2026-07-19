@@ -158,3 +158,47 @@ export const insertTimesheetEntrySchema = createInsertSchema(timesheetEntriesTab
 });
 export type InsertTimesheetEntry = z.infer<typeof insertTimesheetEntrySchema>;
 export type TimesheetEntry = typeof timesheetEntriesTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Mission expenses (frais directs / débours) — M22 extension
+// Per-client direct costs logged by the accountant for a given month:
+// travel, accommodation, meals, and other out-of-pocket mission expenses
+// that reduce the net profitability of a client engagement.
+// ---------------------------------------------------------------------------
+
+export const EXPENSE_CATEGORIES = [
+  "DEPLACEMENT",
+  "HEBERGEMENT",
+  "RESTAURATION",
+  "AUTRE",
+] as const;
+export type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
+
+export const missionExpensesTable = pgTable(
+  "mission_expenses",
+  {
+    id: serial("id").primaryKey(),
+    firmId: integer("firm_id")
+      .notNull()
+      .references(() => firmsTable.id, { onDelete: "cascade" }),
+    clientId: integer("client_id")
+      .notNull()
+      .references(() => clientsTable.id, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .references(() => usersTable.id, { onDelete: "set null" }),
+    year: integer("year").notNull(),
+    month: integer("month").notNull(),
+    label: text("label").notNull(),
+    // Amount in FCFA (integer, centimes not used in OHADA)
+    amount: integer("amount").notNull(),
+    category: text("category").notNull().$type<ExpenseCategory>(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("mission_expenses_firm_id_idx").on(table.firmId),
+    index("mission_expenses_client_id_idx").on(table.clientId),
+    index("mission_expenses_year_month_idx").on(table.year, table.month),
+  ],
+);
+
+export type MissionExpense = typeof missionExpensesTable.$inferSelect;

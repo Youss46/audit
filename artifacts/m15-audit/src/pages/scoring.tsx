@@ -66,6 +66,28 @@ import {
 const CURRENT_YEAR = new Date().getFullYear()
 const YEAR_OPTIONS = Array.from({ length: 10 }, (_, i) => CURRENT_YEAR - i)
 
+// ---------------------------------------------------------------------------
+// Sector benchmarks — static OHADA reference values per sector
+// ---------------------------------------------------------------------------
+const SECTORS = ["Services", "Commerce", "Industrie", "BTP", "Agriculture"] as const
+type Sector = (typeof SECTORS)[number]
+
+interface SectorBenchmarks {
+  roeTarget: number
+  currentRatioTarget: number
+  debtToEquityMax: number
+  solvencyTarget: number
+  zScoreThresholdSafe: number
+}
+
+const SECTOR_BENCHMARKS: Record<Sector, SectorBenchmarks> = {
+  Services:    { roeTarget: 0.20, currentRatioTarget: 1.5, debtToEquityMax: 0.5,  solvencyTarget: 0.50, zScoreThresholdSafe: 2.5 },
+  Commerce:    { roeTarget: 0.15, currentRatioTarget: 1.2, debtToEquityMax: 1.0,  solvencyTarget: 0.35, zScoreThresholdSafe: 2.0 },
+  Industrie:   { roeTarget: 0.12, currentRatioTarget: 1.5, debtToEquityMax: 1.5,  solvencyTarget: 0.30, zScoreThresholdSafe: 1.8 },
+  BTP:         { roeTarget: 0.10, currentRatioTarget: 1.2, debtToEquityMax: 2.0,  solvencyTarget: 0.25, zScoreThresholdSafe: 1.5 },
+  Agriculture: { roeTarget: 0.08, currentRatioTarget: 1.3, debtToEquityMax: 1.0,  solvencyTarget: 0.30, zScoreThresholdSafe: 1.8 },
+}
+
 const RISK_META: Record<RiskCategory, { label: string; badgeClass: string; color: string; gaugeValue: number }> = {
   FAIBLE_RISQUE: { label: "Risque Faible", badgeClass: "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300", color: "#16a34a", gaugeValue: 85 },
   RISQUE_MODERE: { label: "Risque Modéré", badgeClass: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300", color: "#d97706", gaugeValue: 50 },
@@ -166,6 +188,7 @@ export default function Scoring() {
   const clientId = params?.clientId ? Number(params.clientId) : null
 
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
+  const [selectedSector, setSelectedSector] = useState<Sector | "">("")
   const [downloading, setDownloading] = useState(false)
   const [ebitdaMultiplier, setEbitdaMultiplier] = useState(6)
   const [capitalizationRatePct, setCapitalizationRatePct] = useState(10)
@@ -298,7 +321,18 @@ export default function Scoring() {
               Scoring financier et valorisation de {client?.name ?? "…"}, calculés en direct à partir du grand livre validé.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <Select value={selectedSector} onValueChange={(v) => setSelectedSector(v === "" ? "" : v as Sector)}>
+              <SelectTrigger className="w-52">
+                <SelectValue placeholder="Comparer au secteur…" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">Aucun secteur</SelectItem>
+                {SECTORS.map((s) => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
             <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
               <SelectTrigger className="w-32" data-testid="select-scoring-year">
                 <SelectValue />
@@ -414,6 +448,68 @@ export default function Scoring() {
                 hint="Ventes de marchandises + produits fabriqués"
               />
             </div>
+
+            {/* ---- Sector benchmarks panel ---- */}
+            {selectedSector && dashboard && (() => {
+              const bm = SECTOR_BENCHMARKS[selectedSector]
+              const r = dashboard.ratios
+              type BmRow = { label: string; actual: number | null; benchmark: number; fmt: (v: number) => string; higherBetter: boolean }
+              const rows: BmRow[] = [
+                { label: "ROE (Rentabilité des capitaux propres)", actual: r.returnOnEquity, benchmark: bm.roeTarget, fmt: (v) => `${(v * 100).toFixed(1)} %`, higherBetter: true },
+                { label: "Ratio de liquidité générale", actual: r.currentRatio, benchmark: bm.currentRatioTarget, fmt: (v) => v.toFixed(2), higherBetter: true },
+                { label: "Ratio d'endettement (D/E)", actual: r.debtToEquity, benchmark: bm.debtToEquityMax, fmt: (v) => v.toFixed(2), higherBetter: false },
+                { label: "Autonomie financière (solvabilité)", actual: r.solvencyRatio, benchmark: bm.solvencyTarget, fmt: (v) => `${(v * 100).toFixed(1)} %`, higherBetter: true },
+                { label: "Z-Score (seuil de sécurité secteur)", actual: dashboard.zScore, benchmark: bm.zScoreThresholdSafe, fmt: (v) => v.toFixed(2), higherBetter: true },
+              ]
+              return (
+                <Card key="sector-benchmarks">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Scale className="h-5 w-5 text-primary" />
+                      Comparaison Sectorielle — {selectedSector}
+                    </CardTitle>
+                    <CardDescription>
+                      Benchmarks de référence OHADA/SYSCOHADA pour le secteur «&nbsp;{selectedSector}&nbsp;» comparés à vos ratios {selectedYear}.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Indicateur</TableHead>
+                          <TableHead className="text-right">Votre valeur</TableHead>
+                          <TableHead className="text-right">Norme secteur</TableHead>
+                          <TableHead className="text-right">Écart</TableHead>
+                          <TableHead>Situation</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {rows.map((row) => {
+                          if (row.actual == null) return null
+                          const gap = row.actual - row.benchmark
+                          const ok = row.higherBetter ? gap >= 0 : gap <= 0
+                          return (
+                            <TableRow key={row.label}>
+                              <TableCell className="text-sm">{row.label}</TableCell>
+                              <TableCell className="text-right tabular-nums font-semibold">{row.fmt(row.actual)}</TableCell>
+                              <TableCell className="text-right tabular-nums text-muted-foreground">{row.fmt(row.benchmark)}</TableCell>
+                              <TableCell className={cn("text-right tabular-nums text-sm", ok ? "text-emerald-600" : "text-red-600")}>
+                                {gap >= 0 ? "+" : ""}{row.fmt(Math.abs(gap))}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className={cn("border-transparent text-xs", ok ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300")}>
+                                  {ok ? "Dans la norme" : "Sous la norme"}
+                                </Badge>
+                              </TableCell>
+                            </TableRow>
+                          )
+                        })}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              )
+            })()}
 
             {/* ---- Valuation workbench ---- */}
             <Card>

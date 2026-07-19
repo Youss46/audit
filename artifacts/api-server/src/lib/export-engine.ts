@@ -1980,3 +1980,105 @@ export async function generateCnpsBordereau(opts: {
 
   return renderPdf(docDef);
 }
+
+// ---------------------------------------------------------------------------
+// generateProfitabilityPdf — M22 Cabinet Profitability Report PDF
+// ---------------------------------------------------------------------------
+
+export interface ProfitabilityRow {
+  clientName: string;
+  totalHours: number;
+  monthlyFlatFee: number;
+  internalCost: number;
+  directExpenses: number;
+  netMargin: number;
+  marginPct: number | null;
+}
+
+export interface ProfitabilityPdfInput {
+  firmName: string;
+  year: number;
+  month: number;
+  rows: ProfitabilityRow[];
+  globalKpis: {
+    totalHours: number;
+    totalInternalCost: number;
+    totalFees: number;
+    grossMargin: number;
+    grossMarginPct: number | null;
+  };
+}
+
+const _MONTH_FR_PROFIT = [
+  "Janvier","Février","Mars","Avril","Mai","Juin",
+  "Juillet","Août","Septembre","Octobre","Novembre","Décembre",
+];
+
+export async function generateProfitabilityPdf(input: ProfitabilityPdfInput): Promise<Buffer> {
+  const { firmName, year, month, rows, globalKpis } = input;
+  const periodLabel = `${_MONTH_FR_PROFIT[month - 1]} ${year}`;
+
+  const tableBody: unknown[][] = [
+    [
+      { text: "Client",       bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f" },
+      { text: "Heures",       bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+      { text: "Forfait FCFA", bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+      { text: "Coût collab.", bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+      { text: "Debours",      bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+      { text: "Marge nette",  bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+      { text: "Rentabilite",  bold: true, fontSize: 8, color: "#fff", fillColor: "#1e3a5f", alignment: "right" },
+    ],
+    ...rows.map((r, i) => [
+      { text: r.clientName, fontSize: 8, fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: r.totalHours.toFixed(1), fontSize: 8, alignment: "right", fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: fmtNum(r.monthlyFlatFee), fontSize: 8, alignment: "right", fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: fmtNum(r.internalCost), fontSize: 8, alignment: "right", color: "#b45309", fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: fmtNum(r.directExpenses), fontSize: 8, alignment: "right", fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: fmtNum(r.netMargin), fontSize: 8, alignment: "right", bold: true,
+        color: r.netMargin >= 0 ? "#15803d" : "#dc2626", fillColor: i % 2 === 0 ? "#f8fafc" : null },
+      { text: r.marginPct !== null ? `${r.marginPct.toFixed(1)}%` : "-",
+        fontSize: 8, alignment: "right",
+        color: r.marginPct === null ? "#6b7280" : r.marginPct < 0 ? "#dc2626" : r.marginPct < 30 ? "#b45309" : "#15803d",
+        fillColor: i % 2 === 0 ? "#f8fafc" : null },
+    ]),
+    [
+      { text: "TOTAL", bold: true, fontSize: 8, fillColor: "#e2e8f0" },
+      { text: globalKpis.totalHours.toFixed(1), bold: true, fontSize: 8, alignment: "right", fillColor: "#e2e8f0" },
+      { text: fmtNum(globalKpis.totalFees), bold: true, fontSize: 8, alignment: "right", fillColor: "#e2e8f0" },
+      { text: fmtNum(globalKpis.totalInternalCost), bold: true, fontSize: 8, alignment: "right", color: "#b45309", fillColor: "#e2e8f0" },
+      { text: "", fontSize: 8, fillColor: "#e2e8f0" },
+      { text: fmtNum(globalKpis.grossMargin), bold: true, fontSize: 8, alignment: "right",
+        color: globalKpis.grossMargin >= 0 ? "#15803d" : "#dc2626", fillColor: "#e2e8f0" },
+      { text: globalKpis.grossMarginPct !== null ? `${globalKpis.grossMarginPct.toFixed(1)}%` : "-",
+        bold: true, fontSize: 8, alignment: "right",
+        color: (globalKpis.grossMarginPct ?? 0) < 0 ? "#dc2626" : "#15803d", fillColor: "#e2e8f0" },
+    ],
+  ];
+
+  const docDef = {
+    pageOrientation: "landscape",
+    pageMargins: [28, 36, 28, 36],
+    content: [
+      { text: "Rapport de Rentabilite Cabinet", fontSize: 14, bold: true, color: "#1e3a5f" },
+      { text: `${firmName} -- ${periodLabel}`, fontSize: 9, color: "#6b7280", margin: [0, 2, 0, 12] },
+      {
+        table: { headerRows: 1, widths: ["*", 40, 70, 70, 55, 72, 60], body: tableBody },
+        layout: {
+          hLineWidth: (i: number) => (i === 0 || i === 1 || i === tableBody.length) ? 1 : 0.3,
+          vLineWidth: () => 0.3,
+          hLineColor: () => "#cbd5e1",
+          vLineColor: () => "#e2e8f0",
+        },
+      },
+      {
+        columns: [
+          { text: `Genere le ${new Date().toLocaleDateString("fr-FR")} -- M15-Audit`, fontSize: 7, color: "#9ca3af" },
+          { text: `Total heures : ${globalKpis.totalHours.toFixed(1)} h  |  Marge brute : ${fmtNum(globalKpis.grossMargin)} FCFA`, fontSize: 7, color: "#9ca3af", alignment: "right" },
+        ],
+        margin: [0, 10, 0, 0],
+      },
+    ],
+  };
+
+  return renderPdf(docDef as Record<string, unknown>);
+}

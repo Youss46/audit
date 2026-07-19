@@ -5,6 +5,8 @@ import {
   useListTransactionCategories,
   getListTransactionCategoriesQueryKey,
   useCreateTransaction,
+  useUpdateTransaction,
+  useDeleteTransaction,
   useSettleTransaction,
   useListClientDocuments,
   getListClientDocumentsQueryKey,
@@ -29,8 +31,18 @@ import {
 } from "@/lib/status"
 import {
   Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign,
-  Upload, Camera, X, CheckCircle2, AlertCircle, Loader2,
+  Upload, Camera, X, CheckCircle2, AlertCircle, Loader2, Pencil, Trash2,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -104,6 +116,10 @@ export default function ComptabilitePme() {
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null)
   const attachmentFileInputRef = useRef<HTMLInputElement>(null)
   const attachmentCameraInputRef = useRef<HTMLInputElement>(null)
+  // Edit / delete state
+  const [editTargetId, setEditTargetId] = useState<number | null>(null)
+  const [editForm, setEditForm] = useState(emptyForm("recette"))
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
 
   const { data: transactions, isLoading } = useListTransactions(
     { clientId },
@@ -112,6 +128,10 @@ export default function ComptabilitePme() {
   const { data: categories } = useListTransactionCategories(
     { type: form.type },
     { query: { enabled: isFormOpen, queryKey: getListTransactionCategoriesQueryKey({ type: form.type }) } },
+  )
+  const { data: editCategories } = useListTransactionCategories(
+    { type: editForm.type },
+    { query: { enabled: editTargetId !== null, queryKey: getListTransactionCategoriesQueryKey({ type: editForm.type }) } },
   )
   const { data: documents } = useListClientDocuments(clientId, {
     query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId) },
@@ -200,6 +220,53 @@ export default function ComptabilitePme() {
       },
     },
   })
+
+  const updateMutation = useUpdateTransaction({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Opération modifiée", description: "Les modifications ont été enregistrées." })
+        setEditTargetId(null)
+        queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey({ clientId }) })
+      },
+      onError: (error: unknown) => {
+        const e = error as { data?: { error?: string } }
+        toast({ title: "Erreur", description: e.data?.error || "Impossible de modifier l'opération.", variant: "destructive" })
+      },
+    },
+  })
+
+  const deleteMutation = useDeleteTransaction({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Opération supprimée" })
+        setDeleteTargetId(null)
+        queryClient.invalidateQueries({ queryKey: getListTransactionsQueryKey({ clientId }) })
+      },
+      onError: (error: unknown) => {
+        const e = error as { data?: { error?: string } }
+        toast({ title: "Erreur", description: e.data?.error || "Impossible de supprimer l'opération.", variant: "destructive" })
+      },
+    },
+  })
+
+  const handleEditSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editTargetId) return
+    const amount = parseInt(editForm.amount, 10)
+    if (!editForm.label.trim() || !amount || amount <= 0) return
+    updateMutation.mutate({
+      id: editTargetId,
+      data: {
+        label: editForm.label.trim(),
+        amount,
+        date: new Date(editForm.date).toISOString(),
+        category: editForm.category || null,
+        paymentType: editForm.paymentType || undefined,
+        paymentMethod: editForm.paymentType === "cash" ? (editForm.paymentMethod || null) : null,
+        dueDate: editForm.paymentType === "credit" && editForm.dueDate ? new Date(editForm.dueDate).toISOString() : null,
+      },
+    })
+  }
 
   const openForm = (type: TransactionType) => {
     setForm(emptyForm(type))
@@ -363,18 +430,19 @@ export default function ComptabilitePme() {
                         <TableHead>Montant</TableHead>
                         <TableHead>Pièce jointe</TableHead>
                         <TableHead>Statut</TableHead>
+                        <TableHead className="text-right pr-4">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {isLoading ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center h-24 text-muted-foreground">
                             Chargement...
                           </TableCell>
                         </TableRow>
                       ) : (type === "recette" ? recettes : depenses).length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={7} className="text-center h-32 text-muted-foreground">
+                          <TableCell colSpan={8} className="text-center h-32 text-muted-foreground">
                             <div className="flex flex-col items-center justify-center">
                               <Wallet className="h-8 w-8 mb-2 opacity-20" />
                               <p>Aucune opération pour le moment.</p>
@@ -429,6 +497,47 @@ export default function ComptabilitePme() {
                                 <p className="text-xs text-red-600 dark:text-red-400 mt-1 max-w-xs">
                                   {t.clarificationNote}
                                 </p>
+                              )}
+                            </TableCell>
+                            <TableCell
+                              className="text-right pr-4"
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              {(t.status === "a_valider" || t.status === "anomalie") && (
+                                <div className="flex justify-end gap-1">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                                    title="Modifier"
+                                    onClick={() => {
+                                      setEditTargetId(t.id)
+                                      setEditForm({
+                                        type: t.type,
+                                        date: new Date(t.date).toISOString().slice(0, 10),
+                                        label: t.label,
+                                        amount: String(t.amount),
+                                        category: t.category ?? "",
+                                        paymentType: t.paymentType as PaymentType,
+                                        paymentMethod: (t.paymentMethod as PaymentMethod | "") ?? "",
+                                        dueDate: t.dueDate ? new Date(t.dueDate).toISOString().slice(0, 10) : "",
+                                        documentId: t.documentId ? String(t.documentId) : "",
+                                        cashRegisterId: t.cashRegisterId ? String(t.cashRegisterId) : "",
+                                      })
+                                    }}
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                                    title="Supprimer"
+                                    onClick={() => setDeleteTargetId(t.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               )}
                             </TableCell>
                           </TableRow>
@@ -858,6 +967,97 @@ export default function ComptabilitePme() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ---- Edit Transaction Dialog ---- */}
+      <Dialog open={editTargetId !== null} onOpenChange={(open) => !open && setEditTargetId(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Modifier l'opération</DialogTitle>
+            <DialogDescription>
+              Modifiez les informations de cette opération. Seules les opérations en attente ou en anomalie peuvent être modifiées.
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleEditSubmit} className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-date">Date</Label>
+              <Input id="edit-date" type="date" value={editForm.date}
+                onChange={(e) => setEditForm((f) => ({ ...f, date: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-label">Libellé</Label>
+              <Input id="edit-label" value={editForm.label}
+                onChange={(e) => setEditForm((f) => ({ ...f, label: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-amount">Montant (FCFA)</Label>
+              <AmountInput id="edit-amount" min={1} value={editForm.amount}
+                onChange={(e) => setEditForm((f) => ({ ...f, amount: e.target.value }))} required />
+            </div>
+            <div className="space-y-2">
+              <Label>Catégorie</Label>
+              <Select value={editForm.category} onValueChange={(v) => setEditForm((f) => ({ ...f, category: v }))}>
+                <SelectTrigger><SelectValue placeholder="Catégorie…" /></SelectTrigger>
+                <SelectContent>
+                  {(editCategories ?? []).map((c) => (
+                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Mode de règlement</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant={editForm.paymentType === "cash" ? "default" : "outline"}
+                  onClick={() => setEditForm((f) => ({ ...f, paymentType: "cash", paymentMethod: "", dueDate: "" }))}>
+                  Comptant
+                </Button>
+                <Button type="button" variant={editForm.paymentType === "credit" ? "default" : "outline"}
+                  onClick={() => setEditForm((f) => ({ ...f, paymentType: "credit", paymentMethod: "", dueDate: "" }))}>
+                  À crédit
+                </Button>
+              </div>
+            </div>
+            {editForm.paymentType === "credit" && (
+              <div className="space-y-2">
+                <Label>Date d'échéance</Label>
+                <Input type="date" value={editForm.dueDate}
+                  onChange={(e) => setEditForm((f) => ({ ...f, dueDate: e.target.value }))} />
+              </div>
+            )}
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setEditTargetId(null)}>Annuler</Button>
+              <Button type="submit" disabled={updateMutation.isPending}>
+                {updateMutation.isPending ? "Enregistrement…" : "Enregistrer les modifications"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---- Delete Confirmation ---- */}
+      <AlertDialog open={deleteTargetId !== null} onOpenChange={(open) => !open && setDeleteTargetId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Supprimer cette opération&nbsp;?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {(() => {
+                const t = transactions?.find((tx) => tx.id === deleteTargetId)
+                return t ? `«\u00a0${t.label}\u00a0» — ${t.amount.toLocaleString("fr-FR")}\u00a0FCFA` : ""
+              })()}
+              {" "}Cette action est irréversible.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Annuler</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => deleteTargetId && deleteMutation.mutate({ id: deleteTargetId })}
+            >
+              Supprimer
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={settleTarget != null} onOpenChange={(open) => !open && setSettleTarget(null)}>
         <DialogContent>
