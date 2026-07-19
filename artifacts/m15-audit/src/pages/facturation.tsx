@@ -14,6 +14,11 @@ import {
   useListMobileMoneyAccounts,
   getListInvoicesQueryKey,
   getGetInvoiceQueryKey,
+  useRemindInvoice,
+  useListInvoiceProducts,
+  useCreateInvoiceProduct,
+  useDeleteInvoiceProduct,
+  getListInvoiceProductsQueryKey,
 } from "@workspace/api-client-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -78,12 +83,16 @@ import {
   TrendingUp,
   Clock,
   Ban,
+  Bell,
+  BookOpen,
+  AlertCircle,
+  Coins,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type InvoiceStatus = "BROUILLON" | "VALIDE" | "PAYE" | "ANNULE"
+type InvoiceStatus = "BROUILLON" | "VALIDE" | "PARTIELLEMENT_PAYE" | "PAYE" | "ANNULE"
 
 interface ItemRow {
   _key: string
@@ -168,6 +177,11 @@ const STATUS_CONFIG: Record<InvoiceStatus, { label: string; color: string; icon:
     color: "bg-blue-50 text-blue-700 border-blue-200",
     icon:  <CheckCircle2 className="h-3 w-3" />,
   },
+  PARTIELLEMENT_PAYE: {
+    label: "Acompte reçu",
+    color: "bg-orange-50 text-orange-700 border-orange-200",
+    icon:  <Coins className="h-3 w-3" />,
+  },
   PAYE: {
     label: "Payée",
     color: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -219,6 +233,13 @@ export default function Facturation() {
   const [paymentAccountId,  setPaymentAccountId]  = React.useState<string>("")
   const [paymentFee,        setPaymentFee]        = React.useState<string>("0")
   const [paymentReference,  setPaymentReference]  = React.useState<string>("")
+  const [paymentAmount,     setPaymentAmount]     = React.useState<string>("")
+  const [remindingId,       setRemindingId]       = React.useState<number | null>(null)
+  const [catalogOpen,       setCatalogOpen]       = React.useState(false)
+  const [catalogDesig,      setCatalogDesig]      = React.useState("")
+  const [catalogPrice,      setCatalogPrice]      = React.useState("")
+  const [catalogVat,        setCatalogVat]        = React.useState("18")
+  const [catalogDesc,       setCatalogDesc]       = React.useState("")
 
   // ── Queries ────────────────────────────────────────────────────────────
   const statusFilter = activeTab !== "tous" ? activeTab.toUpperCase() as InvoiceStatus : undefined
@@ -233,6 +254,10 @@ export default function Facturation() {
     { query: { enabled: !!viewingId } },
   )
 
+  // ── Invoice products catalog ───────────────────────────────────────────
+  const catalogProductsQuery = useListInvoiceProducts()
+  const catalogProducts = catalogProductsQuery.data ?? []
+
   // ── Stats ──────────────────────────────────────────────────────────────
   const allInvoices = useListInvoices(
     { clientId: clientId || undefined },
@@ -241,11 +266,11 @@ export default function Facturation() {
 
   const stats = React.useMemo(() => {
     const brouillon = allInvoices.filter((i) => i.status === "BROUILLON")
-    const valide    = allInvoices.filter((i) => i.status === "VALIDE")
+    const valide    = allInvoices.filter((i) => i.status === "VALIDE" || i.status === "PARTIELLEMENT_PAYE")
     const paye      = allInvoices.filter((i) => i.status === "PAYE")
     return {
       brouillonCount: brouillon.length,
-      pendingTtc:  valide.reduce((s, i) => s + i.totalTtc, 0),
+      pendingTtc:  valide.reduce((s, i) => s + ((i as any).balanceDue ?? i.totalTtc), 0),
       validCount:  valide.length,
       paidTtc:     paye.reduce((s, i) => s + i.totalTtc, 0),
       paidCount:   paye.length,
@@ -296,12 +321,56 @@ export default function Facturation() {
 
   const markPaidMutation = useMarkInvoicePaid({
     mutation: {
-      onSuccess: () => {
-        toast({ title: "Facture marquée comme payée" })
+      onSuccess: (data) => {
+        const isPartial = data.status === "PARTIELLEMENT_PAYE"
+        toast({
+          title: isPartial ? "Acompte enregistré" : "Facture soldée",
+          description: isPartial
+            ? `Reste à payer : ${fmtFcfa((data as any).balanceDue ?? 0)}`
+            : "La facture est maintenant entièrement réglée.",
+        })
         closePaymentDialog()
         invalidate()
       },
       onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error ?? "Règlement impossible.", variant: "destructive" }),
+    },
+  })
+
+  const remindMutation = useRemindInvoice({
+    mutation: {
+      onMutate: ({ id }) => setRemindingId(id),
+      onSettled: () => setRemindingId(null),
+      onSuccess: (data) => {
+        toast({
+          title: "Relance envoyée",
+          description: data.emailSent
+            ? "Un email de rappel a été envoyé au client."
+            : "Relance enregistrée (aucune adresse email sur la facture).",
+        })
+        invalidate()
+      },
+      onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error ?? "Relance impossible.", variant: "destructive" }),
+    },
+  })
+
+  const createProductMutation = useCreateInvoiceProduct({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Article ajouté au catalogue" })
+        queryClient.invalidateQueries({ queryKey: getListInvoiceProductsQueryKey() })
+        setCatalogDesig(""); setCatalogPrice(""); setCatalogVat("18"); setCatalogDesc("")
+      },
+      onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error ?? "Impossible d'ajouter l'article.", variant: "destructive" }),
+    },
+  })
+
+  const deleteProductMutation = useDeleteInvoiceProduct({
+    mutation: {
+      onSuccess: () => {
+        toast({ title: "Article supprimé du catalogue" })
+        queryClient.invalidateQueries({ queryKey: getListInvoiceProductsQueryKey() })
+      },
+      onError: (e: any) => toast({ title: "Erreur", description: e?.data?.error ?? "Suppression impossible.", variant: "destructive" }),
     },
   })
 
@@ -320,6 +389,7 @@ export default function Facturation() {
     setPaymentAccountId("")
     setPaymentFee("0")
     setPaymentReference("")
+    setPaymentAmount("")
   }
 
   const closePaymentDialog = () => {
@@ -328,8 +398,12 @@ export default function Facturation() {
 
   const confirmPayment = () => {
     if (!paymentTargetId) return
+    const partialAmount = paymentAmount ? parseInt(paymentAmount, 10) : undefined
     if (paymentMethod !== "mobile_money") {
-      markPaidMutation.mutate({ id: paymentTargetId, data: { paymentMethod } })
+      markPaidMutation.mutate({
+        id: paymentTargetId,
+        data: { paymentMethod, amount: partialAmount || undefined },
+      })
       return
     }
     if (!paymentAccountId) {
@@ -517,14 +591,26 @@ export default function Facturation() {
         </ActionBtn>
       )}
 
-      {/* Mark paid (VALIDE) */}
-      {inv.status === "VALIDE" && (
+      {/* Mark paid (VALIDE / PARTIELLEMENT_PAYE) */}
+      {(inv.status === "VALIDE" || inv.status === "PARTIELLEMENT_PAYE") && (
         <ActionBtn
-          tip="Enregistrer un règlement"
+          tip={inv.status === "PARTIELLEMENT_PAYE" ? "Compléter le règlement" : "Enregistrer un règlement"}
           onClick={() => openPaymentDialog(inv.id)}
           className="text-emerald-600 hover:bg-emerald-50"
         >
           <CreditCard className="h-3.5 w-3.5" />
+        </ActionBtn>
+      )}
+
+      {/* Remind (VALIDE / PARTIELLEMENT_PAYE) */}
+      {(inv.status === "VALIDE" || inv.status === "PARTIELLEMENT_PAYE") && (
+        <ActionBtn
+          tip="Envoyer une relance"
+          onClick={() => remindMutation.mutate({ id: inv.id })}
+          loading={remindingId === inv.id}
+          className="text-amber-500 hover:bg-amber-50"
+        >
+          <Bell className="h-3.5 w-3.5" />
         </ActionBtn>
       )}
 
@@ -533,7 +619,7 @@ export default function Facturation() {
         <ActionBtn
           tip="Émettre un avoir"
           onClick={() => { setCreditNoteTarget(inv.id); setCreditNoteReason("") }}
-          className="text-amber-600 hover:bg-amber-50"
+          className="text-slate-500 hover:bg-slate-50"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </ActionBtn>
@@ -567,10 +653,21 @@ export default function Facturation() {
               Créez et gérez vos factures clients. Les PDF sont générés automatiquement et comptabilisés dans votre dossier.
             </p>
           </div>
-          <Button onClick={openCreateSheet} className="gap-2 w-full sm:w-auto sm:shrink-0">
-            <Plus className="h-4 w-4" />
-            Nouvelle facture
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => setCatalogOpen(true)}
+            >
+              <BookOpen className="h-4 w-4" />
+              <span className="hidden sm:inline">Catalogue</span>
+            </Button>
+            <Button onClick={openCreateSheet} className="gap-2 w-full sm:w-auto sm:shrink-0">
+              <Plus className="h-4 w-4" />
+              Nouvelle facture
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -618,11 +715,12 @@ export default function Facturation() {
               <div className="border-b px-4 overflow-x-auto">
                 <TabsList className="h-10 bg-transparent gap-1 p-0 w-max min-w-full sm:w-auto">
                   {[
-                    { value: "tous",      label: "Toutes" },
-                    { value: "brouillon", label: "Brouillons" },
-                    { value: "valide",    label: "Validées" },
-                    { value: "paye",      label: "Payées" },
-                    { value: "annule",    label: "Annulées" },
+                    { value: "tous",                label: "Toutes" },
+                    { value: "brouillon",           label: "Brouillons" },
+                    { value: "valide",              label: "Validées" },
+                    { value: "partiellement_paye",  label: "Partiels" },
+                    { value: "paye",                label: "Payées" },
+                    { value: "annule",              label: "Annulées" },
                   ].map((t) => (
                     <TabsTrigger
                       key={t.value}
@@ -1142,6 +1240,105 @@ export default function Facturation() {
               {markPaidMutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Confirmer le règlement
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* ================================================================
+          Catalogue d'articles dialog
+      ================================================================ */}
+      <Dialog open={catalogOpen} onOpenChange={setCatalogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BookOpen className="h-5 w-5 text-primary" />
+              Catalogue d'articles
+            </DialogTitle>
+            <DialogDescription>
+              Gérez vos articles et services réutilisables. Les désignations suggèrent l'autocomplétude lors de la saisie d'une facture.
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Add new product form */}
+          <div className="space-y-3 rounded-md border bg-muted/20 p-3">
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Nouvel article</p>
+            <div className="space-y-2">
+              <Input
+                placeholder="Désignation *"
+                value={catalogDesig}
+                onChange={(e) => setCatalogDesig(e.target.value)}
+              />
+              <div className="grid grid-cols-2 gap-2">
+                <AmountInput
+                  placeholder="Prix unitaire (FCFA)"
+                  value={catalogPrice}
+                  onChange={(e) => setCatalogPrice(e.target.value)}
+                />
+                <AmountInput
+                  placeholder="TVA %"
+                  value={catalogVat}
+                  onChange={(e) => setCatalogVat(e.target.value)}
+                />
+              </div>
+              <Input
+                placeholder="Description (facultatif)"
+                value={catalogDesc}
+                onChange={(e) => setCatalogDesc(e.target.value)}
+              />
+            </div>
+            <Button
+              size="sm"
+              disabled={!catalogDesig.trim() || createProductMutation.isPending}
+              onClick={() => {
+                if (!catalogDesig.trim()) return
+                createProductMutation.mutate({
+                  data: {
+                    designation: catalogDesig.trim(),
+                    defaultUnitPrice: parseInt(catalogPrice, 10) || 0,
+                    vatRate: parseInt(catalogVat, 10) || 18,
+                    description: catalogDesc.trim() || null,
+                  },
+                })
+              }}
+            >
+              {createProductMutation.isPending && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Ajouter
+            </Button>
+          </div>
+
+          {/* Existing products list */}
+          <div className="max-h-64 overflow-y-auto divide-y rounded-md border">
+            {catalogProducts.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-muted-foreground gap-2">
+                <AlertCircle className="h-4 w-4" />
+                Catalogue vide — ajoutez un premier article ci-dessus.
+              </div>
+            ) : (
+              catalogProducts.map((p) => (
+                <div key={p.id} className="flex items-center justify-between px-3 py-2.5 hover:bg-muted/30">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium truncate">{p.designation}</p>
+                    <p className="text-xs text-muted-foreground tabular-nums">
+                      {fmtFcfa(p.defaultUnitPrice)} · TVA {p.vatRate}%
+                      {p.description ? ` · ${p.description}` : ""}
+                    </p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0"
+                    disabled={deleteProductMutation.isPending}
+                    onClick={() => deleteProductMutation.mutate({ id: p.id })}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCatalogOpen(false)}>Fermer</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

@@ -5458,7 +5458,7 @@ export const UploadChatAttachmentResponse = zod.object({
  */
 export const ListInvoicesQueryParams = zod.object({
   "clientId": zod.coerce.number().optional(),
-  "status": zod.enum(['BROUILLON', 'VALIDE', 'PAYE', 'ANNULE']).optional()
+  "status": zod.enum(['BROUILLON', 'VALIDE', 'PARTIELLEMENT_PAYE', 'PAYE', 'ANNULE']).optional()
 })
 
 export const ListInvoicesResponseItem = zod.object({
@@ -5720,7 +5720,8 @@ export const MarkInvoicePaidBody = zod.object({
   "paymentMethod": zod.union([zod.literal('especes'),zod.literal('mobile_money'),zod.literal('cheque'),zod.literal('virement'),zod.literal(null)]).nullish().describe('Optional. When \'mobile_money\', the Mobile Money settlement fields below are required and the entry is posted automatically.'),
   "mobileMoneyAccountId": zod.number().nullish().describe('Required when paymentMethod is \'mobile_money\' — the receiving Trésorerie Mobile Money account.'),
   "feeAmount": zod.number().min(markInvoicePaidBodyFeeAmountMin).nullish().describe('Operator fee withheld on receipt (FCFA), books to 631700. Defaults to 0.'),
-  "referenceCode": zod.string().nullish().describe('Optional operator transaction reference, kept for traceability.')
+  "referenceCode": zod.string().nullish().describe('Optional operator transaction reference, kept for traceability.'),
+  "amount": zod.number().min(1).nullish().describe('Partial payment amount (FCFA). If omitted the full remaining balance is settled. Mobile Money does not support partial payment — omit or pass the full remaining balance.')
 })
 
 export const MarkInvoicePaidResponse = zod.object({
@@ -5813,6 +5814,70 @@ export const DownloadInvoicePdfResponse = zod.object({
   "fileName": zod.string(),
   "mimeType": zod.string(),
   "fileData": zod.string().describe('Base64-encoded PDF content')
+})
+
+
+// ---------------------------------------------------------------------------
+// Invoice Products Catalog — M28
+// ---------------------------------------------------------------------------
+
+/**
+ * @summary List active products/services in the firm's invoice catalog
+ */
+export const ListInvoiceProductsResponse = zod.array(zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "designation": zod.string(),
+  "defaultUnitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "description": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}))
+
+/**
+ * @summary Create a product/service in the invoice catalog
+ */
+export const CreateInvoiceProductBody = zod.object({
+  "designation": zod.string().min(1),
+  "defaultUnitPrice": zod.number().min(0),
+  "vatRate": zod.number().min(0).default(18),
+  "description": zod.string().nullish()
+})
+
+export const CreateInvoiceProductResponse = zod.object({
+  "id": zod.number(),
+  "firmId": zod.number(),
+  "designation": zod.string(),
+  "defaultUnitPrice": zod.number(),
+  "vatRate": zod.number(),
+  "description": zod.string().nullish(),
+  "isActive": zod.boolean(),
+  "createdAt": zod.coerce.date()
+})
+
+/**
+ * @summary Delete (soft) a product from the invoice catalog
+ */
+export const DeleteInvoiceProductParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+// ---------------------------------------------------------------------------
+// Invoice Reminder — M28
+// ---------------------------------------------------------------------------
+
+/**
+ * @summary Send a payment reminder email + notification for a validated invoice
+ */
+export const RemindInvoiceParams = zod.object({
+  "id": zod.coerce.number()
+})
+
+export const RemindInvoiceResponse = zod.object({
+  "invoiceId": zod.number(),
+  "reminded": zod.boolean(),
+  "emailSent": zod.boolean()
 })
 
 

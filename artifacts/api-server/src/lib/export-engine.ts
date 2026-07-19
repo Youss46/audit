@@ -1658,6 +1658,143 @@ export async function generateInvoicePdf(inv: InvoiceForPdf): Promise<Buffer> {
 }
 
 // ---------------------------------------------------------------------------
+// Journal de Conformité — PDF export (Module M14)
+// Landscape A4 table of audit log entries for an external audit package.
+// ---------------------------------------------------------------------------
+
+export interface AuditLogRow {
+  createdAt: Date | string;
+  userName: string | null;
+  userRole: string | null;
+  action: string;
+  details: string | null;
+  entityType: string;
+  entityId: string | null;
+  ipAddress: string | null;
+}
+
+function fmtRole(role: string | null): string {
+  const MAP: Record<string, string> = {
+    expert_comptable: "Expert-comptable",
+    collaborateur: "Collaborateur",
+    stagiaire: "Stagiaire",
+    client_pme: "Espace PME",
+    client_staff: "Staff PME",
+    super_admin: "Super Admin",
+    pompiste: "Pompiste",
+    agent_terrain: "Agent terrain",
+  };
+  return MAP[role ?? ""] ?? role ?? "—";
+}
+
+export async function generateAuditLogPdf(opts: {
+  firmName: string;
+  generatedAt: Date;
+  filters: { userRole?: string; aiOverrideOnly?: boolean };
+  rows: AuditLogRow[];
+}): Promise<Buffer> {
+  const { firmName, generatedAt, filters, rows } = opts;
+
+  const filterLabel = [
+    filters.userRole ? `Rôle : ${fmtRole(filters.userRole)}` : null,
+    filters.aiOverrideOnly ? "Corrections IA uniquement" : null,
+  ]
+    .filter(Boolean)
+    .join(" — ") || "Tous les événements";
+
+  const dateStr = generatedAt.toLocaleDateString("fr-FR", {
+    day: "2-digit", month: "long", year: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  });
+
+  // Landscape A4 columns (usable ≈ 777 pt)
+  const cols = [88, 80, 70, "*", 60, 52, 72];
+
+  const headerRow: PdfCell[] = [
+    headerCell("Date & Heure", "left"),
+    headerCell("Utilisateur", "left"),
+    headerCell("Rôle", "left"),
+    headerCell("Événement / Détail", "left"),
+    headerCell("Entité", "left"),
+    headerCell("ID", "center"),
+    headerCell("Adresse IP", "left"),
+  ];
+
+  const bodyRows: PdfCell[][] = rows.map((r, i) => {
+    const dt = new Date(r.createdAt);
+    const dateStr2 = `${dt.toLocaleDateString("fr-FR")} ${dt.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`;
+    const isAi = r.action === "AI_OVERRIDE";
+    const bg = isAi ? "#FFFBEB" : (i % 2 === 0 ? "#FFFFFF" : THEME.lightBg);
+    const cell = (text: string, align: "left" | "center" | "right" = "left"): PdfCell => ({
+      text, style: "cell", alignment: align, fillColor: bg,
+    });
+    return [
+      { text: dateStr2, style: "mono", alignment: "left", fontSize: 7, fillColor: bg },
+      cell(r.userName ?? "Système"),
+      cell(fmtRole(r.userRole)),
+      cell(r.details ?? r.action),
+      { text: r.entityType, style: "cell", alignment: "left", fillColor: bg, italics: true },
+      { text: r.entityId ?? "—", style: "mono", alignment: "center", fontSize: 7, fillColor: bg },
+      { text: r.ipAddress ?? "—", style: "mono", alignment: "left", fontSize: 7, fillColor: bg },
+    ];
+  });
+
+  const docDef: Record<string, unknown> = {
+    pageSize: "A4",
+    pageOrientation: "landscape",
+    pageMargins: [30, 45, 30, 50],
+    defaultStyle: { font: "Helvetica", fontSize: 8 },
+    styles: BASE_STYLES,
+    footer: (page: number, pages: number) => ({
+      text: `Journal de Conformité — ${firmName} — ${filterLabel}  |  Généré le ${dateStr}  |  Page ${page}/${pages}`,
+      style: "footer",
+      margin: [30, 10],
+    }),
+    content: [
+      {
+        columns: [
+          {
+            stack: [
+              { text: firmName, style: "firmName" },
+              { text: "JOURNAL DE CONFORMITÉ", fontSize: 12, bold: true, color: THEME.primary, marginTop: 2 },
+              { text: `Filtres : ${filterLabel}`, fontSize: 8, color: "#666", marginTop: 3 },
+              { text: `Généré le ${dateStr}`, style: "devise", marginTop: 2 },
+            ],
+            width: "*",
+          },
+          {
+            stack: [
+              { text: "Registre immuable", fontSize: 8, color: "#888", alignment: "right" },
+              { text: `${rows.length} entrée${rows.length > 1 ? "s" : ""}`,
+                fontSize: 18, bold: true, color: THEME.primary, alignment: "right", marginTop: 3 },
+              { text: "Aucune entrée ne peut être modifiée ou supprimée.",
+                fontSize: 7, color: "#aaa", alignment: "right", italics: true, marginTop: 4 },
+            ],
+            width: 230,
+          },
+        ],
+        margin: [0, 0, 0, 8],
+      },
+      {
+        canvas: [
+          { type: "line", x1: 0, y1: 2, x2: 777, y2: 2, lineWidth: 2, lineColor: THEME.primary },
+          { type: "line", x1: 0, y1: 6, x2: 777, y2: 6, lineWidth: 0.5, lineColor: THEME.accent },
+        ],
+        margin: [0, 0, 0, 12],
+      },
+      rows.length === 0
+        ? { text: "Aucun événement ne correspond aux filtres sélectionnés.", style: "cell", margin: [0, 20] }
+        : {
+            table: { headerRows: 1, widths: cols, body: [headerRow, ...bodyRows] },
+            layout: tableLayout(),
+          },
+    ],
+  };
+
+  return renderPdf(docDef);
+}
+
+// ---------------------------------------------------------------------------
 // Bordereau des cotisations CNPS — Module M20
 // Landscape A4 : tableau par employé avec détail salarié/patronal.
 // ---------------------------------------------------------------------------

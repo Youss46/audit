@@ -2338,6 +2338,7 @@ export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
 export const InvoiceStatus = {
   BROUILLON: 'BROUILLON',
   VALIDE: 'VALIDE',
+  PARTIELLEMENT_PAYE: 'PARTIELLEMENT_PAYE',
   PAYE: 'PAYE',
   ANNULE: 'ANNULE',
 } as const;
@@ -2392,6 +2393,12 @@ export interface Invoice {
   postedTransactionId?: number | null;
   /** @nullable */
   createdByName?: string | null;
+  /** Cumulative amount received so far (FCFA). 0 until first payment. */
+  amountPaid: number;
+  /** Remaining balance = totalTtc - amountPaid. */
+  balanceDue: number;
+  /** @nullable Set when a reminder email is sent for this invoice. */
+  lastRemindedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -2454,6 +2461,13 @@ export interface MarkInvoicePaidBody {
      * @nullable
      */
   referenceCode?: string | null;
+  /**
+   * Partial payment amount (FCFA). If omitted the full remaining balance is settled.
+   * Mobile Money does not support partial payment.
+   * @minimum 1
+   * @nullable
+   */
+  amount?: number | null;
 }
 
 export interface InvoicePdfResponse {

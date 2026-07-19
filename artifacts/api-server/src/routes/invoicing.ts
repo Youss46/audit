@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, desc, eq, like, max } from "drizzle-orm";
+import { and, asc, desc, eq, like, max } from "drizzle-orm";
 import {
   db,
   clientsTable,
@@ -9,6 +9,7 @@ import {
   journalLinesTable,
   invoicesTable,
   invoiceItemsTable,
+  invoiceProductsTable,
   vatSettingsTable,
   mobileMoneyAccountsTable,
   mobileMoneyTransactionsTable,
@@ -27,10 +28,14 @@ import {
   DownloadInvoicePdfParams,
   CreateCreditNoteParams,
   CreateCreditNoteBody,
+  CreateInvoiceProductBody,
+  DeleteInvoiceProductParams,
+  RemindInvoiceParams,
 } from "@workspace/api-zod";
 import { requireAuth, requirePermission } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { generateInvoicePdf } from "../lib/export-engine";
+import { sendMail } from "../lib/mailer";
 import { ACCOUNT_TVA_COLLECTEE_18 } from "../lib/vat-engine";
 import {
   computeMobileMoneyInflowJournalLines,
@@ -91,6 +96,9 @@ function serializeInvoice(inv: NonNullable<InvoiceRow>) {
     createdByName: inv.createdBy
       ? inv.createdBy.fullName
       : null,
+    amountPaid: inv.amountPaid,
+    balanceDue: inv.totalTtc - inv.amountPaid,
+    lastRemindedAt: inv.lastRemindedAt ?? null,
     createdAt: inv.createdAt,
     updatedAt: inv.updatedAt,
     items: inv.items.map((item) => ({
@@ -492,9 +500,32 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
   const inv = await fetchFullInvoice(id);
   if (!inv) throw new HttpError(404, "Facture introuvable.");
   assertOwnership(inv, req);
-  if (inv.status !== "VALIDE") {
-    throw new HttpError(400, "Seule une facture VALIDÉE peut être marquée comme payée.");
+  if (inv.status !== "VALIDE" && inv.status !== "PARTIELLEMENT_PAYE") {
+    throw new HttpError(400, "Seule une facture VALIDÉE ou PARTIELLEMENT PAYÉE peut être soldée.");
   }
+
+  // Determine payment amount: default = full remaining balance.
+  const remainingBalance = inv.totalTtc - inv.amountPaid;
+  const paymentAmount = body.amount != null ? body.amount : remainingBalance;
+
+  if (paymentAmount <= 0 || paymentAmount > remainingBalance) {
+    throw new HttpError(
+      400,
+      `Montant invalide. Solde restant : ${remainingBalance.toLocaleString("fr-FR")} FCFA.`,
+    );
+  }
+
+  // Mobile Money must always settle the full remaining balance.
+  if (body.paymentMethod === "mobile_money" && paymentAmount < remainingBalance) {
+    throw new HttpError(
+      400,
+      "Les paiements Mobile Money doivent couvrir la totalité du solde restant.",
+    );
+  }
+
+  const newAmountPaid = inv.amountPaid + paymentAmount;
+  const newStatus: "PAYE" | "PARTIELLEMENT_PAYE" =
+    newAmountPaid >= inv.totalTtc ? "PAYE" : "PARTIELLEMENT_PAYE";
 
   // Module Trésorerie Mobile Money: when settled via Mobile Money, also post
   // the settlement leg (débit 552xxx net + débit 631700 frais / crédit 411)
@@ -519,7 +550,7 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
     try {
       journalLines = computeMobileMoneyInflowJournalLines({
         provider: account.provider,
-        totalAmount: inv.totalTtc,
+        totalAmount: paymentAmount,
         feeAmount,
         creditAccount: "411",
         creditLabel: "Clients",
@@ -539,7 +570,7 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
         clientId: inv.clientId,
         date: new Date(),
         label,
-        amount: inv.totalTtc,
+        amount: paymentAmount,
         type: "recette",
         category: "Ventes / Prestations de services",
         paymentType: "cash",
@@ -561,7 +592,7 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
       })),
     );
 
-    const netAmount = inv.totalTtc - feeAmount;
+    const netAmount = paymentAmount - feeAmount;
     await db
       .update(mobileMoneyAccountsTable)
       .set({ balance: account.balance + netAmount })
@@ -575,7 +606,7 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
       transactionId: settlement.id,
       type: "inflow",
       status: "completed",
-      amount: inv.totalTtc,
+      amount: paymentAmount,
       feeAmount,
       referenceCode: body.referenceCode ?? null,
       label,
@@ -586,9 +617,10 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
 
   await db
     .update(invoicesTable)
-    .set({ status: "PAYE" })
+    .set({ status: newStatus, amountPaid: newAmountPaid })
     .where(eq(invoicesTable.id, id));
 
+  const isPartial = newStatus === "PARTIELLEMENT_PAYE";
   await logAudit({
     firmId:     req.user!.firmId,
     userId:     req.user!.id,
@@ -598,8 +630,10 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
     entityType: "invoice",
     entityId:   id,
     details:    body.paymentMethod === "mobile_money"
-      ? `Facture marquée PAYÉE (Mobile Money) : ${inv.invoiceNumber} — ${inv.totalTtc} FCFA`
-      : `Facture marquée PAYÉE : ${inv.invoiceNumber}`,
+      ? `Règlement Mobile Money — Facture ${inv.invoiceNumber} — ${paymentAmount.toLocaleString("fr-FR")} FCFA`
+      : isPartial
+        ? `Acompte enregistré — Facture ${inv.invoiceNumber} — ${paymentAmount.toLocaleString("fr-FR")} / ${inv.totalTtc.toLocaleString("fr-FR")} FCFA`
+        : `Facture soldée — ${inv.invoiceNumber}`,
   });
 
   const updated = await fetchFullInvoice(id);
@@ -842,6 +876,144 @@ router.post("/invoices/:id/credit-note", requirePermission("facturation.create")
 
   const full = await fetchFullInvoice(creditInv.id);
   res.status(201).json(serializeInvoice(full!));
+});
+
+// ---------------------------------------------------------------------------
+// GET /invoice-products — list active products in the firm's catalog
+// ---------------------------------------------------------------------------
+router.get("/invoice-products", requirePermission("facturation.view"), async (req, res) => {
+  const products = await db.query.invoiceProductsTable.findMany({
+    where: and(
+      eq(invoiceProductsTable.firmId, req.user!.firmId),
+      eq(invoiceProductsTable.isActive, true),
+    ),
+    orderBy: [asc(invoiceProductsTable.designation)],
+  });
+  res.json(
+    products.map((p) => ({
+      id: p.id,
+      firmId: p.firmId,
+      designation: p.designation,
+      defaultUnitPrice: p.defaultUnitPrice,
+      vatRate: p.vatRate,
+      description: p.description ?? null,
+      isActive: p.isActive,
+      createdAt: p.createdAt,
+    })),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// POST /invoice-products — create a product in the catalog
+// ---------------------------------------------------------------------------
+router.post("/invoice-products", requirePermission("facturation.create"), async (req, res) => {
+  const body = CreateInvoiceProductBody.parse(req.body);
+  const [product] = await db
+    .insert(invoiceProductsTable)
+    .values({
+      firmId: req.user!.firmId,
+      designation: body.designation,
+      defaultUnitPrice: body.defaultUnitPrice,
+      vatRate: body.vatRate ?? 18,
+      description: body.description ?? null,
+    })
+    .returning();
+  res.status(201).json({
+    id: product!.id,
+    firmId: product!.firmId,
+    designation: product!.designation,
+    defaultUnitPrice: product!.defaultUnitPrice,
+    vatRate: product!.vatRate,
+    description: product!.description ?? null,
+    isActive: product!.isActive,
+    createdAt: product!.createdAt,
+  });
+});
+
+// ---------------------------------------------------------------------------
+// DELETE /invoice-products/:id — soft-delete (deactivate) a catalog product
+// ---------------------------------------------------------------------------
+router.delete("/invoice-products/:id", requirePermission("facturation.create"), async (req, res) => {
+  const { id } = DeleteInvoiceProductParams.parse(req.params);
+  const existing = await db.query.invoiceProductsTable.findFirst({
+    where: and(
+      eq(invoiceProductsTable.id, id),
+      eq(invoiceProductsTable.firmId, req.user!.firmId),
+    ),
+  });
+  if (!existing) throw new HttpError(404, "Article introuvable.");
+  await db
+    .update(invoiceProductsTable)
+    .set({ isActive: false })
+    .where(eq(invoiceProductsTable.id, id));
+  res.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// POST /invoices/:id/remind — send a payment reminder for a validated invoice
+// ---------------------------------------------------------------------------
+router.post("/invoices/:id/remind", requirePermission("facturation.create"), async (req, res) => {
+  const { id } = RemindInvoiceParams.parse(req.params);
+
+  const inv = await fetchFullInvoice(id);
+  if (!inv) throw new HttpError(404, "Facture introuvable.");
+  assertOwnership(inv, req);
+
+  if (inv.status === "PAYE") {
+    throw new HttpError(400, "Impossible d'envoyer une relance pour une facture déjà payée.");
+  }
+  if (inv.status === "ANNULE") {
+    throw new HttpError(400, "Impossible d'envoyer une relance pour une facture annulée.");
+  }
+  if (inv.status === "BROUILLON") {
+    throw new HttpError(400, "Validez la facture avant d'envoyer une relance.");
+  }
+
+  let emailSent = false;
+
+  if (inv.customerEmail) {
+    try {
+      const duePart = inv.dueDate
+        ? ` (échéance : ${new Date(inv.dueDate).toLocaleDateString("fr-FR")})`
+        : "";
+      const balanceDue = inv.totalTtc - inv.amountPaid;
+      const balancePart =
+        inv.amountPaid > 0
+          ? `<p>Solde restant : <strong>${balanceDue.toLocaleString("fr-FR")} FCFA</strong> (acompte de ${inv.amountPaid.toLocaleString("fr-FR")} FCFA déjà reçu).</p>`
+          : "";
+      await sendMail({
+        to: inv.customerEmail,
+        subject: `Rappel de paiement — Facture ${inv.invoiceNumber}`,
+        html: `<p>Bonjour,</p>
+<p>Nous vous rappelons que la facture <strong>${inv.invoiceNumber}</strong> d'un montant de <strong>${inv.totalTtc.toLocaleString("fr-FR")} FCFA TTC</strong>${duePart} est en attente de règlement.</p>
+${balancePart}
+<p>Nous vous remercions de procéder au règlement dans les meilleurs délais.</p>
+<p>Cordialement,<br>${inv.client?.name ?? "Votre prestataire"}</p>`,
+      });
+      emailSent = true;
+    } catch (err) {
+      // Non-blocking: log but don't fail the request
+      console.error("[remind] Email failed:", err);
+    }
+  }
+
+  await db
+    .update(invoicesTable)
+    .set({ lastRemindedAt: new Date() })
+    .where(eq(invoicesTable.id, id));
+
+  await logAudit({
+    firmId:     req.user!.firmId,
+    userId:     req.user!.id,
+    userName:   req.user!.fullName,
+    userRole:   req.user!.role,
+    action:     AuditAction.INVOICE_MARK_PAID as string as typeof AuditAction.INVOICE_MARK_PAID,
+    entityType: "invoice",
+    entityId:   id,
+    details:    `Relance envoyée — Facture ${inv.invoiceNumber}${emailSent ? ` — email → ${inv.customerEmail}` : " — sans email (aucune adresse)"}`,
+  });
+
+  res.json({ invoiceId: id, reminded: true, emailSent });
 });
 
 export default router;

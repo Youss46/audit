@@ -1,4 +1,5 @@
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -23,7 +24,7 @@ import { documentsTable } from "./documents";
 // table in this schema — no decimal currency).  VAT rates are stored as
 // integer percentages (18 = 18 %).
 
-export const INVOICE_STATUSES = ["BROUILLON", "VALIDE", "PAYE", "ANNULE"] as const;
+export const INVOICE_STATUSES = ["BROUILLON", "VALIDE", "PARTIELLEMENT_PAYE", "PAYE", "ANNULE"] as const;
 export type InvoiceStatus = (typeof INVOICE_STATUSES)[number];
 
 // ---------------------------------------------------------------------------
@@ -69,6 +70,11 @@ export const invoicesTable = pgTable(
     createdById: integer("created_by_id").references(() => usersTable.id, {
       onDelete: "set null",
     }),
+    // Partial payment tracking: cumulative amount received so far (FCFA).
+    // 0 until a first payment is recorded; equals totalTtc when fully paid.
+    amountPaid: integer("amount_paid").notNull().default(0),
+    // Set when a reminder email/notification is sent for this invoice.
+    lastRemindedAt: timestamp("last_reminded_at", { withTimezone: true }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -126,3 +132,28 @@ export const insertInvoiceItemSchema = createInsertSchema(invoiceItemsTable).omi
 });
 export type InsertInvoiceItem = z.infer<typeof insertInvoiceItemSchema>;
 export type InvoiceItem = typeof invoiceItemsTable.$inferSelect;
+
+// ---------------------------------------------------------------------------
+// Invoice Products Catalog (article / service library)
+// ---------------------------------------------------------------------------
+// Re-usable article/service definitions per cabinet (firm). When adding a line
+// to a draft invoice the UI autocompletes from this catalog; designation,
+// unit price and VAT rate are pre-filled and remain editable per-invoice.
+export const invoiceProductsTable = pgTable(
+  "invoice_products",
+  {
+    id: serial("id").primaryKey(),
+    firmId: integer("firm_id")
+      .notNull()
+      .references(() => firmsTable.id, { onDelete: "cascade" }),
+    designation: text("designation").notNull(),
+    defaultUnitPrice: integer("default_unit_price").notNull().default(0),
+    vatRate: integer("vat_rate").notNull().default(18),
+    description: text("description"),
+    isActive: boolean("is_active").notNull().default(true),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index("invoice_products_firm_id_idx").on(table.firmId)],
+);
+
+export type InvoiceProduct = typeof invoiceProductsTable.$inferSelect;
