@@ -91,7 +91,7 @@ router.post(
     if (!parsed.success) throw new HttpError(400, "documentId invalide.");
     const { documentId } = parsed.data;
 
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.DEEPSEEK_API_KEY;
     if (!apiKey) throw new HttpError(503, "Service OCR non configuré.");
 
     // Fetch document. Portal users may only access their own client's docs.
@@ -111,56 +111,58 @@ router.post(
       throw new HttpError(422, "Ce document ne contient pas de données lisibles.");
     }
 
-    // Call Gemini Vision (gemini-1.5-flash) via REST — no extra npm dep.
-    const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+    // PDF not supported by DeepSeek Vision — reject early with a clear message.
+    const mimeType = doc.mimeType ?? "image/jpeg";
+    if (mimeType === "application/pdf") {
+      throw new HttpError(422, "Les PDF ne sont pas pris en charge par le service OCR. Veuillez importer une image (PNG ou JPEG).");
+    }
 
-    const geminiBody = {
-      contents: [
-        {
-          parts: [
-            { text: GEMINI_PROMPT },
-            {
-              inline_data: {
-                mime_type: toGeminiMimeType(doc.mimeType ?? "image/jpeg"),
-                data: doc.fileData,
-              },
-            },
-          ],
-        },
-      ],
-      generationConfig: {
-        temperature: 0.1,
-        maxOutputTokens: 512,
-      },
-    };
+    // Call DeepSeek Vision via OpenAI-compatible chat/completions endpoint.
+    const dataUrl = `data:${mimeType};base64,${doc.fileData}`;
 
     let rawText: string;
     try {
-      const geminiRes = await fetch(geminiUrl, {
+      const dsRes = await fetch("https://api.deepseek.com/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(geminiBody),
+        headers: {
+          "Content-Type":  "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model:       "deepseek-chat",
+          messages: [
+            {
+              role:    "user",
+              content: [
+                { type: "text",      text: GEMINI_PROMPT },
+                { type: "image_url", image_url: { url: dataUrl } },
+              ],
+            },
+          ],
+          temperature:      0.1,
+          max_tokens:       512,
+          response_format:  { type: "json_object" },
+        }),
       });
 
-      if (!geminiRes.ok) {
-        const err = await geminiRes.text();
-        console.error("[OCR] Gemini error:", err);
+      if (!dsRes.ok) {
+        const err = await dsRes.text();
+        console.error("[OCR] DeepSeek error:", err);
         throw new HttpError(502, "Erreur du service de reconnaissance de documents.");
       }
 
-      const geminiData = (await geminiRes.json()) as {
-        candidates?: { content?: { parts?: { text?: string }[] } }[];
+      const dsData = (await dsRes.json()) as {
+        choices?: { message?: { content?: string } }[];
       };
 
-      rawText =
-        geminiData.candidates?.[0]?.content?.parts?.[0]?.text ?? "";
+      rawText = dsData.choices?.[0]?.message?.content ?? "";
     } catch (err) {
       if (err instanceof HttpError) throw err;
-      console.error("[OCR] Gemini fetch error:", err);
+      console.error("[OCR] DeepSeek fetch error:", err);
       throw new HttpError(502, "Impossible de joindre le service OCR.");
     }
 
-    // Strip markdown code fences if Gemini wrapped the JSON.
+    // Strip markdown code fences if the model wrapped the JSON.
     const jsonText = rawText.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
 
     let extracted: z.infer<typeof GeminiResponseSchema>;

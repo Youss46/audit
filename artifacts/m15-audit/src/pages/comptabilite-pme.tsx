@@ -19,6 +19,7 @@ import {
   PaymentType,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
+import { getToken } from "@/lib/auth"
 import { useQueryClient } from "@tanstack/react-query"
 import { useToast } from "@/hooks/use-toast"
 import { cn, formatDate } from "@/lib/utils"
@@ -193,9 +194,10 @@ export default function ComptabilitePme() {
         setOcrError(null)
         try {
           const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
-          const res = await fetch(`${baseUrl}/ocr/process/${doc.id}`, {
+          const token = getToken()
+          const res = await fetch(`${baseUrl}/api/ocr/process/${doc.id}`, {
             method: 'POST',
-            credentials: 'include',
+            headers: token ? { Authorization: `Bearer ${token}` } : {},
           })
           if (!res.ok) {
             const err = await res.json().catch(() => ({})) as { error?: string }
