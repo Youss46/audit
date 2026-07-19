@@ -54,6 +54,7 @@ import PumpAssignments from '@/pages/pump-assignments';
 import Communication from '@/pages/communication';
 import PayrollSettings from '@/pages/payroll-settings';
 import VatSettings from '@/pages/vat-settings';
+import Notifications from '@/pages/notifications'
 import NotFound from '@/pages/not-found';
 import AdminDashboard from '@/pages/admin/dashboard';
 import AdminCabinets from '@/pages/admin/firms';
@@ -134,6 +135,7 @@ function Router() {
         <Route path="/cabinet/interne/rentabilite" component={Rentabilite} />
         <Route path="/users" component={Users} />
         <Route path="/audit-log" component={AuditLog} />
+        <Route path="/notifications" component={Notifications} />
         <Route path="/cabinet/compliance" component={Compliance} />
         <Route path="/cabinet/communication" component={Communication} />
         {/* ── Console Super Admin (route protégée, rôle super_admin uniquement) ── */}

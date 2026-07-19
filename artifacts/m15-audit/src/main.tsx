@@ -1,4 +1,5 @@
 import App from "./App"
+import { ErrorBoundary } from "@/components/ErrorBoundary"
 import { createRoot } from "react-dom/client"
 import "./index.css"
 import { setBaseUrl } from "@workspace/api-client-react"
@@ -26,7 +27,11 @@ if (!root) {
   throw new Error("No root element found")
 }
 
-createRoot(root).render(<App />)
+createRoot(root).render(
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+)
 
 // Dismiss the splash screen once React has painted the first frame.
 // We wait for the progress-bar animation (≈2 s) before hiding so the

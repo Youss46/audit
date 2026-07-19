@@ -95,12 +95,12 @@ export function NotificationBell() {
             </Button>
           )}
         </div>
-        <ScrollArea className="max-h-96">
+        <ScrollArea className="max-h-80">
           {items.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">Aucune notification.</p>
           ) : (
             <div className="divide-y">
-              {items.map((notif) => (
+              {items.slice(0, 8).map((notif) => (
                 <button
                   key={notif.id}
                   className={`w-full text-left p-3 text-sm hover:bg-muted/50 transition-colors ${
@@ -123,6 +123,16 @@ export function NotificationBell() {
             </div>
           )}
         </ScrollArea>
+        {/* Lien vers la page complète */}
+        <div className="border-t p-2">
+          <button
+            className="w-full text-xs text-center text-muted-foreground hover:text-foreground py-1.5 rounded transition-colors hover:bg-muted/50"
+            onClick={() => setLocation("/notifications")}
+          >
+            Voir toutes les notifications
+            {items.length > 8 && ` (${items.length - 8} de plus)`}
+          </button>
+        </div>
       </PopoverContent>
     </Popover>
   )
