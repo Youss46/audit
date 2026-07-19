@@ -44,4 +44,20 @@ app.use(express.urlencoded({ extended: true, limit: "15mb" }));
 
 app.use("/api", router);
 
+// Global error handler — must come after all routes.
+// Handles HttpError (structured) and unexpected errors alike.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const status: number =
+    typeof err?.statusCode === "number" ? err.statusCode :
+    typeof err?.status    === "number" ? err.status    :
+    500;
+  const message: string =
+    typeof err?.message === "string" && err.message
+      ? err.message
+      : "Erreur interne du serveur.";
+  logger.error({ err, status }, "Unhandled route error");
+  res.status(status).json({ error: message });
+});
+
 export default app;

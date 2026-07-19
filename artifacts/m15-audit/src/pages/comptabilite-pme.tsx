@@ -217,8 +217,8 @@ export default function ComptabilitePme() {
             documentId: doc.id,
             documentFileName: doc.fileName,
           })
-        } catch {
-          setOcrError('Impossible de joindre le service de reconnaissance.')
+        } catch (e) {
+          setOcrError(e instanceof Error ? e.message : 'Impossible de joindre le service de reconnaissance.')
         } finally {
           setIsOcrProcessing(false)
         }

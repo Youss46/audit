@@ -146,9 +146,9 @@ router.post(
       });
 
       if (!dsRes.ok) {
-        const err = await dsRes.text();
-        console.error("[OCR] DeepSeek error:", err);
-        throw new HttpError(502, "Erreur du service de reconnaissance de documents.");
+        const errBody = await dsRes.text();
+        console.error("[OCR] DeepSeek error:", errBody);
+        throw new HttpError(502, `DeepSeek OCR error (${dsRes.status}): ${errBody}`);
       }
 
       const dsData = (await dsRes.json()) as {
@@ -158,8 +158,9 @@ router.post(
       rawText = dsData.choices?.[0]?.message?.content ?? "";
     } catch (err) {
       if (err instanceof HttpError) throw err;
-      console.error("[OCR] DeepSeek fetch error:", err);
-      throw new HttpError(502, "Impossible de joindre le service OCR.");
+      const detail = err instanceof Error ? err.message : String(err);
+      console.error("[OCR] DeepSeek fetch error:", detail);
+      throw new HttpError(502, `Impossible de joindre le service OCR : ${detail}`);
     }
 
     // Strip markdown code fences if the model wrapped the JSON.
