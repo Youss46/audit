@@ -6,20 +6,20 @@ import type { PaymentMethod, PaymentType, TransactionType } from "@workspace/db"
 // approve rather than re-key every operation from scratch.
 
 // The treasury ("trésorerie") leg of every entry depends only on the
-// payment method: cash movements hit account 571 (Caisse), everything else
-// (mobile money, cheque, bank transfer) is treated as a bank movement on
+// payment method: cash movements hit account 571 (Caisse), cheque receipts
+// hit 513 (Chèques à encaisser), and mobile money / bank transfers hit
 // account 52 (Banques).
 const PAYMENT_METHOD_ACCOUNTS: Record<PaymentMethod, string> = {
   especes: "571",
   mobile_money: "52",
-  cheque: "52",
+  cheque: "513",
   virement: "52",
 };
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   especes: "Espèces",
   mobile_money: "Wave / Orange Money",
-  cheque: "Chèque",
+  cheque: "Chèques à encaisser",
   virement: "Virement",
 };
 
