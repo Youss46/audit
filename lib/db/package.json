@@ -16,6 +16,7 @@
     "seed:roles": "tsx src/seed-roles.ts",
     "seed:report-document-templates": "tsx src/seed-report-document-templates.ts",
     "seed:payroll-settings": "tsx src/seed-payroll-settings.ts",
+    "seed:syscohada": "tsx src/seed-syscohada.ts",
     "enforce:audit-immutability": "tsx src/enforce-audit-immutability.ts"
   },
   "dependencies": {

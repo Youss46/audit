@@ -1,8 +1,11 @@
 import {
   type AnyPgColumn,
+  boolean,
   index,
   integer,
   jsonb,
+  numeric,
+  pgEnum,
   pgTable,
   serial,
   text,
@@ -22,10 +25,29 @@ import { stationsTable } from "./stations";
 // double-entry ledger bridging plain-language PME cash entries and the
 // SYSCOHADA "plan comptable" used by the accounting firm.
 
+// ---------------------------------------------------------------------------
+// Enum : type fonctionnel d'un compte SYSCOHADA
+// ---------------------------------------------------------------------------
+// Permet au Cabinet de filtrer le Plan Comptable par grande famille et à
+// l'imputation automatique de valider la cohérence du compte suggéré.
+export const ACCOUNT_TYPES = [
+  "CAPITAL",        // Classe 1 — Ressources durables
+  "IMMOBILISATION", // Classe 2 — Actif immobilisé
+  "STOCK",          // Classe 3 — Stocks
+  "TIERS",          // Classe 4 — Tiers (clients, fournisseurs, État…)
+  "TRESORERIE",     // Classe 5 — Trésorerie
+  "CHARGE",         // Classe 6 — Charges
+  "PRODUIT",        // Classe 7 — Produits
+  "HAO",            // Classe 8 — Hors activités ordinaires
+  "ATTENTE",        // Comptes d'attente (471, 472)
+] as const;
+export type AccountType = (typeof ACCOUNT_TYPES)[number];
+
+export const accountTypeEnum = pgEnum("account_type", ACCOUNT_TYPES);
+
 // -- SYSCOHADA chart of accounts (plan comptable) ---------------------------
 // One row per account number, seeded once per environment (see
-// lib/db/src/seed-accounts.ts). Shared across every firm/tenant -- the chart
-// of accounts itself is standardized by SYSCOHADA, not tenant-specific.
+// lib/db/src/seed-syscohada.ts). Shared across every firm/tenant.
 export const accountsTable = pgTable(
   "accounts",
   {
@@ -35,6 +57,8 @@ export const accountsTable = pgTable(
     // SYSCOHADA account class, 1 to 9 (1: capitaux, 2: immobilisations,
     // 3: stocks, 4: tiers, 5: trésorerie, 6: charges, 7: produits, ...).
     accountClass: integer("account_class").notNull(),
+    // Functional type — nullable so existing rows survive the migration.
+    accountType: accountTypeEnum("account_type"),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
@@ -256,3 +280,37 @@ export const insertJournalLineSchema = createInsertSchema(journalLinesTable).omi
 });
 export type InsertJournalLine = z.infer<typeof insertJournalLineSchema>;
 export type JournalLine = typeof journalLinesTable.$inferSelect;
+
+// -- Catégories de transactions (référentiel DB) ----------------------------
+// Remplace les constantes statiques PURCHASE_CATEGORIES / CATEGORY_RULES à
+// terme. Chaque ligne mappe une clé métier (ex. "loyer") vers un compte
+// SYSCOHADA par défaut, un taux TVA et un type de transaction. Le Cabinet
+// peut étendre ce référentiel sans toucher au code.
+export const transactionCategoriesTable = pgTable("transaction_categories", {
+  // Clé métier immuable (ex. "loyer", "vente_marchandises").
+  key: text("key").primaryKey(),
+  // Libellé affiché à l'utilisateur PME.
+  displayName: text("display_name").notNull(),
+  // Compte de charge (Classe 6) ou de produit (Classe 7) par défaut.
+  defaultAccountNumber: text("default_account_number").notNull(),
+  // Taux TVA par défaut en points de % entiers (0, 18…).
+  defaultTvaRate: integer("default_tva_rate").notNull().default(0),
+  // La TVA est-elle récupérable sur cette catégorie ?
+  vatEligible: boolean("vat_eligible").notNull().default(false),
+  // "depense" (Classe 6) ou "recette" (Classe 7).
+  transactionType: text("transaction_type")
+    .notNull()
+    .$type<"depense" | "recette">(),
+  // Catégories système (générées automatiquement) masquées dans les menus PME.
+  isHidden: boolean("is_hidden").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+    .$onUpdate(() => new Date()),
+});
+
+export const insertTransactionCategorySchema = createInsertSchema(transactionCategoriesTable).omit({
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertTransactionCategory = z.infer<typeof insertTransactionCategorySchema>;
+export type TransactionCategory = typeof transactionCategoriesTable.$inferSelect;

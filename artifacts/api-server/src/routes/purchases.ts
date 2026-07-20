@@ -148,8 +148,36 @@ function getCreditAccount(
 
 // ---------------------------------------------------------------------------
 // GET /purchases/categories  — must be before /:id
+// Lit depuis transaction_categories (DB) en priorité ; repli statique si vide.
 // ---------------------------------------------------------------------------
 router.get("/purchases/categories", async (_req, res) => {
+  // Tente de lire depuis le référentiel DB (transaction_categories).
+  try {
+    const { transactionCategoriesTable } = await import("@workspace/db");
+    const { asc, eq } = await import("drizzle-orm");
+
+    const rows = await db
+      .select()
+      .from(transactionCategoriesTable)
+      .where(eq(transactionCategoriesTable.isHidden, false))
+      .orderBy(asc(transactionCategoriesTable.key));
+
+    if (rows.length > 0) {
+      return res.json(
+        rows.map((r) => ({
+          key:         r.key,
+          label:       r.displayName,
+          account:     r.defaultAccountNumber,
+          accountName: r.displayName,
+          vatEligible: r.vatEligible,
+        })),
+      );
+    }
+  } catch {
+    // Table pas encore migrée — repli sur les constantes statiques ci-dessous.
+  }
+
+  // Repli statique : PURCHASE_CATEGORIES (toujours cohérent avec le moteur).
   res.json(
     Object.entries(PURCHASE_CATEGORIES).map(([key, c]) => ({
       key,

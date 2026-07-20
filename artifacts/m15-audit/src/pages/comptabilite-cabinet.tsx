@@ -25,6 +25,7 @@ import { useToast } from "@/hooks/use-toast"
 import { StationSelector, shouldShowStationSelector } from "@/components/stations/station-selector"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
 import { OpeningBalanceEntry } from "@/components/comptabilite/OpeningBalanceEntry"
+import { AccountCombobox } from "@/components/comptabilite/AccountCombobox"
 import { formatDate, formatDateTime, cn } from "@/lib/utils"
 import {
   getTransactionStatusColor,
@@ -805,17 +806,16 @@ export default function ComptabiliteCabinet() {
                             <tr key={line.id} className="border-t">
                               <td className="py-1.5">
                                 {isEditing ? (
-                                  <Input
-                                    className="h-7 w-24 font-mono text-xs inline-block mr-1.5"
+                                  <AccountCombobox
                                     value={editingAccounts[t.id][line.id]}
                                     disabled={clientNotVatRegistered && isVatAccount(line.accountNumber)}
-                                    onChange={(e) =>
+                                    onChange={(accountNumber) =>
                                       setEditingAccounts((prev) => ({
                                         ...prev,
-                                        [t.id]: { ...prev[t.id], [line.id]: e.target.value },
+                                        [t.id]: { ...prev[t.id], [line.id]: accountNumber },
                                       }))
                                     }
-                                    data-testid={`input-account-${line.id}`}
+                                    className="mr-1.5"
                                   />
                                 ) : (
                                   <span className="font-mono text-xs mr-1.5">{line.accountNumber}</span>

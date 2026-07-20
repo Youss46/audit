@@ -171,10 +171,11 @@ async function seedAccounts() {
   console.log(`✓ Plan comptable : ${SYSCOHADA_ACCOUNTS.length} comptes upsertés.`);
 }
 
-// ─── 3–5. Seeds délégués aux fichiers existants ───────────────────────────────
+// ─── 3–6. Seeds délégués aux fichiers existants ───────────────────────────────
 import { seed as seedDsf } from "./seed-dsf-mapping-rules";
 import { seed as seedPayroll } from "./seed-payroll-settings";
 import { seed as seedTemplates } from "./seed-report-document-templates";
+import { seedPlanComptable, seedTransactionCategories } from "./seed-syscohada";
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 
@@ -182,6 +183,12 @@ async function main() {
   console.log("\n🚀 Bootstrap de la base de données M15-AUDIT\n");
 
   await seedRoles();
+
+  // Plan comptable SYSCOHADA complet (classes 1–8 + accountType) + catégories
+  await seedPlanComptable();
+  await seedTransactionCategories();
+
+  // Seed de base (ancienne version — conservé pour rétrocompatibilité)
   await seedAccounts();
 
   await seedDsf();

@@ -1,1 +1,2 @@
 - [Frontend API URL pattern](frontend-api-url.md) — toutes les pages frontend doivent utiliser getApiBase() pour les fetch vers /api/..., jamais de chemin relatif nu.
+- [SYSCOHADA chart & imputation engine](syscohada-engine.md) — plan comptable complet en DB (accountsTable + accountType enum), catégories dans transaction_categories, service imputeAccount() avec fallback 471.
