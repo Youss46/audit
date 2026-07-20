@@ -20,6 +20,7 @@ import {
 } from "@workspace/api-client-react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useAuth } from "@/hooks/use-auth"
+import { getToken } from "@/lib/auth"
 import { useToast } from "@/hooks/use-toast"
 import { StationSelector, shouldShowStationSelector } from "@/components/stations/station-selector"
 import { ClientAccountingNav } from "@/components/comptabilite/ClientAccountingNav"
@@ -36,7 +37,7 @@ import {
   formatFcfa,
   isVatAccount,
 } from "@/lib/status"
-import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert, GitMerge, Trash2, Plus, Sparkles } from "lucide-react"
+import { BookOpenCheck, CheckCircle2, XCircle, Paperclip, ClipboardList, Clock, Pencil, Save, AlertTriangle, ShieldAlert, GitMerge, Trash2, Plus, Sparkles, ExternalLink } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -317,6 +318,28 @@ export default function ComptabiliteCabinet() {
   // queue down to only the entries the anomaly detector flagged.
   const [anomaliesOnly, setAnomaliesOnly] = useState(false)
   const [rejectTarget, setRejectTarget] = useState<number | null>(null)
+
+  /** Ouvre la pièce jointe d'une transaction dans un nouvel onglet. */
+  async function openDocument(documentId: number | string) {
+    try {
+      const baseUrl = (import.meta.env.VITE_API_URL as string | undefined) ?? ''
+      const token = getToken()
+      const res = await fetch(`${baseUrl}/api/documents/${documentId}`, {
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!res.ok) {
+        toast({ title: "Erreur", description: "Impossible de charger la pièce jointe.", variant: "destructive" })
+        return
+      }
+      const data = await res.json() as { fileData: string; mimeType: string; fileName: string }
+      const bytes = Uint8Array.from(atob(data.fileData), (c) => c.charCodeAt(0))
+      const blob = new Blob([bytes], { type: data.mimeType })
+      const url = URL.createObjectURL(blob)
+      window.open(url, '_blank', 'noopener,noreferrer')
+    } catch {
+      toast({ title: "Erreur", description: "Impossible d'ouvrir la pièce jointe.", variant: "destructive" })
+    }
+  }
   const [ventilerTarget, setVentilerTarget] = useState<{
     lineId: number; lineLabel: string; lineAmount: number; clientId: number
   } | null>(null)
@@ -711,10 +734,16 @@ export default function ComptabiliteCabinet() {
                       )}
                     </div>
                     {t.documentId ? (
-                      <div className="flex items-center gap-1.5 text-sm text-primary pt-1">
-                        <Paperclip className="h-3.5 w-3.5" />
-                        {t.documentFileName ?? "Pièce jointe"}
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => openDocument(t.documentId!)}
+                        className="flex items-center gap-1.5 text-sm text-primary pt-1 hover:underline focus:outline-none group"
+                        title="Ouvrir la pièce jointe"
+                      >
+                        <Paperclip className="h-3.5 w-3.5 shrink-0" />
+                        <span className="truncate max-w-[200px]">{t.documentFileName ?? "Pièce jointe"}</span>
+                        <ExternalLink className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-60 transition-opacity" />
+                      </button>
                     ) : (
                       <p className="text-xs text-muted-foreground italic pt-1">Aucune pièce jointe</p>
                     )}
