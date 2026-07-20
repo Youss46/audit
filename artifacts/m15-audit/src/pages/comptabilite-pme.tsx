@@ -367,7 +367,7 @@ export default function ComptabilitePme() {
       const base64 = (reader.result as string).split(',')[1]
       ocrUploadMutation.mutate({
         id: clientId,
-        data: { fileName: file.name, mimeType: file.type, fileData: base64, category: 'Pièces comptables' },
+        data: { fileName: file.name, mimeType: file.type, fileData: base64, category: 'Pièces comptables', purpose: 'ocr' },
       })
     }
     reader.readAsDataURL(file)

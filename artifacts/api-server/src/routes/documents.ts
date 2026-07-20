@@ -144,7 +144,11 @@ router.post("/clients/:id/documents", async (req, res) => {
       });
       return;
     }
-    category = PORTAL_UPLOAD_CATEGORY;
+    // OCR uploads (purpose === 'ocr') keep their own category so they don't
+    // pollute the "Procédure de Visa" document list in the portal.
+    if (body.purpose !== "ocr") {
+      category = PORTAL_UPLOAD_CATEGORY;
+    }
 
     if (!missionId) {
       // Auto-attach to the client's currently active mission (the most

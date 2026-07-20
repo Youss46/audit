@@ -664,7 +664,8 @@ export const UploadClientDocumentBody = zod.object({
   "mimeType": zod.string().min(1),
   "fileData": zod.string().describe('Base64-encoded file content'),
   "category": zod.string().min(1),
-  "missionId": zod.number().optional()
+  "missionId": zod.number().optional(),
+  "purpose": zod.string().optional()
 })
 
 export const UploadClientDocumentResponse = zod.object({

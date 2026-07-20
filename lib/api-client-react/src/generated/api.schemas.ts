@@ -486,6 +486,8 @@ export interface DocumentInput {
   /** @minLength 1 */
   category: string;
   missionId?: number;
+  /** 'ocr' bypasses the forced Procédure de Visa category for portal roles */
+  purpose?: string;
 }
 
 export interface Document {
