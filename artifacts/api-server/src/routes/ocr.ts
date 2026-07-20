@@ -74,7 +74,7 @@ router.post("/ocr/process/:documentId", requireAuth, async (req, res) => {
       };
 
   const message = await client.messages.create({
-    model: "claude-opus-4-5",
+    model: "claude-sonnet-4-5",
     max_tokens: 512,
     messages: [
       {
