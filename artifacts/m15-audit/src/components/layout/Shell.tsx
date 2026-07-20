@@ -36,7 +36,7 @@ import {
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, isSuperAdmin, hasPermission } from "@/lib/status"
 import { UserCog, Fuel, CircleDollarSign, Smartphone, ShoppingCart, ClipboardCheck } from "lucide-react"
-import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey } from "@workspace/api-client-react"
+import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey, useGetClient } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
 import { Button } from "@/components/ui/button"
@@ -118,6 +118,14 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const { data: firmPendingCounts } = useGetFirmPendingCounts({
     query: { queryKey: getGetFirmPendingCountsQueryKey(), enabled: isCabinetStaff, refetchInterval: 30_000 },
   })
+
+  // Menus station service (pompes, carburant…) : visibles uniquement si la
+  // PME est de secteur STATION_SERVICE.
+  const pmeClientId = user?.role === "client_pme" ? (user?.clientId ?? 0) : 0
+  const { data: pmeClient } = useGetClient(pmeClientId, {
+    query: { enabled: !!pmeClientId },
+  })
+  const isStationService = pmeClient?.sector === "STATION_SERVICE"
 
   // Close mobile menu when location changes
   React.useEffect(() => {
@@ -413,8 +421,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
 
-          {/* Multi-station (P8): physical station management -- PME owner only. */}
-          {user?.role === "client_pme" && (
+          {/* Multi-station (P8): physical station management -- station PMEs only. */}
+          {user?.role === "client_pme" && isStationService && (
             <Link href="/client/settings/stations" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/client/settings/stations")
@@ -426,8 +434,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
 
-          {/* Module P7: pump registration & initial calibration -- PME owner only. */}
-          {user?.role === "client_pme" && (
+          {/* Module P7: pump registration & initial calibration -- station PMEs only. */}
+          {user?.role === "client_pme" && isStationService && (
             <Link href="/client/settings/pumps" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/client/settings/pumps")
@@ -440,8 +448,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
           )}
 
           {/* Module P7 (Sécurisation du prix carburant): active FCFA price
-              per litre for each fuel type -- PME owner only. */}
-          {user?.role === "client_pme" && (
+              per litre for each fuel type -- station PMEs only. */}
+          {user?.role === "client_pme" && isStationService && (
             <Link href="/client/settings/fuel-prices" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/client/settings/fuel-prices")
@@ -453,8 +461,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </Link>
           )}
 
-          {/* Module P7: daily pump-to-pompiste assignment -- PME owner only. */}
-          {user?.role === "client_pme" && (
+          {/* Module P7: daily pump-to-pompiste assignment -- station PMEs only. */}
+          {user?.role === "client_pme" && isStationService && (
             <Link href="/client/settings/pump-assignments" className={cn(
               "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
               location.startsWith("/client/settings/pump-assignments")
