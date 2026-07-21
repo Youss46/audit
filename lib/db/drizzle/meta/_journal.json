@@ -15,6 +15,13 @@
       "when": 1753084800000,
       "tag": "0001_add_stations_purchases_momo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784624841293,
+      "tag": "0002_add_invoice_amount_paid",
+      "breakpoints": true
     }
   ]
 }
