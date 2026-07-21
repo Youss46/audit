@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import { db, clientsTable, documentsTable, missionsTable, isPortalRole } from "@workspace/db";
 import {
   ListClientDocumentsParams,
+  ListClientDocumentsQueryParams,
   ListClientDocumentsResponse,
   ListDocumentsQueryParams,
   ListDocumentsResponse,
@@ -95,10 +96,18 @@ router.get("/clients/:id/documents", async (req, res) => {
     return;
   }
 
+  const { page, limit, category } = ListClientDocumentsQueryParams.parse(req.query);
+  const offset = (page - 1) * limit;
+
+  const conditions = [eq(documentsTable.clientId, id)];
+  if (category) conditions.push(eq(documentsTable.category, category));
+
   const docs = await db.query.documentsTable.findMany({
-    where: eq(documentsTable.clientId, id),
+    where: and(...conditions),
     orderBy: (t, { desc }) => [desc(t.createdAt)],
     with: { uploadedBy: true },
+    limit,
+    offset,
   });
 
   res.json(

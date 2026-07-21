@@ -3089,6 +3089,24 @@ export type ListClientsParams = {
 missionStatus?: MissionStatus;
 };
 
+export type ListClientDocumentsParams = {
+/**
+ * Page number (1-based)
+ * @minimum 1
+ */
+page?: number;
+/**
+ * Number of documents per page
+ * @minimum 1
+ * @maximum 100
+ */
+limit?: number;
+/**
+ * Filter documents by category (e.g. "Procédure de Visa")
+ */
+category?: string;
+};
+
 export type ListDocumentsParams = {
 clientId?: number;
 };

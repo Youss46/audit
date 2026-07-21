@@ -544,6 +544,29 @@ paths:
           required: true
           schema:
             type: integer
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          description: Page number (1-based)
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+          description: Number of documents per page
+        - name: category
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter documents by category (e.g. "Procédure de Visa")
       responses:
         "200":
           description: List of documents (metadata only)

@@ -15,7 +15,7 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { formatDateTime } from "@/lib/utils"
 import { getSystemDescription } from "@/lib/visa-engine"
-import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet, LogOut, ScanLine } from "lucide-react"
+import { Building2, UploadCloud, FileText, Stamp, Clock, Activity, CheckCircle2, AlertTriangle, MessageSquare, Fuel, MapPin, ArrowRight, Wallet, LogOut, ScanLine, ChevronLeft, ChevronRight } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog"
 import { Badge } from "@/components/ui/badge"
@@ -66,6 +66,7 @@ function bytesToSize(bytes: number) {
 
 const ACCEPTED_MIME_TYPES = ["application/pdf", "image/png", "image/jpeg"]
 const PORTAL_CATEGORY = "Procédure de Visa"
+const DOCS_PAGE_SIZE = 10
 
 // Module P2 (Espace PME): the self-service portal a client_pme account lands
 // on. It only ever shows this one client's dossier — the drag-and-drop zone
@@ -78,6 +79,7 @@ export default function ClientPortal() {
 
   const [isDragging, setIsDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const [docPage, setDocPage] = useState(1)
 
   const { data: client, isLoading: isClientLoading } = useGetClient(clientId, {
     query: { enabled: !!clientId, queryKey: getGetClientQueryKey(clientId) },
@@ -85,8 +87,9 @@ export default function ClientPortal() {
   const { data: missions, refetch: refetchMissions } = useListMissions({ clientId }, {
     query: { enabled: !!clientId, queryKey: getListMissionsQueryKey({ clientId }) },
   })
-  const { data: documents, refetch: refetchDocs } = useListClientDocuments(clientId, {
-    query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId) },
+  const docParams = { page: docPage, limit: DOCS_PAGE_SIZE, category: PORTAL_CATEGORY }
+  const { data: documents, refetch: refetchDocs } = useListClientDocuments(clientId, docParams, {
+    query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId, docParams) },
   })
 
   // Module M26: open discussions the cabinet has raised on this dossier —
@@ -161,7 +164,8 @@ export default function ClientPortal() {
     )
   }
 
-  const portalDocuments = (documents ?? []).filter((d) => d.category === PORTAL_CATEGORY)
+  const portalDocuments = documents ?? []
+  const hasNextPage = portalDocuments.length === DOCS_PAGE_SIZE
 
   return (
     <div className="space-y-8">
@@ -401,22 +405,45 @@ export default function ClientPortal() {
               <CardDescription>Scans et fichiers transmis à votre cabinet pour analyse.</CardDescription>
             </CardHeader>
             <CardContent>
-              {portalDocuments.length === 0 ? (
+              {portalDocuments.length === 0 && docPage === 1 ? (
                 <p className="text-sm text-muted-foreground py-6 text-center">Aucun document envoyé pour le moment.</p>
               ) : (
-                <ul className="divide-y" data-testid="list-portal-documents">
-                  {portalDocuments.map((doc) => (
-                    <li key={doc.id} className="flex items-center justify-between py-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="truncate font-medium text-sm">{doc.fileName}</span>
-                      </div>
-                      <div className="text-xs text-muted-foreground shrink-0 ml-4">
-                        {bytesToSize(doc.fileSize)} · {formatDateTime(doc.createdAt)}
-                      </div>
-                    </li>
-                  ))}
-                </ul>
+                <>
+                  <ul className="divide-y" data-testid="list-portal-documents">
+                    {portalDocuments.map((doc) => (
+                      <li key={doc.id} className="flex items-center justify-between py-3">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="truncate font-medium text-sm">{doc.fileName}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground shrink-0 ml-4">
+                          {bytesToSize(doc.fileSize)} · {formatDateTime(doc.createdAt)}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="flex items-center justify-between pt-4 mt-2 border-t">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDocPage((p) => Math.max(1, p - 1))}
+                      disabled={docPage === 1}
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" />
+                      Précédent
+                    </Button>
+                    <span className="text-xs text-muted-foreground">Page {docPage}</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDocPage((p) => p + 1)}
+                      disabled={!hasNextPage}
+                    >
+                      Suivant
+                      <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </>
               )}
             </CardContent>
           </Card>

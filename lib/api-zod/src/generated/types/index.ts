@@ -183,6 +183,7 @@ export * from './listAssetsParams';
 export * from './listAuditLogsParams';
 export * from './listCashRegistersParams';
 export * from './listClientContractsParams';
+export * from './listClientDocumentsParams';
 export * from './listClientsParams';
 export * from './listDocumentsParams';
 export * from './listEmployeesParams';

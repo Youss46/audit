@@ -627,6 +627,19 @@ export const ListClientDocumentsParams = zod.object({
   "id": zod.coerce.number()
 })
 
+export const listClientDocumentsQueryPageDefault = 1;
+
+export const listClientDocumentsQueryLimitDefault = 10;
+export const listClientDocumentsQueryLimitMax = 100;
+
+
+
+export const ListClientDocumentsQueryParams = zod.object({
+  "page": zod.coerce.number().min(1).default(listClientDocumentsQueryPageDefault).describe('Page number (1-based)'),
+  "limit": zod.coerce.number().min(1).max(listClientDocumentsQueryLimitMax).default(listClientDocumentsQueryLimitDefault).describe('Number of documents per page'),
+  "category": zod.coerce.string().optional().describe('Filter documents by category (e.g. \"Procédure de Visa\")')
+})
+
 export const ListClientDocumentsResponseItem = zod.object({
   "id": zod.number(),
   "firmId": zod.number(),
