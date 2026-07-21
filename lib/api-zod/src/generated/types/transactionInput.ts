@@ -35,6 +35,11 @@ export interface TransactionInput {
      */
   cashRegisterId?: number | null;
   /**
+     * Optional when paymentMethod is "mobile_money". When provided, the journal line uses the provider-specific Classe 55 sub-account (552100 Orange Money, 552200 Wave, etc.) instead of the generic "552".
+     * @nullable
+     */
+  mobileMoneyAccountId?: number | null;
+  /**
      * Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually.
      * @nullable
      */

@@ -841,12 +841,28 @@ router.post("/transactions/:id/settle", requirePermission("operations.create"), 
     cashRegisterName = register.name;
   }
 
+  // Module Trésorerie Mobile Money: when the caller provides a
+  // mobileMoneyAccountId, look up the provider so the engine can use the
+  // exact Classe 55 sub-account (552100/552200/…) instead of the generic
+  // "552" fallback.
+  let mmProvider: string | null = null;
+  if (body.paymentMethod === "mobile_money" && body.mobileMoneyAccountId) {
+    const mmAccount = await db.query.mobileMoneyAccountsTable.findFirst({
+      where: and(
+        eq(mobileMoneyAccountsTable.id, body.mobileMoneyAccountId),
+        eq(mobileMoneyAccountsTable.clientId, tx.clientId),
+      ),
+    });
+    if (mmAccount) mmProvider = mmAccount.provider;
+  }
+
   let journalLines: ReturnType<typeof computeSettlementJournalLines>;
   try {
     journalLines = computeSettlementJournalLines({
       type: tx.type,
       paymentMethod: body.paymentMethod,
       amount: tx.amount,
+      mmProvider,
     });
   } catch (err) {
     if (err instanceof AccountingEngineError) {

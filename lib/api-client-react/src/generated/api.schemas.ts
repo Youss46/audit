@@ -486,8 +486,6 @@ export interface DocumentInput {
   /** @minLength 1 */
   category: string;
   missionId?: number;
-  /** 'ocr' bypasses the forced Procédure de Visa category for portal roles */
-  purpose?: string;
 }
 
 export interface Document {
@@ -557,7 +555,6 @@ export type TransactionSource = typeof TransactionSource[keyof typeof Transactio
 
 export const TransactionSource = {
   pme_entry: 'pme_entry',
-  ocr_entry: 'ocr_entry',
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
   caisse_closure: 'caisse_closure',
@@ -706,12 +703,15 @@ export interface TransactionInput {
      */
   cashRegisterId?: number | null;
   /**
+     * Optional when paymentMethod is "mobile_money". When provided, the journal line uses the provider-specific Classe 55 sub-account (552100 Orange Money, 552200 Wave, etc.) instead of the generic "552".
+     * @nullable
+     */
+  mobileMoneyAccountId?: number | null;
+  /**
      * Multi-station (P8): the station this entry belongs to. Ignored (overridden server-side) for a station-scoped caller; optional for cross-station cabinet/PME-owner staff picking a station manually.
      * @nullable
      */
   stationId?: number | null;
-  /** Phase 3 OCR: when true and caller is a portal role, source is set to "ocr_entry" instead of "pme_entry". */
-  isAiAssisted?: boolean;
 }
 
 export interface UpdateTransactionInput {
@@ -741,6 +741,11 @@ export interface TransactionSettleInput {
      * @nullable
      */
   cashRegisterId?: number | null;
+  /**
+     * Optional when paymentMethod is "mobile_money". When provided, the settlement journal line uses the provider-specific Classe 55 sub-account instead of the generic "552".
+     * @nullable
+     */
+  mobileMoneyAccountId?: number | null;
 }
 
 export interface BatchCreateTransactionsInput {

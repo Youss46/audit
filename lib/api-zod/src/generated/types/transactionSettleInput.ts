@@ -14,4 +14,9 @@ export interface TransactionSettleInput {
      * @nullable
      */
   cashRegisterId?: number | null;
+  /**
+     * Optional when paymentMethod is "mobile_money". When provided, the settlement journal line uses the provider-specific Classe 55 sub-account instead of the generic "552".
+     * @nullable
+     */
+  mobileMoneyAccountId?: number | null;
 }
