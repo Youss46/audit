@@ -19,4 +19,7 @@ export const TransactionSource = {
   a_nouveaux: 'a_nouveaux',
   vat_liquidation: 'vat_liquidation',
   depreciation_closing: 'depreciation_closing',
+  capital_constitution: 'capital_constitution',
+  purchase: 'purchase',
+  purchase_settlement: 'purchase_settlement',
 } as const;

@@ -5701,6 +5701,9 @@ components:
         - a_nouveaux
         - vat_liquidation
         - depreciation_closing
+        - capital_constitution
+        - purchase
+        - purchase_settlement
 
     PendingCounts:
       type: object
