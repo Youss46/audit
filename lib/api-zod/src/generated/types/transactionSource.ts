@@ -11,6 +11,7 @@ export type TransactionSource = typeof TransactionSource[keyof typeof Transactio
 
 export const TransactionSource = {
   pme_entry: 'pme_entry',
+  ocr_entry: 'ocr_entry',
   manual_cabinet: 'manual_cabinet',
   settlement: 'settlement',
   caisse_closure: 'caisse_closure',

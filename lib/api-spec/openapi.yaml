@@ -5693,6 +5693,7 @@ components:
       type: string
       enum:
         - pme_entry
+        - ocr_entry
         - manual_cabinet
         - settlement
         - caisse_closure
