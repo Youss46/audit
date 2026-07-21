@@ -454,14 +454,14 @@ async function computeAndPostNetResult(
   }
   if (netResult >= 0) {
     closingLines.push({
-      accountNumber: "1301",
+      accountNumber: "130100",
       label: `Résultat net de l'exercice — Bénéfice — Exercice ${year}`,
       debitAmount: 0,
       creditAmount: absNet,
     });
   } else {
     closingLines.push({
-      accountNumber: "1309",
+      accountNumber: "130900",
       label: `Résultat net de l'exercice — Perte — Exercice ${year}`,
       debitAmount: absNet,
       creditAmount: 0,

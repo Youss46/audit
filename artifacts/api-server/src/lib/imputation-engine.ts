@@ -5,11 +5,21 @@
  * catégorie, d'un mode de paiement et/ou du type de transaction (dépense /
  * recette). Interroge la table `transaction_categories` en priorité, se
  * rabat sur les constantes statiques du moteur comptable, puis sur le compte
- * d'attente 471 en dernier recours (flagForReview = true).
+ * d'attente 471000 en dernier recours (flagForReview = true).
+ *
+ * Règle absolue : TOUS les comptes résolus sont en 6 chiffres.
+ * La fonction pad6() garantit cette invariante même si la DB renvoie un code
+ * historique en 3 ou 4 chiffres.
+ *
+ *   pad6 convention :
+ *     3c → ABC100   (ex. "571" → "571100")
+ *     4c → ABCD00   (ex. "6052" → "605200", "5211" → "521100")
+ *     5c → ABCDE0
+ *     6c → identité
  *
  * Usage :
  *   const result = await imputeAccount({ categoryKey: "loyer", paymentMethod: "bank" });
- *   // → { debitAccount: "622", creditAccount: "5211", flagForReview: false, ... }
+ *   // → { debitAccount: "622100", creditAccount: "521100", flagForReview: false, ... }
  */
 
 import { db } from "@workspace/db";
@@ -38,10 +48,10 @@ export interface ImputationInput {
 }
 
 export interface ImputationResult {
-  /** Compte débité (ex. "622" pour un loyer dépense). */
+  /** Compte débité — toujours en 6 chiffres (ex. "622100" pour un loyer dépense). */
   debitAccount: string;
   debitLabel: string;
-  /** Compte crédité (ex. "5211" pour un virement). */
+  /** Compte crédité — toujours en 6 chiffres (ex. "521100" pour un virement). */
   creditAccount: string;
   creditLabel: string;
   /** Taux TVA par défaut (en %) pour cette catégorie. */
@@ -49,11 +59,40 @@ export interface ImputationResult {
   vatEligible: boolean;
   /**
    * true si aucune imputation précise n'a été trouvée — le compte d'attente
-   * 471 est utilisé et l'écriture doit être revue par le Cabinet.
+   * 471000 est utilisé et l'écriture doit être revue par le Cabinet.
    */
   flagForReview: boolean;
   /** Source de résolution : "db" | "static" | "fallback". */
   source: "db" | "static" | "fallback";
+}
+
+// ---------------------------------------------------------------------------
+// Helper : normalisation vers 6 chiffres obligatoires
+// ---------------------------------------------------------------------------
+
+/**
+ * Garantit que tout numéro de compte est en 6 chiffres.
+ *
+ * Règles :
+ *   3 chiffres → append "100"   (571 → 571100)
+ *   4 chiffres → append "00"    (6052 → 605200 ; 5211 → 521100)
+ *   5 chiffres → append "0"
+ *   ≥ 6        → identité
+ *
+ * Comptes spéciaux (attente) : 471 → 471000, 472 → 472000 sont
+ * naturellement couverts par la règle 3c → append "100" (471 + 100 = 471100),
+ * mais la convention interne utilise 471000/472000 pour signaler
+ * l'absence de sous-compte réel. Ces deux cas sont donc traités explicitement.
+ */
+export function pad6(account: string): string {
+  if (account === "471") return "471000";
+  if (account === "472") return "472000";
+  const len = account.length;
+  if (len >= 6) return account;
+  if (len === 5) return account + "0";
+  if (len === 4) return account + "00";
+  if (len === 3) return account + "100";
+  return account;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,21 +105,22 @@ function resolveTreasuryAccount(
 ): { account: string; label: string } {
   if (!paymentMethod || paymentMethod === "virement" || paymentMethod === "cheque") {
     const accountMap: Record<string, { account: string; label: string }> = {
-      virement:     { account: "5211", label: "Banques locales" },
-      cheque:       { account: "513",  label: "Chèques à encaisser" },
+      virement: { account: "521100", label: "Banques locales" },
+      cheque:   { account: "513100", label: "Chèques à encaisser" },
     };
     if (paymentMethod && accountMap[paymentMethod]) return accountMap[paymentMethod];
-    return { account: "5211", label: "Banques locales" };
+    return { account: "521100", label: "Banques locales" };
   }
   if (paymentMethod === "especes") {
-    return { account: "571", label: "Caisse" };
+    return { account: "571100", label: "Caisse principale" };
   }
   if (paymentMethod === "mobile_money") {
-    const acct  = mmProvider ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[mmProvider] ?? "552") : "552";
-    const label = mmProvider ? (MOBILE_MONEY_PROVIDER_LABELS[mmProvider]   ?? "Monnaie électronique") : "Monnaie électronique";
-    return { account: acct, label };
+    const rawAcct  = mmProvider ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[mmProvider] ?? "552100") : "552100";
+    const account  = pad6(rawAcct);
+    const label    = mmProvider ? (MOBILE_MONEY_PROVIDER_LABELS[mmProvider]   ?? "Monnaie électronique") : "Monnaie électronique";
+    return { account, label };
   }
-  return { account: "5211", label: "Banques locales" };
+  return { account: "521100", label: "Banques locales" };
 }
 
 // ---------------------------------------------------------------------------
@@ -100,12 +140,13 @@ export async function imputeAccount(input: ImputationInput): Promise<ImputationR
     const dbRow = rows[0] ?? null;
 
     if (dbRow) {
-      const isDepense = dbRow.transactionType === "depense";
+      const rawAccount   = pad6(dbRow.defaultAccountNumber);
+      const isDepense    = dbRow.transactionType === "depense";
       return {
-        debitAccount:  isDepense ? dbRow.defaultAccountNumber : treasury.account,
-        debitLabel:    isDepense ? dbRow.displayName          : treasury.label,
-        creditAccount: isDepense ? treasury.account           : dbRow.defaultAccountNumber,
-        creditLabel:   isDepense ? treasury.label             : dbRow.displayName,
+        debitAccount:  isDepense ? rawAccount      : treasury.account,
+        debitLabel:    isDepense ? dbRow.displayName : treasury.label,
+        creditAccount: isDepense ? treasury.account  : rawAccount,
+        creditLabel:   isDepense ? treasury.label    : dbRow.displayName,
         defaultTvaRate: dbRow.defaultTvaRate,
         vatEligible:   dbRow.vatEligible,
         flagForReview: false,
@@ -116,9 +157,10 @@ export async function imputeAccount(input: ImputationInput): Promise<ImputationR
 
   // ── 2. Repli sur PURCHASE_CATEGORIES (statique) ───────────────────────────
   if (input.categoryKey && input.categoryKey in PURCHASE_CATEGORIES) {
-    const cat = PURCHASE_CATEGORIES[input.categoryKey as keyof typeof PURCHASE_CATEGORIES];
+    const cat     = PURCHASE_CATEGORIES[input.categoryKey as keyof typeof PURCHASE_CATEGORIES];
+    const account = pad6(cat.account);
     return {
-      debitAccount:  cat.account,
+      debitAccount:  account,
       debitLabel:    cat.accountName,
       creditAccount: treasury.account,
       creditLabel:   treasury.label,
@@ -131,13 +173,14 @@ export async function imputeAccount(input: ImputationInput): Promise<ImputationR
 
   // ── 3. Repli sur CATEGORY_RULES (statique) ────────────────────────────────
   if (input.categoryKey && input.categoryKey in CATEGORY_RULES) {
-    const rule = CATEGORY_RULES[input.categoryKey];
+    const rule      = CATEGORY_RULES[input.categoryKey];
+    const account   = pad6(rule.counterpartAccount);
     const isDepense = rule.type === "depense";
     return {
-      debitAccount:  isDepense ? rule.counterpartAccount : treasury.account,
-      debitLabel:    isDepense ? rule.counterpartName    : treasury.label,
-      creditAccount: isDepense ? treasury.account        : rule.counterpartAccount,
-      creditLabel:   isDepense ? treasury.label          : rule.counterpartName,
+      debitAccount:  isDepense ? account          : treasury.account,
+      debitLabel:    isDepense ? rule.counterpartName : treasury.label,
+      creditAccount: isDepense ? treasury.account  : account,
+      creditLabel:   isDepense ? treasury.label    : rule.counterpartName,
       defaultTvaRate: 0,
       vatEligible:   false,
       flagForReview: false,
@@ -145,13 +188,13 @@ export async function imputeAccount(input: ImputationInput): Promise<ImputationR
     };
   }
 
-  // ── 4. Compte d'attente 471 (dernier recours) ────────────────────────────
+  // ── 4. Compte d'attente 471000/472000 (dernier recours) ──────────────────
   const isDepense = (input.transactionType ?? "depense") === "depense";
   return {
-    debitAccount:  isDepense ? "471" : treasury.account,
-    debitLabel:    isDepense ? "Compte d'attente (à imputer)"  : treasury.label,
-    creditAccount: isDepense ? treasury.account : "472",
-    creditLabel:   isDepense ? treasury.label   : "Compte d'attente (à imputer)",
+    debitAccount:  isDepense ? "471000" : treasury.account,
+    debitLabel:    isDepense ? "Compte d'attente débiteurs (à imputer)"  : treasury.label,
+    creditAccount: isDepense ? treasury.account : "472000",
+    creditLabel:   isDepense ? treasury.label   : "Compte d'attente créditeurs (à imputer)",
     defaultTvaRate: 0,
     vatEligible:   false,
     flagForReview: true,

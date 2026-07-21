@@ -328,7 +328,7 @@ router.post("/mobile-money/sales", requirePermission("facturation.create"), asyn
     throw new HttpError(403, `L'exercice ${txYear} est définitivement clôturé. Aucune écriture ne peut y être ajoutée.`);
   }
 
-  const salesLabel = body.salesAccount === "701" ? "Ventes de marchandises" : "Prestations de services";
+  const salesLabel = String(body.salesAccount).startsWith("701") ? "Ventes de marchandises" : "Prestations de services";
   let journalLines;
   try {
     journalLines = computeMobileMoneyInflowJournalLines({

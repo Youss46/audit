@@ -13,10 +13,10 @@ import type { PaymentMethod, PaymentType, TransactionType } from "@workspace/db"
 // provider via mobileMoneyAccountId (see purchases.ts and
 // imputation-engine.ts); here we keep the generic Class 55 fallback.
 const PAYMENT_METHOD_ACCOUNTS: Record<PaymentMethod, string> = {
-  especes: "571",
-  mobile_money: "552",
-  cheque: "513",
-  virement: "5211",
+  especes:      "571100",
+  mobile_money: "552100",   // generic fallback — per-provider resolved by mmProvider lookup
+  cheque:       "513100",
+  virement:     "521100",
 };
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
@@ -29,11 +29,13 @@ const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
 // Module P7 Mobile Money: per-provider Classe 55 SYSCOHADA accounts used
 // when a pompiste's fuel sale is collected via a specific mobile money
 // operator, and when the cabinet records a withdrawal/transfer to bank.
+// 6-digit sub-accounts per provider. Order matches account numbering (alpha by code):
+//   552100 = Wave  |  552200 = Orange Money  |  552300 = MTN MoMo  |  552400 = Moov Money
 export const MOBILE_MONEY_PROVIDER_ACCOUNTS: Record<string, string> = {
-  wave: "552200",
-  orange_money: "552100",
-  mtn_momo: "552300",
-  moov_money: "552400",
+  wave:         "552100",
+  orange_money: "552200",
+  mtn_momo:     "552300",
+  moov_money:   "552400",
 };
 
 export const MOBILE_MONEY_PROVIDER_LABELS: Record<string, string> = {
@@ -47,8 +49,8 @@ export const MOBILE_MONEY_PROVIDER_LABELS: Record<string, string> = {
 // strict SYSCOHADA accrual accounting: a recette is booked against 4111
 // (Clients) until settled, a dépense against 4011 (Fournisseurs).
 const THIRD_PARTY_ACCOUNTS: Record<TransactionType, { accountNumber: string; label: string }> = {
-  recette: { accountNumber: "4111", label: "Clients" },
-  depense: { accountNumber: "4011", label: "Fournisseurs" },
+  recette: { accountNumber: "411100", label: "Clients" },
+  depense: { accountNumber: "401100", label: "Fournisseurs d'exploitation" },
 };
 
 export interface CategoryRule {
@@ -71,55 +73,55 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   achat_marchandises: {
     label: "Achat de marchandises",
     type: "depense",
-    counterpartAccount: "601",
+    counterpartAccount: "601100",
     counterpartName: "Achats de marchandises",
   },
   achat_carburant: {
     label: "Achat carburant",
     type: "depense",
-    counterpartAccount: "618",
+    counterpartAccount: "618100",
     counterpartName: "Voyages et déplacements",
   },
   loyer: {
     label: "Loyer",
     type: "depense",
-    counterpartAccount: "622",
+    counterpartAccount: "622100",
     counterpartName: "Locations et charges locatives",
   },
   electricite_eau: {
     label: "Électricité / Eau",
     type: "depense",
-    counterpartAccount: "6052",
-    counterpartName: "Fournitures non stockables - Eau, électricité",
+    counterpartAccount: "605200",
+    counterpartName: "Fournitures non stockables — Eau, électricité",
   },
   fournitures_bureau: {
     label: "Fournitures de bureau",
     type: "depense",
-    counterpartAccount: "6054",
+    counterpartAccount: "605400",
     counterpartName: "Fournitures de bureau",
   },
   transport_deplacement: {
     label: "Transport / Déplacement",
     type: "depense",
-    counterpartAccount: "614",
+    counterpartAccount: "614100",
     counterpartName: "Transports du personnel",
   },
   salaires: {
     label: "Salaires",
     type: "depense",
-    counterpartAccount: "661",
+    counterpartAccount: "661100",
     counterpartName: "Appointements, salaires et commissions",
   },
   entretien_reparation: {
     label: "Entretien / Réparation",
     type: "depense",
-    counterpartAccount: "624",
+    counterpartAccount: "624100",
     counterpartName: "Entretien, réparations et maintenance",
   },
   autres_depenses: {
     label: "Autres dépenses",
     type: "depense",
-    counterpartAccount: "628",
+    counterpartAccount: "628100",
     counterpartName: "Autres charges externes",
   },
 
@@ -127,19 +129,19 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   vente_marchandises: {
     label: "Vente de marchandises",
     type: "recette",
-    counterpartAccount: "701",
+    counterpartAccount: "701100",
     counterpartName: "Ventes de marchandises",
   },
   prestation_services: {
     label: "Prestation de services",
     type: "recette",
-    counterpartAccount: "706",
-    counterpartName: "Services vendus",
+    counterpartAccount: "706100",
+    counterpartName: "Prestations de services",
   },
   autres_recettes: {
     label: "Autres recettes",
     type: "recette",
-    counterpartAccount: "758",
+    counterpartAccount: "758100",
     counterpartName: "Produits divers",
   },
 
@@ -149,7 +151,7 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   vente_carburant: {
     label: "Vente de carburant",
     type: "recette",
-    counterpartAccount: "701",
+    counterpartAccount: "701100",
     counterpartName: "Ventes de marchandises (carburant)",
     hidden: true,
   },
@@ -157,7 +159,7 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   // Module P7 Mobile Money: system-generated only, booked when the cabinet
   // records a Mobile Money → Banque withdrawal/transfer. The fee leg
   // (631700) is always included in the same compound journal entry -- this
-  // category rule drives the main counter-part (52 Banques), not the fee.
+  // category rule drives the main counter-part (521100 Banques), not the fee.
   frais_mobile_money: {
     label: "Frais sur instruments monétaires électroniques",
     type: "depense",
@@ -173,14 +175,14 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
   ecart_caisse_gain: {
     label: "Écart de caisse (excédent)",
     type: "recette",
-    counterpartAccount: "758",
+    counterpartAccount: "758100",
     counterpartName: "Produits divers",
     hidden: true,
   },
   ecart_caisse_perte: {
     label: "Écart de caisse (manquant)",
     type: "depense",
-    counterpartAccount: "658",
+    counterpartAccount: "658100",
     counterpartName: "Charges diverses",
     hidden: true,
   },
@@ -199,23 +201,23 @@ export const PURCHASE_CATEGORIES: Record<
   string,
   { label: string; account: string; accountName: string; vatEligible: boolean }
 > = {
-  achat_marchandises:    { label: "Achats de marchandises",                    account: "601",    accountName: "Achats de marchandises",                                  vatEligible: true  },
-  achat_matieres:        { label: "Matières premières / consommables",          account: "6011",   accountName: "Matières premières et consommables",                      vatEligible: true  },
-  carburant:             { label: "Carburant",                                  account: "6051",   accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
-  electricite_eau:       { label: "Eau / Électricité",                          account: "6052",   accountName: "Fournitures non stockables — Eau, énergie",               vatEligible: true  },
-  fournitures_bureau:    { label: "Fournitures de bureau",                      account: "6054",   accountName: "Fournitures de bureau",                                   vatEligible: true  },
-  fournitures_entretien: { label: "Produits d'entretien",                       account: "6055",   accountName: "Fournitures d'entretien",                                 vatEligible: true  },
-  transport_achat:       { label: "Transport sur achats",                       account: "616",    accountName: "Transports sur achats et approvisionnements",             vatEligible: true  },
-  transport_personnel:   { label: "Transport du personnel",                     account: "614",    accountName: "Transports du personnel",                                 vatEligible: true  },
-  loyer:                 { label: "Loyer / Bail",                               account: "622",    accountName: "Locations et charges locatives",                          vatEligible: false },
-  entretien:             { label: "Entretien / Réparation",                     account: "624",    accountName: "Entretien, réparations et maintenance",                   vatEligible: true  },
-  assurance:             { label: "Assurances",                                 account: "6251",   accountName: "Assurances",                                              vatEligible: false },
-  telephone_internet:    { label: "Téléphone / Internet",                       account: "6261",   accountName: "Frais de télécommunications",                             vatEligible: true  },
-  publicite:             { label: "Publicité / Marketing",                      account: "6311",   accountName: "Publicité et relations publiques",                        vatEligible: true  },
-  honoraires:            { label: "Honoraires (comptable, avocat…)",            account: "6321",   accountName: "Honoraires",                                              vatEligible: false },
-  salaires:              { label: "Salaires / Rémunérations",                  account: "661",    accountName: "Appointements, salaires et commissions",                  vatEligible: false },
-  charges_sociales:      { label: "Charges sociales (CNPS…)",                  account: "664",    accountName: "Charges sociales",                                        vatEligible: false },
-  autres_achats:         { label: "Autres achats / charges",                    account: "628",    accountName: "Autres charges externes",                                 vatEligible: true  },
+  achat_marchandises:    { label: "Achats de marchandises",                    account: "601100", accountName: "Achats de marchandises",                                  vatEligible: true  },
+  achat_matieres:        { label: "Matières premières / consommables",          account: "601100", accountName: "Matières premières et consommables",                      vatEligible: true  },
+  carburant:             { label: "Carburant",                                  account: "605100", accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
+  electricite_eau:       { label: "Eau / Électricité",                          account: "605200", accountName: "Fournitures non stockables — Eau, énergie",               vatEligible: true  },
+  fournitures_bureau:    { label: "Fournitures de bureau",                      account: "605400", accountName: "Fournitures de bureau",                                   vatEligible: true  },
+  fournitures_entretien: { label: "Produits d'entretien",                       account: "605500", accountName: "Fournitures d'entretien",                                 vatEligible: true  },
+  transport_achat:       { label: "Transport sur achats",                       account: "616100", accountName: "Transports sur achats et approvisionnements",             vatEligible: true  },
+  transport_personnel:   { label: "Transport du personnel",                     account: "614100", accountName: "Transports du personnel",                                 vatEligible: true  },
+  loyer:                 { label: "Loyer / Bail",                               account: "622100", accountName: "Locations et charges locatives",                          vatEligible: false },
+  entretien:             { label: "Entretien / Réparation",                     account: "624100", accountName: "Entretien, réparations et maintenance",                   vatEligible: true  },
+  assurance:             { label: "Assurances",                                 account: "625100", accountName: "Assurances",                                              vatEligible: false },
+  telephone_internet:    { label: "Téléphone / Internet",                       account: "626100", accountName: "Frais de télécommunications",                             vatEligible: true  },
+  publicite:             { label: "Publicité / Marketing",                      account: "627100", accountName: "Publicité et relations publiques",                        vatEligible: true  },
+  honoraires:            { label: "Honoraires (comptable, avocat…)",            account: "632100", accountName: "Honoraires",                                              vatEligible: false },
+  salaires:              { label: "Salaires / Rémunérations",                  account: "661100", accountName: "Appointements, salaires et commissions",                  vatEligible: false },
+  charges_sociales:      { label: "Charges sociales (CNPS…)",                  account: "664100", accountName: "Charges sociales",                                        vatEligible: false },
+  autres_achats:         { label: "Autres achats / charges",                    account: "628100", accountName: "Autres charges externes",                                 vatEligible: true  },
 } as const;
 
 export type PurchaseCategoryKey = keyof typeof PURCHASE_CATEGORIES;
@@ -268,7 +270,7 @@ export function computePurchaseJournalLines(input: {
     // Debit side
     { accountNumber: input.chargeAccount, label: input.chargeName,
       debitAmount: input.amountHt,  creditAmount: 0 },
-    ...(hasVat ? [{ accountNumber: "4451", label: "TVA récupérable sur achats",
+    ...(hasVat ? [{ accountNumber: "445100", label: "TVA récupérable sur achats",
       debitAmount: input.vatAmount, creditAmount: 0 }] : []),
     // Credit side
     ...(hasAib ? [{ accountNumber: "447200",
@@ -310,7 +312,7 @@ export function computePurchaseSettlementLines(input: {
 
   const netAmount = input.amountTtc - input.aibAmount;
   return [
-    { accountNumber: "4011", label: "Fournisseurs d'exploitation",
+    { accountNumber: "401100", label: "Fournisseurs d'exploitation",
       debitAmount: input.amountTtc, creditAmount: 0 },
     ...(input.aibAmount > 0 ? [{ accountNumber: "447200",
       label: "État, retenues à la source — AIB",
@@ -455,7 +457,7 @@ export function computeFuelSaleJournalLines(input: {
 
   if (input.cashAmount > 0) {
     lines.push({
-      accountNumber: input.cashRegisterAccountNumber ?? "571",
+      accountNumber: input.cashRegisterAccountNumber ?? "571100",
       label: input.cashRegisterName ?? "Caisse",
       debitAmount: input.cashAmount,
       creditAmount: 0,
@@ -488,7 +490,7 @@ export function computeFuelSaleJournalLines(input: {
 
   // Credit leg: Ventes de marchandises (carburant).
   lines.push({
-    accountNumber: "701",
+    accountNumber: "701100",
     label: "Ventes de marchandises (carburant)",
     debitAmount: 0,
     creditAmount: input.totalAmount,
@@ -508,13 +510,13 @@ export function computeMobileMoneyVirementJournalLines(input: {
   feeAmount: number;
 }): ComputedJournalLine[] {
   const netAmount = input.totalAmount - input.feeAmount;
-  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552100";
   const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
 
   const lines: ComputedJournalLine[] = [
     {
-      accountNumber: "52",
-      label: "Banques",
+      accountNumber: "521100",
+      label: "Banques locales",
       debitAmount: netAmount,
       creditAmount: 0,
     },
@@ -562,7 +564,7 @@ export function computeMobileMoneyInflowJournalLines(input: {
     );
   }
   const netAmount = input.totalAmount - input.feeAmount;
-  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552100";
   const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
 
   const lines: ComputedJournalLine[] = [
@@ -602,11 +604,11 @@ export function computeMobileMoneyRepatriationOutflowLines(input: {
   provider: string;
   amount: number;
 }): ComputedJournalLine[] {
-  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552";
+  const mmAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.provider] ?? "552100";
   const mmLabel = MOBILE_MONEY_PROVIDER_LABELS[input.provider] ?? "Mobile Money";
   return [
     {
-      accountNumber: "585",
+      accountNumber: "585100",
       label: "Virements de fonds — Mobile Money vers Banque",
       debitAmount: input.amount,
       creditAmount: 0,
@@ -622,21 +624,21 @@ export function computeMobileMoneyRepatriationOutflowLines(input: {
 
 // Module Trésorerie Mobile Money: step 2 of a "Rapatriement de fonds" --
 // the cabinet/PME confirms the funds actually landed in the bank account,
-// clearing the 585 transit account into 5211 (Banque).
-//   Dr 5211   amount  → Banque
-//   Cr 585    amount  → Virements de fonds (transit)
+// clearing the 585100 transit account into 521100 (Banque).
+//   Dr 521100  amount  → Banques locales
+//   Cr 585100  amount  → Virements de fonds (transit)
 export function computeMobileMoneyRepatriationReceptionLines(input: {
   amount: number;
 }): ComputedJournalLine[] {
   return [
     {
-      accountNumber: "5211",
-      label: "Banques",
+      accountNumber: "521100",
+      label: "Banques locales",
       debitAmount: input.amount,
       creditAmount: 0,
     },
     {
-      accountNumber: "585",
+      accountNumber: "585100",
       label: "Virements de fonds — Mobile Money vers Banque",
       debitAmount: 0,
       creditAmount: input.amount,
@@ -666,7 +668,7 @@ export function computeSettlementJournalLines(input: {
   const thirdParty = THIRD_PARTY_ACCOUNTS[input.type];
   const treasuryAccount =
     input.paymentMethod === "mobile_money" && input.mmProvider
-      ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[input.mmProvider] ?? PAYMENT_METHOD_ACCOUNTS["mobile_money"])
+      ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[input.mmProvider] ?? PAYMENT_METHOD_ACCOUNTS.mobile_money)
       : PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
   const treasuryLabel =
     input.paymentMethod === "mobile_money" && input.mmProvider

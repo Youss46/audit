@@ -139,9 +139,9 @@ function getCreditAccount(
   paymentMode: "credit" | "bank" | "mobile_money",
   mmProvider?: string | null,
 ): { account: string; label: string; journal: "HA" | "BQ" } {
-  if (paymentMode === "credit") return { account: "4011", label: "Fournisseurs d'exploitation", journal: "HA" };
-  if (paymentMode === "bank")   return { account: "5211", label: "Banques locales",             journal: "BQ" };
-  const acct  = mmProvider ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[mmProvider] ?? "552") : "552";
+  if (paymentMode === "credit") return { account: "401100", label: "Fournisseurs d'exploitation", journal: "HA" };
+  if (paymentMode === "bank")   return { account: "521100", label: "Banques locales",              journal: "BQ" };
+  const acct  = mmProvider ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[mmProvider] ?? "552100") : "552100";
   const label = mmProvider ? (MOBILE_MONEY_PROVIDER_LABELS[mmProvider]   ?? "Monnaie Électronique") : "Monnaie Électronique";
   return { account: acct, label, journal: "BQ" };
 }

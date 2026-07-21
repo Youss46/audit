@@ -460,32 +460,32 @@ export async function postPayrollLedger(
       // Débits — charges de l'exercice
       {
         transactionId: transaction.id,
-        accountNumber: "6611",
+        accountNumber: "661100",
         debitAmount: totalGross,
         label: "Personnel national — salaires bruts",
       },
       {
         transactionId: transaction.id,
-        accountNumber: "664",
+        accountNumber: "664100",
         debitAmount: totalEmployerCharges,
         label: "Charges sociales patronales (CNPS + FDFP)",
       },
       // Crédits — dettes envers le personnel et l'État
       {
         transactionId: transaction.id,
-        accountNumber: "422",
+        accountNumber: "422100",
         creditAmount: totalNet,
         label: "Personnel, rémunérations dues (net à payer)",
       },
       {
         transactionId: transaction.id,
-        accountNumber: "4311",
+        accountNumber: "431100",
         creditAmount: totalCnps,
         label: "CNPS — cotisations à reverser",
       },
       {
         transactionId: transaction.id,
-        accountNumber: "4471",
+        accountNumber: "447100",
         creditAmount: totalTaxes,
         label: "État — ITS, Taxe d'apprentissage et FDFP",
       },

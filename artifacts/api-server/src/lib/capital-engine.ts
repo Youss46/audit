@@ -106,12 +106,12 @@ export async function postCapitalContribution(
   // Construction des lignes (écriture équilibrée)
   // ------------------------------------------------------------------
   //   Cas capital versé (capitalDeposited = true, cas standard ivoirien) :
-  //     Débit  5211 — Banques locales (capital déposé à la banque)
-  //     Crédit 1013 — Capital souscrit, appelé, versé, non amorti
+  //     Débit  521100 — Banques locales (capital déposé à la banque)
+  //     Crédit 101300 — Capital souscrit, appelé, versé, non amorti
   //   Cas capital souscrit non versé (capitalDeposited = false) :
-  //     Débit  4613 — Associés, capital souscrit — appelé, non versé
-  //     Crédit 1013 — Capital souscrit, appelé, versé, non amorti
-  const debitAccount = capitalDeposited ? "5211" : "4613";
+  //     Débit  461300 — Associés, capital souscrit — appelé, non versé
+  //     Crédit 101300 — Capital souscrit, appelé, versé, non amorti
+  const debitAccount = capitalDeposited ? "521100" : "461300";
   const debitLabel = capitalDeposited
     ? `Apport initial de constitution — Banques locales — ${clientName}`
     : `Apport initial de constitution — Capital souscrit non versé — ${clientName}`;
@@ -124,7 +124,7 @@ export async function postCapitalContribution(
       creditAmount: 0,
     },
     {
-      accountNumber: "1013",
+      accountNumber: "101300",
       label: `Apport initial de constitution — Capital souscrit, appelé, versé — ${clientName}`,
       debitAmount: 0,
       creditAmount: amount,
@@ -181,7 +181,7 @@ export async function postCapitalContribution(
   return {
     transactionId: tx.id,
     debitAccount,
-    creditAccount: "1013",
+    creditAccount: "101300",
     amount,
   };
 }

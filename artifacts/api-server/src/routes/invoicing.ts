@@ -444,18 +444,18 @@ router.post("/invoices/:id/validate", requirePermission("facturation.create"), a
     .returning();
 
   const journalLines = [
-    // Débit 411 — Clients (montant TTC)
+    // Débit 411100 — Clients (montant TTC)
     {
       transactionId: tx.id,
-      accountNumber: "411",
+      accountNumber: "411100",
       debitAmount:   inv.totalTtc,
       creditAmount:  0,
       label:         txLabel,
     },
-    // Crédit 706 — Prestations de services (montant HT)
+    // Crédit 706100 — Prestations de services (montant HT)
     {
       transactionId: tx.id,
-      accountNumber: "706",
+      accountNumber: "706100",
       debitAmount:   0,
       creditAmount:  inv.subtotalHt,
       label:         txLabel,
@@ -563,7 +563,7 @@ router.post("/invoices/:id/mark-paid", requirePermission("facturation.create"), 
         provider: account.provider,
         totalAmount: paymentAmount,
         feeAmount,
-        creditAccount: "411",
+        creditAccount: "411100",
         creditLabel: "Clients",
       });
     } catch (err) {
@@ -855,8 +855,8 @@ router.post("/invoices/:id/credit-note", requirePermission("facturation.create")
     .returning();
 
   const creditNoteLines: typeof journalLinesTable.$inferInsert[] = [
-    { transactionId: tx.id, accountNumber: "706", debitAmount: original.subtotalHt, creditAmount: 0,               label: creditLabel },
-    { transactionId: tx.id, accountNumber: "411", debitAmount: 0,                  creditAmount: original.totalTtc, label: creditLabel },
+    { transactionId: tx.id, accountNumber: "706100", debitAmount: original.subtotalHt, creditAmount: 0,               label: creditLabel },
+    { transactionId: tx.id, accountNumber: "411100", debitAmount: 0,                  creditAmount: original.totalTtc, label: creditLabel },
   ];
   if (original.vatAmount > 0) {
     creditNoteLines.push({

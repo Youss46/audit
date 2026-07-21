@@ -106,7 +106,7 @@ async function initializeClientCapital(
         action: AuditAction.CAPITAL_INIT,
         entityType: "client",
         entityId: client.id,
-        details: `Écriture de constitution du capital social générée (${client.capitalSocial.toLocaleString("fr")} FCFA) — Débit ${client.capitalDeposited ? "5211" : "4613"} / Crédit 1013 — "${client.name}"`,
+        details: `Écriture de constitution du capital social générée (${client.capitalSocial.toLocaleString("fr")} FCFA) — Débit ${client.capitalDeposited ? "521100" : "461300"} / Crédit 101300 — "${client.name}"`,
         ipAddress: ctx.ip,
       });
     }
