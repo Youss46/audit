@@ -5131,6 +5131,74 @@ paths:
     # Module M28 — Facturier Client & Auto-Génération de Pièces
     # -------------------------------------------------------------------------
 
+    # -------------------------------------------------------------------------
+    # Module M8-Fraud — Détection de Doublons & Scoring IA
+    # -------------------------------------------------------------------------
+
+  /purchases/duplicate-check:
+    post:
+      operationId: checkPurchaseDuplicate
+      tags: [purchases]
+      summary: Check for potential duplicate purchases before saving (M8)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PurchaseDuplicateCheckInput"
+      responses:
+        "200":
+          description: Duplicate check result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PurchaseDuplicateCheckResult"
+
+  /audit/risk-score:
+    post:
+      operationId: computeRiskScore
+      tags: [audit]
+      summary: AI-powered monthly compliance & tax anomaly scoring via Claude
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskScoreInput"
+      responses:
+        "200":
+          description: Risk and compliance score result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskScoreResult"
+
+  /cashflow/forecast:
+    get:
+      operationId: getCashflowForecast
+      tags: [reporting]
+      summary: Predictive cashflow for the next 30 or 60 days
+      parameters:
+        - name: clientId
+          in: query
+          required: true
+          schema:
+            type: integer
+        - name: days
+          in: query
+          required: false
+          schema:
+            type: integer
+            enum: [30, 60]
+            default: 30
+          description: Forecast horizon in days
+      responses:
+        "200":
+          description: Cashflow forecast
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CashflowForecast"
 
 components:
   schemas:
@@ -5148,6 +5216,154 @@ components:
       properties:
         error:
           type: string
+
+    # ── Module M8-Fraud: Duplicate Detection ─────────────────────────────────
+
+    PurchaseDuplicateCheckInput:
+      type: object
+      required: [clientId, amountTtc, date]
+      properties:
+        clientId: { type: integer }
+        supplierNcc:
+          type: string
+          nullable: true
+        invoiceRef:
+          type: string
+          nullable: true
+        amountTtc: { type: integer }
+        date: { type: string, format: date-time }
+        excludePurchaseId:
+          type: integer
+          nullable: true
+
+    PurchaseDuplicateMatch:
+      type: object
+      required: [id, supplierName, amountTtc, date, matchReason]
+      properties:
+        id: { type: integer }
+        supplierName: { type: string }
+        invoiceRef:
+          type: string
+          nullable: true
+        amountTtc: { type: integer }
+        date: { type: string, format: date-time }
+        matchReason: { type: string }
+
+    PurchaseDuplicateCheckResult:
+      type: object
+      required: [hasDuplicate, matches]
+      properties:
+        hasDuplicate: { type: boolean }
+        matches:
+          type: array
+          items:
+            $ref: "#/components/schemas/PurchaseDuplicateMatch"
+
+    # ── Module M8-Fraud: AI Risk Scoring ────────────────────────────────────
+
+    RiskScoreInput:
+      type: object
+      required: [clientId, month, year]
+      properties:
+        clientId: { type: integer }
+        month:
+          type: integer
+          minimum: 1
+          maximum: 12
+        year:
+          type: integer
+          minimum: 2000
+          maximum: 2100
+
+    RiskScoreAnomaly:
+      type: object
+      required: [code, label, severity, detail]
+      properties:
+        code: { type: string }
+        label: { type: string }
+        severity:
+          type: string
+          enum: [INFO, AVERTISSEMENT, CRITIQUE]
+        detail: { type: string }
+
+    RiskScoreRecommendation:
+      type: object
+      required: [priority, text]
+      properties:
+        priority:
+          type: string
+          enum: [HAUTE, MOYENNE, BASSE]
+        text: { type: string }
+
+    RiskScoreVatAnalysis:
+      type: object
+      required: [declaredRevenue, vatCollected, theoreticalVat, vatGapPercent, consistencyOk]
+      properties:
+        declaredRevenue: { type: number }
+        vatCollected: { type: number }
+        theoreticalVat: { type: number }
+        vatGapPercent: { type: number }
+        consistencyOk: { type: boolean }
+
+    RiskScoreResult:
+      type: object
+      required: [clientId, clientName, month, year, score, level, vatAnalysis, anomalies, recommendations, generatedAt]
+      properties:
+        clientId: { type: integer }
+        clientName: { type: string }
+        month: { type: integer }
+        year: { type: integer }
+        score: { type: number }
+        level:
+          type: string
+          enum: [BON, ATTENTION, CRITIQUE]
+        vatAnalysis:
+          $ref: "#/components/schemas/RiskScoreVatAnalysis"
+        anomalies:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskScoreAnomaly"
+        recommendations:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskScoreRecommendation"
+        generatedAt:
+          type: string
+          format: date-time
+
+    # ── Cashflow Forecast ────────────────────────────────────────────────────
+
+    CashflowDayProjection:
+      type: object
+      required: [date, openingBalance, inflows, outflows, closingBalance]
+      properties:
+        date:
+          type: string
+          format: date
+        openingBalance: { type: integer }
+        inflows: { type: integer }
+        outflows: { type: integer }
+        closingBalance: { type: integer }
+        inflowLabels:
+          type: array
+          items: { type: string }
+        outflowLabels:
+          type: array
+          items: { type: string }
+
+    CashflowForecast:
+      type: object
+      required: [clientId, currentBalance, days, totalExpectedInflows, totalExpectedOutflows, projections]
+      properties:
+        clientId: { type: integer }
+        currentBalance: { type: integer }
+        days: { type: integer }
+        totalExpectedInflows: { type: integer }
+        totalExpectedOutflows: { type: integer }
+        projections:
+          type: array
+          items:
+            $ref: "#/components/schemas/CashflowDayProjection"
 
     UserRole:
       type: string

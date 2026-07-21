@@ -6205,3 +6205,100 @@ export const CreateCreditNoteResponse = zod.object({
 }))
 
 
+/**
+ * @summary Check for potential duplicate purchases before saving (M8)
+ */
+export const CheckPurchaseDuplicateBody = zod.object({
+  "clientId": zod.number(),
+  "supplierNcc": zod.string().nullish(),
+  "invoiceRef": zod.string().nullish(),
+  "amountTtc": zod.number(),
+  "date": zod.coerce.date(),
+  "excludePurchaseId": zod.number().nullish()
+})
+
+export const CheckPurchaseDuplicateResponse = zod.object({
+  "hasDuplicate": zod.boolean(),
+  "matches": zod.array(zod.object({
+  "id": zod.number(),
+  "supplierName": zod.string(),
+  "invoiceRef": zod.string().nullish(),
+  "amountTtc": zod.number(),
+  "date": zod.coerce.date(),
+  "matchReason": zod.string()
+}))
+})
+
+
+/**
+ * @summary AI-powered monthly compliance & tax anomaly scoring via Claude
+ */
+export const computeRiskScoreBodyMonthMax = 12;
+
+export const computeRiskScoreBodyYearMin = 2000;
+export const computeRiskScoreBodyYearMax = 2100;
+
+
+
+export const ComputeRiskScoreBody = zod.object({
+  "clientId": zod.number(),
+  "month": zod.number().min(1).max(computeRiskScoreBodyMonthMax),
+  "year": zod.number().min(computeRiskScoreBodyYearMin).max(computeRiskScoreBodyYearMax)
+})
+
+export const ComputeRiskScoreResponse = zod.object({
+  "clientId": zod.number(),
+  "clientName": zod.string(),
+  "month": zod.number(),
+  "year": zod.number(),
+  "score": zod.number(),
+  "level": zod.enum(['BON', 'ATTENTION', 'CRITIQUE']),
+  "vatAnalysis": zod.object({
+  "declaredRevenue": zod.number(),
+  "vatCollected": zod.number(),
+  "theoreticalVat": zod.number(),
+  "vatGapPercent": zod.number(),
+  "consistencyOk": zod.boolean()
+}),
+  "anomalies": zod.array(zod.object({
+  "code": zod.string(),
+  "label": zod.string(),
+  "severity": zod.enum(['INFO', 'AVERTISSEMENT', 'CRITIQUE']),
+  "detail": zod.string()
+})),
+  "recommendations": zod.array(zod.object({
+  "priority": zod.enum(['HAUTE', 'MOYENNE', 'BASSE']),
+  "text": zod.string()
+})),
+  "generatedAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Predictive cashflow for the next 30 or 60 days
+ */
+export const getCashflowForecastQueryDaysDefault = 30;
+
+export const GetCashflowForecastQueryParams = zod.object({
+  "clientId": zod.coerce.number(),
+  "days": zod.union([zod.literal(30),zod.literal(60)]).default(getCashflowForecastQueryDaysDefault).describe('Forecast horizon in days')
+})
+
+export const GetCashflowForecastResponse = zod.object({
+  "clientId": zod.number(),
+  "currentBalance": zod.number(),
+  "days": zod.number(),
+  "totalExpectedInflows": zod.number(),
+  "totalExpectedOutflows": zod.number(),
+  "projections": zod.array(zod.object({
+  "date": zod.coerce.date(),
+  "openingBalance": zod.number(),
+  "inflows": zod.number(),
+  "outflows": zod.number(),
+  "closingBalance": zod.number(),
+  "inflowLabels": zod.array(zod.string()).optional(),
+  "outflowLabels": zod.array(zod.string()).optional()
+}))
+})
+
+

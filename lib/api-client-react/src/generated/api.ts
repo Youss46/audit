@@ -41,6 +41,7 @@ import type {
   CalculatePayrollResult,
   CashRegister,
   CashRegisterInput,
+  CashflowForecast,
   ChatChannel,
   ChatChannelDetail,
   ChatChannelInput,
@@ -114,6 +115,7 @@ import type {
   GetAnalyticalReportParams,
   GetBalanceDesComptesParams,
   GetBilanSimplifieParams,
+  GetCashflowForecastParams,
   GetCompteDeResultatParams,
   GetGrandLivreParams,
   GetLastPumpIndexParams,
@@ -193,6 +195,8 @@ import type {
   PumpShiftValidateInput,
   PumpShiftValidateResult,
   Purchase,
+  PurchaseDuplicateCheckInput,
+  PurchaseDuplicateCheckResult,
   PurchaseReceiptResponse,
   PurchaseSettleResult,
   RecordMobileMoneySaleBody,
@@ -201,6 +205,8 @@ import type {
   RemindInvoice200,
   RenegotiateFinancialItemInput,
   ResetFirstPasswordInput,
+  RiskScoreInput,
+  RiskScoreResult,
   Role,
   ScoringDashboardResult,
   SetAllocationsInput,
@@ -14736,4 +14742,230 @@ export const useCreateCreditNote = <TError = ErrorType<unknown>,
       > => {
       return useMutation(getCreateCreditNoteMutationOptions(options));
     }
+
+export const getCheckPurchaseDuplicateUrl = () => {
+
+
+
+
+  return `/api/purchases/duplicate-check`
+}
+
+/**
+ * @summary Check for potential duplicate purchases before saving (M8)
+ */
+export const checkPurchaseDuplicate = async (purchaseDuplicateCheckInput: PurchaseDuplicateCheckInput, options?: RequestInit): Promise<PurchaseDuplicateCheckResult> => {
+
+  return customFetch<PurchaseDuplicateCheckResult>(getCheckPurchaseDuplicateUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(purchaseDuplicateCheckInput)
+  }
+);}
+
+
+
+
+
+export const getCheckPurchaseDuplicateMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPurchaseDuplicate>>, TError,{data: BodyType<PurchaseDuplicateCheckInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkPurchaseDuplicate>>, TError,{data: BodyType<PurchaseDuplicateCheckInput>}, TContext> => {
+
+const mutationKey = ['checkPurchaseDuplicate'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkPurchaseDuplicate>>, {data: BodyType<PurchaseDuplicateCheckInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkPurchaseDuplicate(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckPurchaseDuplicateMutationResult = NonNullable<Awaited<ReturnType<typeof checkPurchaseDuplicate>>>
+    export type CheckPurchaseDuplicateMutationBody = BodyType<PurchaseDuplicateCheckInput>
+    export type CheckPurchaseDuplicateMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Check for potential duplicate purchases before saving (M8)
+ */
+export const useCheckPurchaseDuplicate = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkPurchaseDuplicate>>, TError,{data: BodyType<PurchaseDuplicateCheckInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof checkPurchaseDuplicate>>,
+        TError,
+        {data: BodyType<PurchaseDuplicateCheckInput>},
+        TContext
+      > => {
+      return useMutation(getCheckPurchaseDuplicateMutationOptions(options));
+    }
+
+export const getComputeRiskScoreUrl = () => {
+
+
+
+
+  return `/api/audit/risk-score`
+}
+
+/**
+ * @summary AI-powered monthly compliance & tax anomaly scoring via Claude
+ */
+export const computeRiskScore = async (riskScoreInput: RiskScoreInput, options?: RequestInit): Promise<RiskScoreResult> => {
+
+  return customFetch<RiskScoreResult>(getComputeRiskScoreUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(riskScoreInput)
+  }
+);}
+
+
+
+
+
+export const getComputeRiskScoreMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof computeRiskScore>>, TError,{data: BodyType<RiskScoreInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof computeRiskScore>>, TError,{data: BodyType<RiskScoreInput>}, TContext> => {
+
+const mutationKey = ['computeRiskScore'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof computeRiskScore>>, {data: BodyType<RiskScoreInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  computeRiskScore(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ComputeRiskScoreMutationResult = NonNullable<Awaited<ReturnType<typeof computeRiskScore>>>
+    export type ComputeRiskScoreMutationBody = BodyType<RiskScoreInput>
+    export type ComputeRiskScoreMutationError = ErrorType<unknown>
+
+    /**
+ * @summary AI-powered monthly compliance & tax anomaly scoring via Claude
+ */
+export const useComputeRiskScore = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof computeRiskScore>>, TError,{data: BodyType<RiskScoreInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof computeRiskScore>>,
+        TError,
+        {data: BodyType<RiskScoreInput>},
+        TContext
+      > => {
+      return useMutation(getComputeRiskScoreMutationOptions(options));
+    }
+
+export const getGetCashflowForecastUrl = (params: GetCashflowForecastParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/cashflow/forecast?${stringifiedParams}` : `/api/cashflow/forecast`
+}
+
+/**
+ * @summary Predictive cashflow for the next 30 or 60 days
+ */
+export const getCashflowForecast = async (params: GetCashflowForecastParams, options?: RequestInit): Promise<CashflowForecast> => {
+
+  return customFetch<CashflowForecast>(getGetCashflowForecastUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetCashflowForecastQueryKey = (params?: GetCashflowForecastParams,) => {
+    return [
+    `/api/cashflow/forecast`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetCashflowForecastQueryOptions = <TData = Awaited<ReturnType<typeof getCashflowForecast>>, TError = ErrorType<unknown>>(params: GetCashflowForecastParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashflowForecast>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetCashflowForecastQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getCashflowForecast>>> = ({ signal }) => getCashflowForecast(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getCashflowForecast>>, TError, TData> & { queryKey: QueryKey }
+}
+
+export type GetCashflowForecastQueryResult = NonNullable<Awaited<ReturnType<typeof getCashflowForecast>>>
+export type GetCashflowForecastQueryError = ErrorType<unknown>
+
+
+/**
+ * @summary Predictive cashflow for the next 30 or 60 days
+ */
+
+export function useGetCashflowForecast<TData = Awaited<ReturnType<typeof getCashflowForecast>>, TError = ErrorType<unknown>>(
+ params: GetCashflowForecastParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getCashflowForecast>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+
+ ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+
+  const queryOptions = getGetCashflowForecastQueryOptions(params,options)
+
+  const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 

@@ -13,6 +13,122 @@ export interface ErrorResponse {
   error: string;
 }
 
+export interface PurchaseDuplicateCheckInput {
+  clientId: number;
+  supplierNcc?: string | null;
+  invoiceRef?: string | null;
+  amountTtc: number;
+  date: string;
+  excludePurchaseId?: number | null;
+}
+
+export interface PurchaseDuplicateMatch {
+  id: number;
+  supplierName: string;
+  invoiceRef?: string | null;
+  amountTtc: number;
+  date: string;
+  matchReason: string;
+}
+
+export interface PurchaseDuplicateCheckResult {
+  hasDuplicate: boolean;
+  matches: PurchaseDuplicateMatch[];
+}
+
+export interface RiskScoreInput {
+  clientId: number;
+  /**
+     * @minimum 1
+     * @maximum 12
+     */
+  month: number;
+  /**
+     * @minimum 2000
+     * @maximum 2100
+     */
+  year: number;
+}
+
+export type RiskScoreAnomalySeverity = typeof RiskScoreAnomalySeverity[keyof typeof RiskScoreAnomalySeverity];
+
+
+export const RiskScoreAnomalySeverity = {
+  INFO: 'INFO',
+  AVERTISSEMENT: 'AVERTISSEMENT',
+  CRITIQUE: 'CRITIQUE',
+} as const;
+
+export interface RiskScoreAnomaly {
+  code: string;
+  label: string;
+  severity: RiskScoreAnomalySeverity;
+  detail: string;
+}
+
+export type RiskScoreRecommendationPriority = typeof RiskScoreRecommendationPriority[keyof typeof RiskScoreRecommendationPriority];
+
+
+export const RiskScoreRecommendationPriority = {
+  HAUTE: 'HAUTE',
+  MOYENNE: 'MOYENNE',
+  BASSE: 'BASSE',
+} as const;
+
+export interface RiskScoreRecommendation {
+  priority: RiskScoreRecommendationPriority;
+  text: string;
+}
+
+export interface RiskScoreVatAnalysis {
+  declaredRevenue: number;
+  vatCollected: number;
+  theoreticalVat: number;
+  vatGapPercent: number;
+  consistencyOk: boolean;
+}
+
+export type RiskScoreResultLevel = typeof RiskScoreResultLevel[keyof typeof RiskScoreResultLevel];
+
+
+export const RiskScoreResultLevel = {
+  BON: 'BON',
+  ATTENTION: 'ATTENTION',
+  CRITIQUE: 'CRITIQUE',
+} as const;
+
+export interface RiskScoreResult {
+  clientId: number;
+  clientName: string;
+  month: number;
+  year: number;
+  score: number;
+  level: RiskScoreResultLevel;
+  vatAnalysis: RiskScoreVatAnalysis;
+  anomalies: RiskScoreAnomaly[];
+  recommendations: RiskScoreRecommendation[];
+  generatedAt: string;
+}
+
+export interface CashflowDayProjection {
+  date: string;
+  openingBalance: number;
+  inflows: number;
+  outflows: number;
+  closingBalance: number;
+  inflowLabels?: string[];
+  outflowLabels?: string[];
+}
+
+export interface CashflowForecast {
+  clientId: number;
+  currentBalance: number;
+  days: number;
+  totalExpectedInflows: number;
+  totalExpectedOutflows: number;
+  projections: CashflowDayProjection[];
+}
+
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 
@@ -3390,4 +3506,20 @@ export type RemindInvoice200 = {
   ok: boolean;
   emailSent: boolean;
 };
+
+export type GetCashflowForecastParams = {
+clientId: number;
+/**
+ * Forecast horizon in days
+ */
+days?: GetCashflowForecastDays;
+};
+
+export type GetCashflowForecastDays = typeof GetCashflowForecastDays[keyof typeof GetCashflowForecastDays];
+
+
+export const GetCashflowForecastDays = {
+  NUMBER_30: 30,
+  NUMBER_60: 60,
+} as const;
 

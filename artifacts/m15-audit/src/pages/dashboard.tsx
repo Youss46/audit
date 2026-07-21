@@ -1,4 +1,4 @@
-import { useGetDashboardSummary, useListMissions } from "@workspace/api-client-react"
+import { useGetDashboardSummary, useListMissions, useListClients } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
 import { Link } from "wouter"
 import { 
@@ -10,9 +10,12 @@ import {
   Stamp,
   Activity,
   Users,
-  ArrowRight
+  ArrowRight,
+  TrendingUp,
+  Brain,
+  ShieldCheck,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Button } from "@/components/ui/button"
@@ -218,6 +221,67 @@ export default function Dashboard() {
                 </Link>
               )}
             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* ── AI Tools quick-access section ─────────────────────────────── */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="shadow-sm border-l-4 border-l-blue-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+              <CardTitle className="text-sm font-semibold">Prévisionnel de Trésorerie</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Projection 30/60 jours des flux entrants (factures clients) et sortants (achats, paie) pour chaque dossier PME.
+            </p>
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href="/clients">
+                Accéder aux dossiers
+                <ArrowRight className="ml-2 h-3.5 w-3.5" />
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-amber-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-amber-500" />
+              <CardTitle className="text-sm font-semibold">Détection de Doublons</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Lors de l'analyse OCR d'une facture, le système vérifie automatiquement si un achat similaire a déjà été enregistré (NCC, référence ou montant ± 60 jours).
+            </p>
+            <div className="flex items-center gap-1.5">
+              <div className="h-2 w-2 rounded-full bg-green-500" />
+              <span className="text-xs text-muted-foreground">Actif sur chaque dossier client</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-l-4 border-l-purple-500">
+          <CardHeader className="pb-2">
+            <div className="flex items-center gap-2">
+              <Brain className="h-5 w-5 text-purple-500" />
+              <CardTitle className="text-sm font-semibold">Scoring IA de Conformité</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-muted-foreground mb-3">
+              Analyse mensuelle Claude AI : cohérence TVA, ratio charges, anomalies comptables — score de conformité 0-100 avec recommandations Expert-Comptable.
+            </p>
+            <Button asChild variant="outline" size="sm" className="w-full">
+              <Link href="/clients">
+                Analyser un dossier
+                <ArrowRight className="ml-2 h-3.5 w-3.5" />
+              </Link>
+            </Button>
           </CardContent>
         </Card>
       </div>

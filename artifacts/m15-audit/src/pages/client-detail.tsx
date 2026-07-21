@@ -11,14 +11,21 @@ import {
   useUploadClientDocument,
   useDeleteDocument,
   useUpdateClient,
+  useCheckPurchaseDuplicate,
+  useComputeRiskScore,
   MissionStatus,
   Sector,
-  TaxRegime
+  TaxRegime,
+  type PurchaseDuplicateMatch,
+  type RiskScoreResult,
 } from "@workspace/api-client-react"
 import { useAuth } from "@/hooks/use-auth"
+import { getToken, getApiBase } from "@/lib/auth"
 import { formatDateTime, formatDate } from "@/lib/utils"
 import { determineAccountingSystem, getSystemDescription } from "@/lib/visa-engine"
 import { getTaxRegimeLabel } from "@/lib/status"
+import { CashflowForecastWidget } from "@/components/cashflow/CashflowForecastWidget"
+import { DuplicateWarningBanner } from "@/components/fraud/DuplicateWarningBanner"
 import { 
   Building2, 
   ChevronLeft, 
@@ -32,7 +39,16 @@ import {
   Download,
   AlertCircle,
   Calculator,
-  Stamp
+  Stamp,
+  ScanText,
+  Brain,
+  TrendingUp,
+  ShieldCheck,
+  CheckCircle2,
+  AlertTriangle,
+  Loader2,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -137,6 +153,7 @@ function DocumentFolder({
   canDelete,
   onDelete,
   onDownload,
+  onOcr,
   action,
 }: {
   title: string
@@ -145,6 +162,7 @@ function DocumentFolder({
   canDelete: boolean
   onDelete: (id: number) => void
   onDownload: () => void
+  onOcr?: (docId: number, fileName: string) => void
   action?: ReactNode
 }) {
   return (
@@ -193,6 +211,16 @@ function DocumentFolder({
                 <TableCell className="text-sm">{doc.uploadedByName || '-'}</TableCell>
                 <TableCell className="text-right">
                   <div className="flex justify-end gap-2">
+                    {onOcr && (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        title="Analyser avec l'IA (OCR)"
+                        onClick={() => onOcr(doc.id, doc.fileName)}
+                      >
+                        <ScanText className="h-4 w-4 text-primary" />
+                      </Button>
+                    )}
                     <Button variant="ghost" size="icon" title="Ouvrir / Télécharger (Simulation)" onClick={onDownload}>
                       <Download className="h-4 w-4" />
                     </Button>
@@ -240,6 +268,28 @@ export default function ClientDetail() {
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
+  // ── OCR + Duplicate-detection state ───────────────────────────────────────
+  const [ocrDocId, setOcrDocId]           = useState<number | null>(null)
+  const [ocrDocName, setOcrDocName]       = useState<string>("")
+  const [isOcrLoading, setIsOcrLoading]   = useState(false)
+  type OcrResult = {
+    extracted_vendor_name: string | null
+    extracted_date: string | null
+    extracted_amount: number | null
+    suggested_type: "depense" | "recette" | null
+    suggested_category: string | null
+    suggested_label: string | null
+  }
+  const [ocrResult, setOcrResult]                 = useState<OcrResult | null>(null)
+  const [duplicateMatches, setDuplicateMatches]   = useState<PurchaseDuplicateMatch[]>([])
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false)
+
+  // ── Risk-score state ──────────────────────────────────────────────────────
+  const [riskMonth, setRiskMonth]                 = useState(new Date().getMonth() + 1)
+  const [riskYear, setRiskYear]                   = useState(new Date().getFullYear())
+  const [riskScoreResult, setRiskScoreResult]     = useState<RiskScoreResult | null>(null)
+  const [showRiskDetails, setShowRiskDetails]     = useState(false)
+
   const { data: client, isLoading: isClientLoading, refetch: refetchClient } = useGetClient(clientId, {
     query: { enabled: !!clientId, queryKey: getGetClientQueryKey(clientId) }
   })
@@ -248,7 +298,7 @@ export default function ClientDetail() {
     query: { enabled: !!clientId, queryKey: getListMissionsQueryKey({ clientId }) }
   })
   
-  const { data: documents, isLoading: isDocsLoading, refetch: refetchDocs } = useListClientDocuments(clientId, {
+  const { data: documents, isLoading: isDocsLoading, refetch: refetchDocs } = useListClientDocuments(clientId, {}, {
     query: { enabled: !!clientId, queryKey: getListClientDocumentsQueryKey(clientId) }
   })
 
@@ -321,6 +371,89 @@ export default function ClientDetail() {
       }
     }
   })
+
+  // ── Mutations ─────────────────────────────────────────────────────────────
+  const checkDuplicateMutation    = useCheckPurchaseDuplicate()
+  const computeRiskScoreMutation  = useComputeRiskScore()
+
+  // ── OCR handler ───────────────────────────────────────────────────────────
+  const handleOcr = async (docId: number, fileName: string) => {
+    setOcrDocId(docId)
+    setOcrDocName(fileName)
+    setIsOcrLoading(true)
+    setOcrResult(null)
+    setDuplicateMatches([])
+    setShowDuplicateWarning(false)
+
+    try {
+      const token    = getToken()
+      const response = await fetch(`${getApiBase()}/api/ocr/process/${docId}`, {
+        method:  "POST",
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      })
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error((err as { error?: string }).error ?? "Erreur OCR")
+      }
+      const result = (await response.json()) as OcrResult
+      setOcrResult(result)
+
+      // If a monetary amount was extracted, immediately check for duplicates.
+      if (result.extracted_amount != null && result.extracted_amount > 0) {
+        const dateIso = result.extracted_date
+          ? new Date(result.extracted_date).toISOString()
+          : new Date().toISOString()
+
+        checkDuplicateMutation.mutate(
+          {
+            data: {
+              clientId,
+              amountTtc:      Math.round(result.extracted_amount),
+              date:           dateIso,
+              supplierNcc:    null,
+              invoiceRef:     null,
+            },
+          },
+          {
+            onSuccess: (dupResult) => {
+              if (dupResult.hasDuplicate) {
+                setDuplicateMatches(dupResult.matches)
+                setShowDuplicateWarning(true)
+              }
+            },
+          },
+        )
+      }
+    } catch (err) {
+      toast({
+        title:       "Erreur OCR",
+        description: err instanceof Error ? err.message : "Impossible d'analyser ce document.",
+        variant:     "destructive",
+      })
+      setOcrDocId(null)
+    } finally {
+      setIsOcrLoading(false)
+    }
+  }
+
+  // ── Risk-score handler ────────────────────────────────────────────────────
+  const handleRiskScore = () => {
+    setRiskScoreResult(null)
+    setShowRiskDetails(false)
+    computeRiskScoreMutation.mutate(
+      { data: { clientId, month: riskMonth, year: riskYear } },
+      {
+        onSuccess: (result) => setRiskScoreResult(result),
+        onError: (err) => {
+          toast({
+            title:       "Erreur d'analyse IA",
+            description: err instanceof Error ? err.message : "Le service Claude est temporairement indisponible.",
+            variant:     "destructive",
+          })
+        },
+      },
+    )
+  }
 
   const handleStartEditProfile = () => {
     if (!client) return
@@ -456,6 +589,7 @@ export default function ClientDetail() {
           <TabsTrigger value="missions" className="shrink-0">Missions de Visa</TabsTrigger>
           <TabsTrigger value="documents" className="shrink-0">Portail Documentaire</TabsTrigger>
           <TabsTrigger value="etats-financiers" className="shrink-0" data-testid="tab-etats-financiers">États Financiers</TabsTrigger>
+          <TabsTrigger value="tresorerie-ia" className="shrink-0">Trésorerie & IA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6 mt-0">
@@ -927,7 +1061,241 @@ export default function ClientDetail() {
         <TabsContent value="etats-financiers" className="mt-0">
           <EtatsFinanciers clientId={clientId} />
         </TabsContent>
+
+        {/* ── Trésorerie & IA ──────────────────────────────────────── */}
+        <TabsContent value="tresorerie-ia" className="mt-0 space-y-6">
+          {/* Cashflow forecast chart */}
+          <CashflowForecastWidget clientId={clientId} />
+
+          {/* AI Risk / Compliance Score */}
+          <Card className="shadow-sm">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Brain className="h-5 w-5 text-purple-500" />
+                Scoring de Conformité & Risque Fiscal (IA)
+              </CardTitle>
+              <CardDescription>
+                Analyse mensuelle Claude AI — cohérence TVA, ratio charges/CA, anomalies SYSCOHADA.
+                Score de conformité 0-100 avec recommandations Expert-Comptable.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-5">
+              {/* Controls */}
+              <div className="flex flex-wrap items-end gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Mois analysé</label>
+                  <select
+                    value={riskMonth}
+                    onChange={(e) => setRiskMonth(Number(e.target.value))}
+                    className="h-9 w-36 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  >
+                    {["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"].map((m, i) => (
+                      <option key={i + 1} value={i + 1}>{m}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Exercice</label>
+                  <input
+                    type="number"
+                    value={riskYear}
+                    onChange={(e) => setRiskYear(Number(e.target.value))}
+                    min={2020}
+                    max={new Date().getFullYear()}
+                    className="h-9 w-24 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+                <Button
+                  onClick={handleRiskScore}
+                  disabled={computeRiskScoreMutation.isPending}
+                  className="gap-2"
+                >
+                  {computeRiskScoreMutation.isPending
+                    ? <><Loader2 className="h-4 w-4 animate-spin" /> Analyse IA en cours…</>
+                    : <><Brain className="h-4 w-4" /> Analyser avec Claude</>}
+                </Button>
+              </div>
+
+              {/* Score display */}
+              {riskScoreResult && (() => {
+                const r = riskScoreResult
+                const scoreColor =
+                  r.level === "BON"      ? "text-green-700 dark:text-green-400"
+                  : r.level === "ATTENTION" ? "text-amber-700 dark:text-amber-400"
+                  : "text-red-700 dark:text-red-400"
+                const scoreBg =
+                  r.level === "BON"      ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/30"
+                  : r.level === "ATTENTION" ? "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/30"
+                  : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/30"
+                const levelIcon =
+                  r.level === "BON"      ? <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  : r.level === "ATTENTION" ? <AlertTriangle className="h-5 w-5 text-amber-500" />
+                  : <AlertCircle className="h-5 w-5 text-red-500" />
+                const months = ["Janvier","Février","Mars","Avril","Mai","Juin","Juillet","Août","Septembre","Octobre","Novembre","Décembre"]
+
+                return (
+                  <div className="space-y-4">
+                    {/* Score banner */}
+                    <div className={`rounded-lg border p-4 ${scoreBg}`}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          {levelIcon}
+                          <div>
+                            <p className={`text-2xl font-bold ${scoreColor}`}>{r.score} / 100</p>
+                            <p className="text-sm text-muted-foreground">
+                              {months[r.month - 1]} {r.year} — {r.clientName}
+                            </p>
+                          </div>
+                        </div>
+                        <div className={`rounded-full px-4 py-1.5 text-sm font-bold ${scoreColor} border ${r.level === "BON" ? "border-green-300" : r.level === "ATTENTION" ? "border-amber-300" : "border-red-300"}`}>
+                          {r.level}
+                        </div>
+                      </div>
+                      <div className="mt-3 h-2 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all ${r.level === "BON" ? "bg-green-500" : r.level === "ATTENTION" ? "bg-amber-500" : "bg-red-500"}`}
+                          style={{ width: `${r.score}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* TVA analysis */}
+                    <div className={`rounded-lg border p-3 text-sm ${r.vatAnalysis.consistencyOk ? "border-green-200 bg-green-50/50 dark:border-green-900" : "border-amber-200 bg-amber-50/50 dark:border-amber-900"}`}>
+                      <div className="flex items-center gap-2 font-medium mb-1">
+                        {r.vatAnalysis.consistencyOk
+                          ? <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          : <AlertTriangle className="h-4 w-4 text-amber-500" />}
+                        Analyse TVA
+                        <span className={`ml-auto text-xs ${r.vatAnalysis.consistencyOk ? "text-green-600" : "text-amber-700"}`}>
+                          Écart : {r.vatAnalysis.vatGapPercent.toFixed(1)} %
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-xs text-muted-foreground mt-2">
+                        <div><p className="font-medium text-foreground">{r.vatAnalysis.declaredRevenue.toLocaleString("fr-FR")}</p><p>CA déclaré (FCFA)</p></div>
+                        <div><p className="font-medium text-foreground">{r.vatAnalysis.vatCollected.toLocaleString("fr-FR")}</p><p>TVA collectée (FCFA)</p></div>
+                        <div><p className="font-medium text-foreground">{r.vatAnalysis.theoreticalVat.toLocaleString("fr-FR")}</p><p>TVA théorique 18% (FCFA)</p></div>
+                      </div>
+                    </div>
+
+                    {/* Anomalies + Recommendations toggle */}
+                    <button
+                      className="flex w-full items-center justify-between rounded-md border px-3 py-2 text-sm font-medium hover:bg-muted/50 transition-colors"
+                      onClick={() => setShowRiskDetails((v) => !v)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4" />
+                        {r.anomalies.length} anomalie{r.anomalies.length !== 1 ? "s" : ""} · {r.recommendations.length} recommandation{r.recommendations.length !== 1 ? "s" : ""}
+                      </span>
+                      {showRiskDetails ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+
+                    {showRiskDetails && (
+                      <div className="space-y-3">
+                        {r.anomalies.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Anomalies détectées</p>
+                            {r.anomalies.map((a, i) => {
+                              const sCol = a.severity === "CRITIQUE" ? "border-red-300 bg-red-50/60 dark:border-red-800" : a.severity === "AVERTISSEMENT" ? "border-amber-300 bg-amber-50/60 dark:border-amber-800" : "border-border bg-muted/30"
+                              return (
+                                <div key={i} className={`rounded-md border p-3 text-sm ${sCol}`}>
+                                  <div className="flex items-center gap-2 font-medium mb-0.5">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-mono ${a.severity === "CRITIQUE" ? "bg-red-100 text-red-700" : a.severity === "AVERTISSEMENT" ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"}`}>{a.code}</span>
+                                    {a.label}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{a.detail}</p>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {r.recommendations.length > 0 && (
+                          <div className="space-y-2">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Recommandations</p>
+                            {r.recommendations.map((rec, i) => (
+                              <div key={i} className="flex items-start gap-2 rounded-md border p-3 text-sm">
+                                <span className={`mt-0.5 shrink-0 text-xs px-1.5 py-0.5 rounded font-medium ${rec.priority === "HAUTE" ? "bg-red-100 text-red-700" : rec.priority === "MOYENNE" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>{rec.priority}</span>
+                                <p className="text-muted-foreground">{rec.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* ── OCR Analysis Dialog ─────────────────────────────────────────── */}
+      <Dialog open={ocrDocId !== null} onOpenChange={(open) => { if (!open) setOcrDocId(null) }}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ScanText className="h-5 w-5 text-primary" />
+              Analyse OCR — {ocrDocName}
+            </DialogTitle>
+          </DialogHeader>
+
+          {isOcrLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm">Extraction des données en cours…</p>
+            </div>
+          ) : ocrResult ? (
+            <div className="space-y-4">
+              {/* Duplicate warning */}
+              {showDuplicateWarning && duplicateMatches.length > 0 && (
+                <DuplicateWarningBanner
+                  matches={duplicateMatches}
+                  onDismiss={() => setShowDuplicateWarning(false)}
+                />
+              )}
+
+              {/* Extracted fields */}
+              <div className="rounded-lg border p-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Données extraites</p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Fournisseur / Émetteur</p>
+                    <p className="font-medium">{ocrResult.extracted_vendor_name ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Date</p>
+                    <p className="font-medium">{ocrResult.extracted_date ? new Date(ocrResult.extracted_date).toLocaleDateString("fr-FR") : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Montant TTC</p>
+                    <p className="font-medium">{ocrResult.extracted_amount != null ? ocrResult.extracted_amount.toLocaleString("fr-FR") + " FCFA" : "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Type suggéré</p>
+                    <p className="font-medium capitalize">{ocrResult.suggested_type ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Catégorie suggérée</p>
+                    <p className="font-medium">{ocrResult.suggested_category ?? "—"}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Libellé suggéré</p>
+                    <p className="font-medium">{ocrResult.suggested_label ?? "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-xs text-muted-foreground">
+                Ces informations sont des suggestions. Vérifiez-les avant de créer l'écriture comptable correspondante.
+              </p>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOcrDocId(null)}>Fermer</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!docToDelete} onOpenChange={(open) => !open && setDocToDelete(null)}>
         <AlertDialogContent>
