@@ -41,6 +41,7 @@ import ocrRouter from "./ocr";
 import auditVisaRouter from "./audit-visa";
 import fraudRouter from "./fraud";
 import cashflowRouter from "./cashflow";
+import copilotRouter from "./copilot";
 
 const router: IRouter = Router();
 
@@ -86,5 +87,6 @@ router.use(ocrRouter);
 router.use(auditVisaRouter);
 router.use(fraudRouter);
 router.use(cashflowRouter);
+router.use(copilotRouter);
 
 export default router;

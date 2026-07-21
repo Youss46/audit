@@ -1,4 +1,5 @@
 - [Frontend API URL pattern](frontend-api-url.md) — toutes les pages frontend doivent utiliser getApiBase() pour les fetch vers /api/..., jamais de chemin relatif nu.
 - [6-digit sub-account enforcement](6digit-accounts.md) — all journalLinesTable entries must be 6-digit; Wave=552100, OrangeMoney=552200 (swapped from original).
+- [AI Copilot](ai-copilot.md) — POST /api/ai/copilot, deepseek-chat streaming SSE, AICopilotDrawer.tsx in Shell.tsx.
 - [SYSCOHADA chart & imputation engine](syscohada-engine.md) — plan comptable complet en DB (accountsTable + accountType enum), catégories dans transaction_categories, service imputeAccount() avec fallback 471.
 - [Re-import bootstrap checklist](reimport-bootstrap-checklist.md) — when artifacts exist on disk but platform registry is empty, re-register via createArtifact + verifyAndReplaceArtifactToml; seed drizzle migrations table after db push.

@@ -39,6 +39,7 @@ import { UserCog, Fuel, CircleDollarSign, Smartphone, ShoppingCart, ClipboardChe
 import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey, useGetClient } from "@workspace/api-client-react"
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
+import { AICopilotDrawer } from "@/components/ai/AICopilotDrawer"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -927,6 +928,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         onStay={stayConnected}
         onLogout={logout}
       />
+      {/* M15 AI Copilot — global FAB + chat drawer, all pages */}
+      <AICopilotDrawer />
     </div>
   )
 }
