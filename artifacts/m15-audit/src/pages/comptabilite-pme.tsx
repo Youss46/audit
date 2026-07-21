@@ -1282,39 +1282,39 @@ export default function ComptabilitePme() {
                   <Sparkles className="h-4 w-4 text-violet-600" />
                   <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">Résultats de l'analyse</span>
                 </div>
-                <dl className="space-y-2 text-sm">
+                <dl className="space-y-2.5 text-sm">
                   {ocrResult.extracted_vendor_name && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Fournisseur / Client</dt>
-                      <dd className="font-medium text-right">{ocrResult.extracted_vendor_name}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Fournisseur / Client</dt>
+                      <dd className="font-medium break-words">{ocrResult.extracted_vendor_name}</dd>
                     </div>
                   )}
                   {ocrResult.suggested_label && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Libellé suggéré</dt>
-                      <dd className="font-medium text-right max-w-[60%] truncate">{ocrResult.suggested_label}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Libellé suggéré</dt>
+                      <dd className="font-medium break-words">{ocrResult.suggested_label}</dd>
                     </div>
                   )}
                   {ocrResult.extracted_date && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Date</dt>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Date</dt>
                       <dd className="font-medium">{ocrResult.extracted_date}</dd>
                     </div>
                   )}
                   {ocrResult.extracted_amount != null && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Montant</dt>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Montant</dt>
                       <dd className="font-medium">{ocrResult.extracted_amount.toLocaleString('fr-FR')} FCFA</dd>
                     </div>
                   )}
-                  <div className="flex justify-between">
-                    <dt className="text-muted-foreground">Type</dt>
+                  <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                    <dt className="text-muted-foreground shrink-0">Type</dt>
                     <dd className="font-medium">{ocrResult.suggested_type === 'recette' ? 'Recette' : 'Dépense'}</dd>
                   </div>
                   {ocrResult.suggested_category && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Catégorie</dt>
-                      <dd className="font-medium">{ocrResult.suggested_category.replace(/_/g, ' ')}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Catégorie</dt>
+                      <dd className="font-medium break-words">{ocrResult.suggested_category.replace(/_/g, ' ')}</dd>
                     </div>
                   )}
                 </dl>

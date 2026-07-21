@@ -974,35 +974,35 @@ export default function DepensesAchats() {
                   <Sparkles className="h-4 w-4 text-violet-600" />
                   <span className="text-sm font-semibold text-violet-800 dark:text-violet-300">Résultats de l'analyse</span>
                 </div>
-                <dl className="space-y-2 text-sm">
+                <dl className="space-y-2.5 text-sm">
                   {ocrResult.extracted_vendor_name && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Fournisseur</dt>
-                      <dd className="font-medium text-right">{ocrResult.extracted_vendor_name}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Fournisseur</dt>
+                      <dd className="font-medium break-words">{ocrResult.extracted_vendor_name}</dd>
                     </div>
                   )}
                   {ocrResult.extracted_date && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Date</dt>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Date</dt>
                       <dd className="font-medium">{ocrResult.extracted_date}</dd>
                     </div>
                   )}
                   {ocrResult.extracted_amount != null && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Montant (pré-rempli en HT)</dt>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Montant (pré-rempli en HT)</dt>
                       <dd className="font-medium">{ocrResult.extracted_amount.toLocaleString('fr-FR')} FCFA</dd>
                     </div>
                   )}
                   {ocrResult.suggested_category && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Catégorie suggérée</dt>
-                      <dd className="font-medium">{ocrResult.suggested_category.replace(/_/g, ' ')}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Catégorie suggérée</dt>
+                      <dd className="font-medium break-words">{ocrResult.suggested_category.replace(/_/g, ' ')}</dd>
                     </div>
                   )}
                   {ocrResult.suggested_label && (
-                    <div className="flex justify-between">
-                      <dt className="text-muted-foreground">Observations</dt>
-                      <dd className="font-medium text-right max-w-[60%] truncate">{ocrResult.suggested_label}</dd>
+                    <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:items-baseline">
+                      <dt className="text-muted-foreground shrink-0">Observations</dt>
+                      <dd className="font-medium break-words">{ocrResult.suggested_label}</dd>
                     </div>
                   )}
                 </dl>
