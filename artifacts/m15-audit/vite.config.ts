@@ -53,9 +53,7 @@ export default defineConfig({
   },
   root: path.resolve(import.meta.dirname),
   build: {
-    // Output locally inside the artifact. The Vercel buildCommand
-    // copies this to the repo root dist/ for Vercel's outputDirectory.
-    outDir: path.resolve(import.meta.dirname, 'dist'),
+    outDir: path.resolve(import.meta.dirname, 'dist/public'),
     emptyOutDir: true,
   },
   server: {
