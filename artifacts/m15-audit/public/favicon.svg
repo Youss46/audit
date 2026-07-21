@@ -1,3 +1,13 @@
-<svg width="180" height="180" viewBox="0 0 180 180" fill="none" xmlns="http://www.w3.org/2000/svg">
-<rect width="180" height="180" rx="36" fill="#FF3C00"/>
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="512" height="512" fill="#0A0A0A"/>
+  <!-- Shield body -->
+  <path d="M256 80 L420 140 L420 280 C420 370 256 440 256 440 C256 440 92 370 92 280 L92 140 Z" fill="#1B2B5E"/>
+  <!-- M shape (top) -->
+  <path d="M155 175 L200 230 L256 185 L312 230 L357 175 L340 160 L256 158 L172 160 Z" fill="#0A1A4E"/>
+  <path d="M155 175 L200 230 L256 185 L312 230 L357 175 L340 165 L256 163 L172 165 Z" fill="#243580"/>
+  <!-- Gold chevron -->
+  <path d="M175 270 L256 360 L337 270 L310 250 L256 315 L202 250 Z" fill="#C9A227"/>
+  <path d="M175 270 L256 355 L337 270 L315 255 L256 320 L197 255 Z" fill="#E8C050"/>
+  <!-- Gold diagonal line -->
+  <path d="M295 195 L350 310 L360 300 L305 185 Z" fill="#C9A227"/>
 </svg>
