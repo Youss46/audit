@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "MwhIGs1BXbrmM__UDhX6K"
+uri = "file://scripts/prod-migration.sql"
+type = "unspecified"
+title = "Script de migration production — M15 Audit"
