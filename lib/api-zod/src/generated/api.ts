@@ -45,7 +45,7 @@ export const RegisterResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -84,7 +84,7 @@ export const LoginResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -125,7 +125,7 @@ export const ResetFirstPasswordResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -151,7 +151,7 @@ export const GetCurrentUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -176,7 +176,7 @@ export const ListUsersResponseItem = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -206,7 +206,7 @@ export const createUserBodyFullNameMin = 2;
 export const CreateUserBody = zod.object({
   "email": zod.string().min(createUserBodyEmailMin),
   "fullName": zod.string().min(createUserBodyFullNameMin),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "clientId": zod.number().optional().describe('Required when role is client_pme; links the portal account to its client dossier.')
 }).describe('Module M33 - no password field: the server always auto-generates a temporary password (returned once as `temporaryPassword` on the created User) rather than accepting one from the admin.')
 
@@ -215,7 +215,7 @@ export const CreateUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -245,7 +245,7 @@ export const updateUserBodyFullNameMin = 2;
 
 export const UpdateUserBody = zod.object({
   "fullName": zod.string().min(updateUserBodyFullNameMin).optional(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']).optional(),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']).optional(),
   "status": zod.enum(['active', 'invited', 'disabled']).optional(),
   "clientId": zod.number().nullish()
 })
@@ -255,7 +255,7 @@ export const UpdateUserResponse = zod.object({
   "firmId": zod.number(),
   "email": zod.string(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "status": zod.enum(['active', 'invited', 'disabled']),
   "clientId": zod.number().nullish().describe('Set for client_pme and client_staff accounts; scopes the Espace PME portal to one client dossier.'),
   "firmName": zod.string().nullish(),
@@ -5329,7 +5329,7 @@ export const CreateCommentResponse = zod.object({
   "clientId": zod.number(),
   "userId": zod.number(),
   "userName": zod.string(),
-  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "userRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
   "targetId": zod.number(),
   "message": zod.string(),
@@ -5363,7 +5363,7 @@ export const ListCommentsResponse = zod.object({
   "clientId": zod.number(),
   "userId": zod.number(),
   "userName": zod.string(),
-  "userRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "userRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "targetType": zod.enum(['TRANSACTION_LINE', 'PENDING_DOCUMENT', 'TAX_DECLARATION']).describe('TRANSACTION_LINE targetId = a transactions.id (ledger\/grand-livre entry); PENDING_DOCUMENT targetId = a documents.id (GED\/OCR receipt); TAX_DECLARATION targetId = a vat_declarations.id.\n'),
   "targetId": zod.number(),
   "message": zod.string(),
@@ -5473,7 +5473,7 @@ export const MarkAllNotificationsReadResponse = zod.void()
 export const ListChatColleaguesResponseItem = zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "isOnline": zod.boolean()
 })
 export const ListChatColleaguesResponse = zod.array(ListChatColleaguesResponseItem)
@@ -5527,7 +5527,7 @@ export const CreateChatChannelResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "isOnline": zod.boolean()
 }))
 }))
@@ -5556,7 +5556,7 @@ export const GetChatChannelResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "isOnline": zod.boolean()
 }))
 }))
@@ -5585,7 +5585,7 @@ export const JoinChatChannelResponse = zod.object({
   "members": zod.array(zod.object({
   "id": zod.number(),
   "fullName": zod.string(),
-  "role": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "role": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "isOnline": zod.boolean()
 }))
 }))
@@ -5604,7 +5604,7 @@ export const ListChatChannelMessagesResponseItem = zod.object({
   "recipientId": zod.number().nullish(),
   "senderId": zod.number(),
   "senderName": zod.string(),
-  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "senderRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "messageText": zod.string(),
   "attachmentFileName": zod.string().nullish(),
   "attachmentMimeType": zod.string().nullish(),
@@ -5637,7 +5637,7 @@ export const CreateChatChannelMessageResponse = zod.object({
   "recipientId": zod.number().nullish(),
   "senderId": zod.number(),
   "senderName": zod.string(),
-  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "senderRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "messageText": zod.string(),
   "attachmentFileName": zod.string().nullish(),
   "attachmentMimeType": zod.string().nullish(),
@@ -5659,7 +5659,7 @@ export const ListChatDirectMessagesResponseItem = zod.object({
   "recipientId": zod.number().nullish(),
   "senderId": zod.number(),
   "senderName": zod.string(),
-  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "senderRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "messageText": zod.string(),
   "attachmentFileName": zod.string().nullish(),
   "attachmentMimeType": zod.string().nullish(),
@@ -5690,7 +5690,7 @@ export const CreateChatDirectMessageResponse = zod.object({
   "recipientId": zod.number().nullish(),
   "senderId": zod.number(),
   "senderName": zod.string(),
-  "senderRole": zod.enum(['expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
+  "senderRole": zod.enum(['super_admin', 'expert_comptable', 'collaborateur', 'stagiaire', 'client_pme', 'client_staff']),
   "messageText": zod.string(),
   "attachmentFileName": zod.string().nullish(),
   "attachmentMimeType": zod.string().nullish(),

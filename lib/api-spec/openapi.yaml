@@ -5152,6 +5152,7 @@ components:
     UserRole:
       type: string
       enum:
+        - super_admin
         - expert_comptable
         - collaborateur
         - stagiaire
