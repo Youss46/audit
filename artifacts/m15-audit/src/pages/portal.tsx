@@ -398,7 +398,7 @@ export default function ClientPortal() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Vos documents envoyés</CardTitle>
-              <CardDescription>Historique des dépôts pour la procédure de visa en cours.</CardDescription>
+              <CardDescription>Scans et fichiers transmis à votre cabinet pour analyse.</CardDescription>
             </CardHeader>
             <CardContent>
               {portalDocuments.length === 0 ? (
