@@ -355,6 +355,11 @@ export function computeJournalLines(input: {
   // register's own SYSCOHADA sub-account (e.g. "571101") instead of the
   // generic "571" -- overrides PAYMENT_METHOD_ACCOUNTS.especes only.
   treasuryAccountOverride?: { accountNumber: string; label: string };
+  // Module Trésorerie Mobile Money: when the caller knows the specific Mobile
+  // Money provider (via mobileMoneyAccountId), use the per-provider Classe 55
+  // sub-account (552100 Orange / 552200 Wave / etc.) instead of the generic
+  // "552" fallback. Only applies when paymentMethod is "mobile_money".
+  mmProvider?: string | null;
 }): ComputedJournalLine[] {
   const rule = CATEGORY_RULES[input.category];
   if (!rule) {
@@ -380,6 +385,9 @@ export function computeJournalLines(input: {
     if (input.paymentMethod === "especes" && input.treasuryAccountOverride) {
       treasuryOrThirdPartyAccount = input.treasuryAccountOverride.accountNumber;
       treasuryOrThirdPartyLabel = input.treasuryAccountOverride.label;
+    } else if (input.paymentMethod === "mobile_money" && input.mmProvider) {
+      treasuryOrThirdPartyAccount = MOBILE_MONEY_PROVIDER_ACCOUNTS[input.mmProvider] ?? PAYMENT_METHOD_ACCOUNTS["mobile_money"];
+      treasuryOrThirdPartyLabel = MOBILE_MONEY_PROVIDER_LABELS[input.mmProvider] ?? PAYMENT_METHOD_LABELS["mobile_money"];
     } else {
       treasuryOrThirdPartyAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
       treasuryOrThirdPartyLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
@@ -646,13 +654,24 @@ export function computeSettlementJournalLines(input: {
   type: TransactionType;
   paymentMethod: PaymentMethod;
   amount: number;
+  // Module Trésorerie Mobile Money: when the caller knows the specific Mobile
+  // Money provider (via mobileMoneyAccountId), use the per-provider Classe 55
+  // sub-account (552100 Orange / 552200 Wave / etc.) instead of the generic
+  // "552" fallback. Only applies when paymentMethod is "mobile_money".
+  mmProvider?: string | null;
 }): ComputedJournalLine[] {
   if (input.amount <= 0) {
     throw new AccountingEngineError("Le montant doit être strictement positif.");
   }
   const thirdParty = THIRD_PARTY_ACCOUNTS[input.type];
-  const treasuryAccount = PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
-  const treasuryLabel = PAYMENT_METHOD_LABELS[input.paymentMethod];
+  const treasuryAccount =
+    input.paymentMethod === "mobile_money" && input.mmProvider
+      ? (MOBILE_MONEY_PROVIDER_ACCOUNTS[input.mmProvider] ?? PAYMENT_METHOD_ACCOUNTS["mobile_money"])
+      : PAYMENT_METHOD_ACCOUNTS[input.paymentMethod];
+  const treasuryLabel =
+    input.paymentMethod === "mobile_money" && input.mmProvider
+      ? (MOBILE_MONEY_PROVIDER_LABELS[input.mmProvider] ?? PAYMENT_METHOD_LABELS["mobile_money"])
+      : PAYMENT_METHOD_LABELS[input.paymentMethod];
 
   if (input.type === "depense") {
     return [

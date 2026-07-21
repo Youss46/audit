@@ -11,6 +11,7 @@ import {
   cashRegistersTable,
   fixedAssetsTable,
   stationsTable,
+  mobileMoneyAccountsTable,
   isPortalRole,
 } from "@workspace/db";
 import { broadcastPendingCounts, notifyPmeTransactionSubmitted } from "../lib/pending-counts";
@@ -265,6 +266,22 @@ export async function createTransactionEntry(
     stationName = station.name;
   }
 
+  // Module Trésorerie Mobile Money: when the caller provides a
+  // mobileMoneyAccountId, look up the provider so the engine can use the
+  // exact Classe 55 sub-account (552100/552200/…) instead of the generic
+  // "552" fallback.
+  let mmProvider: string | null = null;
+  if (body.paymentType === "cash" && body.paymentMethod === "mobile_money" && body.mobileMoneyAccountId) {
+    const mmAccount = await db.query.mobileMoneyAccountsTable.findFirst({
+      where: and(
+        eq(mobileMoneyAccountsTable.id, body.mobileMoneyAccountId),
+        eq(mobileMoneyAccountsTable.clientId, body.clientId),
+      ),
+    });
+    if (!mmAccount) throw new HttpError(404, "Compte Mobile Money introuvable pour ce client.");
+    mmProvider = mmAccount.provider;
+  }
+
   let journalLines: ReturnType<typeof computeJournalLines>;
   try {
     journalLines = computeJournalLines({
@@ -278,6 +295,8 @@ export async function createTransactionEntry(
       treasuryAccountOverride: cashRegisterAccountNumber
         ? { accountNumber: cashRegisterAccountNumber, label: cashRegisterName ?? "Caisse" }
         : undefined,
+      // Module Trésorerie Mobile Money: per-provider 552xxx sub-account.
+      mmProvider,
     });
   } catch (err) {
     if (err instanceof AccountingEngineError) throw new HttpError(400, err.message);
