@@ -1,8 +1,8 @@
 import * as React from "react"
 
-import slide1 from "@assets/IMG-20260324-WA0000_1784634854252.jpg"
-import slide2 from "@assets/IMG-20260324-WA0001_1784634854235.jpg"
-import slide3 from "@assets/IMG-20260324-WA0002_1784634854211.jpg"
+import slide1 from "@/assets/hero-slide-1.jpg"
+import slide2 from "@/assets/hero-slide-2.jpg"
+import slide3 from "@/assets/hero-slide-3.jpg"
 
 // Module: Login hero diaporama (right-side panel). Purely presentational --
 // no data fetching, no auth logic -- so it can be reused on any public
