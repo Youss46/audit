@@ -5,22 +5,25 @@ import type { PaymentMethod, PaymentType, TransactionType } from "@workspace/db"
 // double-entry ledger structure, so the accountant only has to review and
 // approve rather than re-key every operation from scratch.
 
-// The treasury ("trésorerie") leg of every entry depends only on the
-// payment method: cash movements hit account 571 (Caisse), cheque receipts
-// hit 513 (Chèques à encaisser), and mobile money / bank transfers hit
-// account 52 (Banques).
+// The treasury ("trésorerie") leg of every entry depends on the payment
+// method: cash → 571 (Caisse), cheque → 513 (Chèques à encaisser),
+// virement → 5211 (Banque), mobile money → 552 (Monnaie électronique,
+// Classe 55 SYSCOHADA).  Per-provider detail (552100 Orange Money,
+// 552200 Wave, …) is resolved separately when the caller knows the
+// provider via mobileMoneyAccountId (see purchases.ts and
+// imputation-engine.ts); here we keep the generic Class 55 fallback.
 const PAYMENT_METHOD_ACCOUNTS: Record<PaymentMethod, string> = {
   especes: "571",
-  mobile_money: "52",
+  mobile_money: "552",
   cheque: "513",
-  virement: "52",
+  virement: "5211",
 };
 
 const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   especes: "Espèces",
-  mobile_money: "Wave / Orange Money",
+  mobile_money: "Monnaie électronique",
   cheque: "Chèques à encaisser",
-  virement: "Virement",
+  virement: "Virement bancaire",
 };
 
 // Module P7 Mobile Money: per-provider Classe 55 SYSCOHADA accounts used
