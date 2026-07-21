@@ -567,9 +567,9 @@ export default function ComptabilitePme() {
           <TabsContent key={type} value={type} className="mt-4">
             <Card className="shadow-sm">
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[480px]">
                   <Table>
-                    <TableHeader>
+                    <TableHeader className="sticky top-0 z-10 bg-background">
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead>Libellé</TableHead>
@@ -702,9 +702,9 @@ export default function ComptabilitePme() {
         <TabsContent value="en_attente" className="mt-4">
           <Card className="shadow-sm">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[480px]">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-background">
                     <TableRow>
                       <TableHead>Date d'échéance</TableHead>
                       <TableHead>Libellé</TableHead>
