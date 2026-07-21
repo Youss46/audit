@@ -428,13 +428,6 @@ export default function ComptabilitePme() {
     if (form.paymentType === "cash" && !form.paymentMethod) return
     if (form.paymentType === "credit" && !form.dueDate) return
     if (form.paymentType === "cash" && form.paymentMethod === "especes" && !form.cashRegisterId) return
-    // Attachment is mandatory for every dépense.
-    if (form.type === "depense" && !form.documentId) {
-      setAttachmentError(
-        "La pièce justificative (facture, reçu ou ticket) est obligatoire pour soumettre une dépense au cabinet.",
-      )
-      return
-    }
     createMutation.mutate({
       data: {
         clientId,
@@ -955,13 +948,7 @@ export default function ComptabilitePme() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <Label>Pièce justificative</Label>
-                {form.type === "depense" ? (
-                  <span className="inline-flex items-center rounded-full border border-destructive/40 bg-destructive/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-destructive">
-                    Obligatoire pour les dépenses
-                  </span>
-                ) : (
-                  <span className="text-xs text-muted-foreground">(Optionnel)</span>
-                )}
+                <span className="text-xs text-muted-foreground">(Optionnel)</span>
               </div>
 
               {/* ── Attached file display ── */}
