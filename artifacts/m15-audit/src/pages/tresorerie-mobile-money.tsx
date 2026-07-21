@@ -192,12 +192,14 @@ export default function TresorerieMobileMoney() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList>
-            <TabsTrigger value="comptes"><Settings2 className="mr-1.5 h-4 w-4" />Comptes</TabsTrigger>
-            <TabsTrigger value="ventes"><ArrowUpRight className="mr-1.5 h-4 w-4" />Ventes globales</TabsTrigger>
-            <TabsTrigger value="rapatriement"><Landmark className="mr-1.5 h-4 w-4" />Rapatriement</TabsTrigger>
-            <TabsTrigger value="historique"><History className="mr-1.5 h-4 w-4" />Historique</TabsTrigger>
-          </TabsList>
+          <div className="overflow-x-auto">
+            <TabsList className="w-max min-w-full">
+              <TabsTrigger value="comptes"><Settings2 className="mr-1.5 h-4 w-4" />Comptes</TabsTrigger>
+              <TabsTrigger value="ventes"><ArrowUpRight className="mr-1.5 h-4 w-4" />Ventes globales</TabsTrigger>
+              <TabsTrigger value="rapatriement"><Landmark className="mr-1.5 h-4 w-4" />Rapatriement</TabsTrigger>
+              <TabsTrigger value="historique"><History className="mr-1.5 h-4 w-4" />Historique</TabsTrigger>
+            </TabsList>
+          </div>
 
           {/* -- Comptes ------------------------------------------------- */}
           <TabsContent value="comptes" className="space-y-4">
