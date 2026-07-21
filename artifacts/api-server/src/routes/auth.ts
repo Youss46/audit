@@ -22,6 +22,7 @@ import {
 import { requireAuth, requirePasswordResetAuth } from "../middlewares/auth";
 import { AuditAction, logAudit } from "../lib/audit";
 import { sendMail, mailPasswordChanged, mailResetPassword } from "../lib/mailer";
+import { isBlocked, recordFailure, resetAttempts, attemptsLeft, MAX_FAILURES } from "../lib/login-limiter";
 
 const router: IRouter = Router();
 
@@ -150,17 +151,44 @@ router.post("/auth/register", async (req, res) => {
 router.post("/auth/login", async (req, res) => {
   const body = LoginBody.parse(req.body);
 
+  // ── Protection brute-force ─────────────────────────────────────────────
+  // Vérifie le verrou AVANT toute requête DB pour éviter le timing oracle.
+  const lock = isBlocked(body.email);
+  if (lock.blocked) {
+    const minutes = Math.ceil(lock.secondsLeft / 60);
+    const label   = lock.secondsLeft > 90
+      ? `${minutes} minute${minutes > 1 ? "s" : ""}`
+      : `${lock.secondsLeft} seconde${lock.secondsLeft > 1 ? "s" : ""}`;
+    res.status(429).json({
+      error:      `Compte temporairement verrouillé. Réessayez dans ${label}.`,
+      retryAfter: lock.secondsLeft,
+    });
+    return;
+  }
+
   const user = await db.query.usersTable.findFirst({
     where: eq(usersTable.email, body.email),
   });
   if (!user || user.status === "disabled") {
-    res.status(401).json({ error: "Email ou mot de passe incorrect." });
+    // Enregistre l'échec même si l'email est inconnu (évite l'énumération
+    // tout en comptabilisant les tentatives sur cet email).
+    recordFailure(body.email);
+    const left = attemptsLeft(body.email);
+    const hint = left > 0
+      ? ` (${left} tentative${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""})`
+      : " — compte verrouillé 15 minutes.";
+    res.status(401).json({ error: `Email ou mot de passe incorrect.${hint}`, attemptsLeft: left });
     return;
   }
 
   const valid = await comparePassword(body.password, user.passwordHash);
   if (!valid) {
-    res.status(401).json({ error: "Email ou mot de passe incorrect." });
+    recordFailure(body.email);
+    const left = attemptsLeft(body.email);
+    const hint = left > 0
+      ? ` (${left} tentative${left > 1 ? "s" : ""} restante${left > 1 ? "s" : ""})`
+      : " — compte verrouillé 15 minutes.";
+    res.status(401).json({ error: `Email ou mot de passe incorrect.${hint}`, attemptsLeft: left });
     return;
   }
 
@@ -225,6 +253,9 @@ router.post("/auth/login", async (req, res) => {
       }
     }
   }
+
+  // Connexion réussie : réinitialise le compteur d'échecs.
+  resetAttempts(body.email);
 
   await logAudit({
     firmId: user.firmId,

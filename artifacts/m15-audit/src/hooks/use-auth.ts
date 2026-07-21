@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { useGetCurrentUser, useLogin, useRegister, getGetCurrentUserQueryKey } from "@workspace/api-client-react";
@@ -45,9 +45,13 @@ export function useAuth() {
     }
   }, [userQuery.isError, isForcePasswordChangeRoute]);
 
+  // Lockout state — populated when the API returns 429 (brute-force protection).
+  const [lockoutUntil, setLockoutUntil] = useState<Date | null>(null);
+
   const loginMutation = useLogin({
     mutation: {
       onSuccess: (data) => {
+        setLockoutUntil(null);
         // Module M33: the account still has an unresolved temporary
         // password -- the token is restricted and only works against
         // /auth/reset-first-password. Redirect there instead of loading
@@ -62,6 +66,14 @@ export function useAuth() {
         setLocation(routePostConnexion(data.user!.role));
       },
       onError: (error) => {
+        // 429 — trop de tentatives → activer le verrou côté client
+        const retryAfter: number | undefined = (error.data as { retryAfter?: number } | undefined)?.retryAfter;
+        if (retryAfter) {
+          setLockoutUntil(new Date(Date.now() + retryAfter * 1000));
+          // Le message de verrou est dans error.data.error — pas de toast
+          // redondant ici ; le composant login affiche le bandeau.
+          return;
+        }
         toast({
           title: "Erreur de connexion",
           description: error.data?.error || "Identifiants invalides",
@@ -100,6 +112,7 @@ export function useAuth() {
     isError: userQuery.isError,
     login: loginMutation.mutate,
     isLoggingIn: loginMutation.isPending,
+    lockoutUntil,
     register: registerMutation.mutate,
     isRegistering: registerMutation.isPending,
     logout
