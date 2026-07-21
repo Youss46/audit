@@ -390,7 +390,7 @@ export default function DepensesAchats() {
             <div className="rounded-lg bg-primary/10 p-2"><ShoppingCart className="h-6 w-6 text-primary" /></div>
             <div>
               <h1 className="text-xl font-semibold">Dépenses & Achats</h1>
-              <p className="text-sm text-muted-foreground">Enregistrement des achats (hors Caisse Terrain) — Banque, Mobile Money ou à crédit.</p>
+              <p className="text-sm text-muted-foreground">Factures fournisseurs avec TVA / AIB — Banque, Mobile Money ou à crédit.</p>
             </div>
           </div>
         </div>

@@ -490,8 +490,7 @@ export default function ComptabilitePme() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Mes opérations</h1>
           <p className="text-muted-foreground mt-1">
-            Enregistrez vos recettes et dépenses au jour le jour. Votre cabinet les vérifie et les
-            comptabilise automatiquement.
+            Recettes et dépenses courantes <span className="text-muted-foreground/60">·</span> sans facture fournisseur formelle. Votre cabinet les vérifie et les comptabilise automatiquement.
           </p>
         </div>
         <div className="flex gap-2">

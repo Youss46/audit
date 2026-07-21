@@ -343,8 +343,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 ? "bg-primary text-primary-foreground"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )} data-testid="link-comptabilite-pme">
-              <Wallet className="h-5 w-5" />
-              Mes Opérations
+              <Wallet className="h-5 w-5 shrink-0" />
+              <span className="flex flex-col leading-tight">
+                <span>Mes Opérations</span>
+                <span className="text-[10px] font-normal opacity-60 leading-tight">Recettes & dépenses courantes</span>
+              </span>
             </Link>
           )}
 
@@ -367,8 +370,11 @@ export function Shell({ children }: { children: React.ReactNode }) {
                 ? "bg-primary text-primary-foreground"
                 : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             )} data-testid="link-depenses-achats">
-              <ShoppingCart className="h-5 w-5" />
-              Dépenses & Achats
+              <ShoppingCart className="h-5 w-5 shrink-0" />
+              <span className="flex flex-col leading-tight">
+                <span>Dépenses & Achats</span>
+                <span className="text-[10px] font-normal opacity-60 leading-tight">Factures fournisseurs (TVA / AIB)</span>
+              </span>
             </Link>
           )}
 
