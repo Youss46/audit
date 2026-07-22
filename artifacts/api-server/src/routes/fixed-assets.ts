@@ -169,6 +169,45 @@ router.post(
       })
       .returning();
 
+    // OD d'acquisition : Débit compte Cl.2 / Crédit 404 Fournisseurs d'immos.
+    // Classifiée dans le journal OD (source "asset_acquisition"), statut
+    // "a_valider" pour que l'expert-comptable puisse la valider / ajuster.
+    const [acqTx] = await db
+      .insert(transactionsTable)
+      .values({
+        firmId: req.user!.firmId,
+        clientId: body.clientId,
+        date: new Date(body.acquisitionDate),
+        label: `Acquisition - ${body.label}`,
+        amount: body.acquisitionCost,
+        type: "depense",
+        category: null,
+        paymentType: "credit",
+        paymentMethod: null,
+        status: "a_valider",
+        source: "asset_acquisition",
+        createdById: req.user!.id,
+        anomalies: [],
+      })
+      .returning();
+
+    await db.insert(journalLinesTable).values([
+      {
+        transactionId: acqTx.id,
+        accountNumber: body.accountNumber,
+        label: `Acquisition - ${body.label}`,
+        debitAmount: body.acquisitionCost,
+        creditAmount: 0,
+      },
+      {
+        transactionId: acqTx.id,
+        accountNumber: "404000",
+        label: `Fournisseurs d'immobilisations - ${body.label}`,
+        debitAmount: 0,
+        creditAmount: body.acquisitionCost,
+      },
+    ]);
+
     await logAudit({
       firmId: req.user!.firmId,
       userId: req.user!.id,
@@ -177,7 +216,7 @@ router.post(
       action: AuditAction.FIXED_ASSET_CREATE,
       entityType: "fixed_asset",
       entityId: asset.id,
-      details: `Immobilisation "${body.label}" (compte ${body.accountNumber}, ${body.acquisitionCost.toLocaleString("fr")} FCFA) enregistrée pour "${client.name}"`,
+      details: `Immobilisation "${body.label}" (compte ${body.accountNumber}, ${body.acquisitionCost.toLocaleString("fr")} FCFA) enregistrée pour "${client.name}" — OD d'acquisition #${acqTx.id} générée`,
       ipAddress: req.ip,
     });
 

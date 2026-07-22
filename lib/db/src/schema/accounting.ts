@@ -115,6 +115,10 @@ export const TRANSACTION_SOURCES = [
   // module achats fournisseurs, et son écriture de règlement associée.
   "purchase",
   "purchase_settlement",
+  // Écriture d'entrée au bilan lors de la création manuelle d'une immobilisation
+  // dans le registre (Débit compte Cl.2 / Crédit 404 Fournisseurs d'immobilisations).
+  // Générée automatiquement par le handler POST /assets.
+  "asset_acquisition",
 ] as const;
 export type TransactionSource = (typeof TRANSACTION_SOURCES)[number];
 
