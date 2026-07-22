@@ -1,3 +1,4 @@
+import { useState } from "react"
 import {
   useListClients,
   useGetClient,
@@ -8,17 +9,25 @@ import {
   getListThreadsQueryKey,
 } from "@workspace/api-client-react"
 import { useLocation, useRoute } from "wouter"
-import { Building2, ChevronRight, Cpu } from "lucide-react"
+import { Building2, ChevronRight, Cpu, ChevronsUpDown, Check } from "lucide-react"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/utils"
 import type { Sector, AccountingSystem } from "@workspace/api-client-react"
 
 // ---------------------------------------------------------------------------
@@ -107,6 +116,7 @@ export type AccountingTabSlug = (typeof TABS)[number]["slug"]
 
 export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlug }) {
   const [, setLocation] = useLocation()
+  const [comboOpen, setComboOpen] = useState(false)
 
   // Detect clientId from all possible URL patterns this nav appears on.
   const [, comptaParams]  = useRoute<{ clientId: string }>("/comptabilite/:clientId/:tab")
@@ -185,31 +195,57 @@ export function ClientAccountingNav({ activeTab }: { activeTab: AccountingTabSlu
         <div className="flex items-center gap-3 flex-wrap">
           <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
           <div className="w-full max-w-xs">
-            <Select
-              value={clientId ? String(clientId) : undefined}
-              onValueChange={handleClientChange}
-              disabled={clientsLoading}
-            >
-              <SelectTrigger data-testid="select-client">
-                <SelectValue placeholder="Sélectionner un client" />
-              </SelectTrigger>
-              <SelectContent>
-                {(clients ?? []).map((client) => (
-                  <SelectItem
-                    key={client.id}
-                    value={String(client.id)}
-                    data-testid={`option-client-${client.id}`}
-                  >
-                    <span className="flex items-center gap-2">
-                      {client.name}
-                      <span className="text-xs text-muted-foreground">
-                        — {getSectorLabel(client.sector)}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={comboOpen} onOpenChange={setComboOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={comboOpen}
+                  data-testid="select-client"
+                  disabled={clientsLoading}
+                  className="w-full justify-between font-normal"
+                >
+                  <span className="truncate">
+                    {clientId
+                      ? ((clients ?? []).find(c => c.id === clientId)?.name ?? "Sélectionner un client")
+                      : "Sélectionner un client"}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[300px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Rechercher un client…" />
+                  <CommandList>
+                    <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                    <CommandGroup>
+                      {(clients ?? []).map((client) => (
+                        <CommandItem
+                          key={client.id}
+                          value={`${client.name} ${getSectorLabel(client.sector)}`}
+                          data-testid={`option-client-${client.id}`}
+                          onSelect={() => {
+                            setComboOpen(false)
+                            handleClientChange(String(client.id))
+                          }}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4 shrink-0",
+                              clientId === client.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <span className="truncate">{client.name}</span>
+                          <span className="ml-1.5 text-xs text-muted-foreground shrink-0">
+                            — {getSectorLabel(client.sector)}
+                          </span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* ---- Client context header ---- */}
