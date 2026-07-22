@@ -442,9 +442,9 @@ export default function GestionDocumentaire() {
         <TabsContent value="actifs">
           <Card className="shadow-sm">
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[520px]">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="sticky top-0 z-10 bg-card">
                     <TableRow>
                       <TableHead>Nom du fichier</TableHead>
                       <TableHead>Client</TableHead>
