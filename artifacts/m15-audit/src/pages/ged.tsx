@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Link } from "wouter"
 import {
   useListDocuments,
@@ -8,18 +8,21 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useQueryClient } from "@tanstack/react-query"
 import { formatDateTime } from "@/lib/utils"
+import { getToken, getApiBase } from "@/lib/auth"
 import {
   FolderOpen,
   FileText,
   Search,
   Trash2,
-  Download,
   Eye,
   Lock,
   FolderLock,
   ChevronDown,
   ChevronRight,
   Archive,
+  Loader2,
+  Download,
+  AlertCircle,
 } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge"
@@ -45,6 +48,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import { useToast } from "@/hooks/use-toast"
 
 // ---------------------------------------------------------------------------
@@ -64,17 +73,6 @@ const FOLDER_CATEGORY_LABELS: Record<string, string> = {
   journaux_grand_livre: "02 — Journaux & Grand Livre (Légal)",
   dossier_audit: "03 — Dossier d'Audit & Rapports (Cabinet)",
   pieces_justificatives: "04 — Pièces Justificatives Majeures",
-}
-
-// ---------------------------------------------------------------------------
-// Download helper (reuses the base64 fileData already in the list response
-// if present, or opens the client dossier as a fallback for large files).
-// ---------------------------------------------------------------------------
-function handleDownload(doc: { fileName: string; mimeType: string }) {
-  // For the GED list view we don't have fileData (metadata-only). We redirect
-  // the user to the client dossier page where they can download individually.
-  // A dedicated GET /documents/:id endpoint returns the full base64 content.
-  window.open(`/clients/${(doc as { clientId?: number }).clientId ?? ""}`, "_blank")
 }
 
 // ---------------------------------------------------------------------------
@@ -98,15 +96,145 @@ type Doc = {
   createdAt: string | Date
 }
 
+// ---------------------------------------------------------------------------
+// Document preview dialog — fetches base64 content from GET /api/documents/:id
+// ---------------------------------------------------------------------------
+type PreviewState =
+  | { status: "loading" }
+  | { status: "error"; message: string }
+  | { status: "ready"; fileData: string; fileName: string; mimeType: string }
+
+function DocPreviewDialog({
+  docId,
+  docName,
+  open,
+  onClose,
+}: {
+  docId: number | null
+  docName: string
+  open: boolean
+  onClose: () => void
+}) {
+  const [state, setState] = useState<PreviewState>({ status: "loading" })
+
+  useEffect(() => {
+    if (!open || docId === null) return
+    let cancelled = false
+    setState({ status: "loading" })
+    ;(async () => {
+      try {
+        const base = getApiBase()
+        const token = getToken()
+        const res = await fetch(`${base}/api/documents/${docId}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        })
+        if (cancelled) return
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({})) as { error?: string }
+          setState({ status: "error", message: err.error ?? "Impossible de charger ce document." })
+          return
+        }
+        const data = await res.json() as { fileData: string; fileName: string; mimeType: string }
+        if (!cancelled) setState({ status: "ready", fileData: data.fileData, fileName: data.fileName, mimeType: data.mimeType })
+      } catch {
+        if (!cancelled) setState({ status: "error", message: "Erreur réseau lors du chargement du document." })
+      }
+    })()
+    return () => { cancelled = true }
+  }, [open, docId])
+
+  const handleDownload = () => {
+    if (state.status !== "ready") return
+    const a = document.createElement("a")
+    a.href = `data:${state.mimeType};base64,${state.fileData}`
+    a.download = state.fileName
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+  }
+
+  const isImage = state.status === "ready" && state.mimeType.startsWith("image/")
+  const isPdf   = state.status === "ready" && state.mimeType === "application/pdf"
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-3xl w-full p-0 overflow-hidden">
+        <DialogHeader className="px-5 pt-5 pb-3 flex flex-row items-start justify-between gap-3">
+          <DialogTitle className="text-base font-semibold truncate pr-8">
+            {docName}
+          </DialogTitle>
+          {state.status === "ready" && (
+            <Button size="sm" variant="outline" className="shrink-0" onClick={handleDownload}>
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Télécharger
+            </Button>
+          )}
+        </DialogHeader>
+
+        <div className="min-h-[300px] max-h-[75vh] overflow-auto flex items-center justify-center bg-muted/30">
+          {state.status === "loading" && (
+            <div className="flex flex-col items-center gap-3 py-16 text-muted-foreground">
+              <Loader2 className="h-8 w-8 animate-spin" />
+              <p className="text-sm">Chargement du document…</p>
+            </div>
+          )}
+
+          {state.status === "error" && (
+            <div className="flex flex-col items-center gap-3 py-16 text-destructive px-6 text-center">
+              <AlertCircle className="h-8 w-8" />
+              <p className="text-sm">{state.message}</p>
+            </div>
+          )}
+
+          {state.status === "ready" && isImage && (
+            <img
+              src={`data:${state.mimeType};base64,${state.fileData}`}
+              alt={state.fileName}
+              className="max-w-full max-h-[70vh] object-contain"
+            />
+          )}
+
+          {state.status === "ready" && isPdf && (
+            <iframe
+              src={`data:application/pdf;base64,${state.fileData}`}
+              title={state.fileName}
+              className="w-full"
+              style={{ height: "70vh", border: "none" }}
+            />
+          )}
+
+          {state.status === "ready" && !isImage && !isPdf && (
+            <div className="flex flex-col items-center gap-4 py-16 px-6 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground opacity-40" />
+              <div>
+                <p className="font-medium">{state.fileName}</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Ce type de fichier ne peut pas être affiché directement.
+                </p>
+              </div>
+              <Button onClick={handleDownload}>
+                <Download className="h-4 w-4 mr-2" />
+                Télécharger le fichier
+              </Button>
+            </div>
+          )}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /** A single document row for the active-documents table. */
 function ActiveDocRow({
   doc,
   canDelete,
   onDelete,
+  onPreview,
 }: {
   doc: Doc
   canDelete: boolean
   onDelete: (id: number) => void
+  onPreview: (doc: Doc) => void
 }) {
   return (
     <TableRow data-testid={`row-document-${doc.id}`}>
@@ -143,10 +271,13 @@ function ActiveDocRow({
       <TableCell className="text-sm">{doc.uploadedByName || "—"}</TableCell>
       <TableCell className="text-right">
         <div className="flex justify-end gap-1">
-          <Button variant="ghost" size="icon" title="Voir le dossier client" asChild>
-            <Link href={`/clients/${doc.clientId}`}>
-              <Eye className="h-4 w-4" />
-            </Link>
+          <Button
+            variant="ghost"
+            size="icon"
+            title="Aperçu du document"
+            onClick={() => onPreview(doc)}
+          >
+            <Eye className="h-4 w-4" />
           </Button>
           {canDelete && (
             <Button
@@ -327,6 +458,7 @@ export default function GestionDocumentaire() {
   const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState("")
   const [docToDelete, setDocToDelete] = useState<number | null>(null)
+  const [previewDoc, setPreviewDoc] = useState<Doc | null>(null)
 
   const { data: documents, isLoading } = useListDocuments()
 
@@ -484,6 +616,7 @@ export default function GestionDocumentaire() {
                           doc={doc as Doc}
                           canDelete={canDelete}
                           onDelete={setDocToDelete}
+                          onPreview={setPreviewDoc}
                         />
                       ))
                     )}
@@ -566,6 +699,14 @@ export default function GestionDocumentaire() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document preview dialog */}
+      <DocPreviewDialog
+        docId={previewDoc?.id ?? null}
+        docName={previewDoc?.fileName ?? ""}
+        open={!!previewDoc}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   )
 }
