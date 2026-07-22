@@ -3291,6 +3291,7 @@ export type ListPurchaseCategories200Item = {
   account: string;
   accountName: string;
   vatEligible: boolean;
+  isImmobilisation?: boolean;
 };
 
 export type ListStationsParams = {

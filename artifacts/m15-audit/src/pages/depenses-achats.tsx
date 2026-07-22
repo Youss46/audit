@@ -593,7 +593,7 @@ export default function DepensesAchats() {
 
                 {/* Catégorie */}
                 <div>
-                  <Label>Catégorie de charge <span className="text-destructive">*</span></Label>
+                  <Label>Catégorie de charge / Immobilisation <span className="text-destructive">*</span></Label>
                   <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
                     <PopoverTrigger asChild>
                       <Button
@@ -636,10 +636,19 @@ export default function DepensesAchats() {
                     </PopoverContent>
                   </Popover>
                   {selectedCategory && (
-                    <p className="text-xs text-muted-foreground mt-1">
-                      → Compte SYSCOHADA <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}
-                      {!selectedCategory.vatEligible && " · TVA non récupérable"}
-                    </p>
+                    // @ts-ignore — isImmobilisation added at runtime; schema updated
+                    (selectedCategory as any).isImmobilisation ? (
+                      <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1">
+                        📦 Immobilisation → Compte bilan <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}
+                        {" · "}TVA → <span className="font-mono">445200</span> (récup. sur immos)
+                        {" · "}Fournisseur → <span className="font-mono">481100</span> si à crédit
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        → Compte SYSCOHADA <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}
+                        {!selectedCategory.vatEligible && " · TVA non récupérable"}
+                      </p>
+                    )
                   )}
                 </div>
 

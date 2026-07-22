@@ -163,15 +163,31 @@ router.get("/purchases/categories", async (_req, res) => {
       .orderBy(asc(transactionCategoriesTable.key));
 
     if (rows.length > 0) {
-      return res.json(
-        rows.map((r) => ({
-          key:         r.key,
-          label:       r.displayName,
-          account:     r.defaultAccountNumber,
-          accountName: r.displayName,
-          vatEligible: r.vatEligible,
+      // Always supplement DB rows with immobilisation + petit_materiel categories
+      // from the static list, which are never seeded into transaction_categories.
+      const dbKeys = new Set(rows.map((r) => r.key));
+      const staticSupplements = Object.entries(PURCHASE_CATEGORIES)
+        .filter(([key, c]) => !dbKeys.has(key) && (c.isImmobilisation || key === "petit_materiel"))
+        .map(([key, c]) => ({
+          key,
+          label:            c.label,
+          account:          c.account,
+          accountName:      c.accountName,
+          vatEligible:      c.vatEligible,
+          isImmobilisation: c.isImmobilisation ?? false,
+        }));
+
+      return res.json([
+        ...rows.map((r) => ({
+          key:             r.key,
+          label:           r.displayName,
+          account:         r.defaultAccountNumber,
+          accountName:     r.displayName,
+          vatEligible:     r.vatEligible,
+          isImmobilisation: false,
         })),
-      );
+        ...staticSupplements,
+      ]);
     }
   } catch {
     // Table pas encore migrée — repli sur les constantes statiques ci-dessous.
@@ -181,10 +197,11 @@ router.get("/purchases/categories", async (_req, res) => {
   res.json(
     Object.entries(PURCHASE_CATEGORIES).map(([key, c]) => ({
       key,
-      label: c.label,
-      account: c.account,
-      accountName: c.accountName,
-      vatEligible: c.vatEligible,
+      label:            c.label,
+      account:          c.account,
+      accountName:      c.accountName,
+      vatEligible:      c.vatEligible,
+      isImmobilisation: c.isImmobilisation ?? false,
     })),
   );
 });
@@ -265,7 +282,12 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
     mmProvider = mmAcct.provider;
   }
 
-  const { account: creditAccount, label: creditLabel } = getCreditAccount(body.paymentMode, mmProvider);
+  const isImmo = cat.isImmobilisation ?? false;
+  // Immobilisation credit purchases use 481100 (Fournisseurs d'immobilisations)
+  // rather than 401100 (Fournisseurs d'exploitation).
+  const rawCredit = getCreditAccount(body.paymentMode, mmProvider);
+  const creditAccount = (isImmo && body.paymentMode === "credit") ? "481100" : rawCredit.account;
+  const creditLabel   = (isImmo && body.paymentMode === "credit") ? "Fournisseurs d'immobilisations" : rawCredit.label;
 
   try {
     const lines = computePurchaseJournalLines({
@@ -278,6 +300,7 @@ router.post("/purchases", requirePermission("operations.create"), async (req, re
       creditAccount,
       creditLabel,
       paymentMode: body.paymentMode,
+      isImmobilisation: isImmo,
     });
 
     const [purchase] = await db.transaction(async (tx) => {

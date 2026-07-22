@@ -199,14 +199,16 @@ export type TransactionCategory = keyof typeof CATEGORY_RULES;
 // and support three payment modes (credit / bank / mobile money).
 export const PURCHASE_CATEGORIES: Record<
   string,
-  { label: string; account: string; accountName: string; vatEligible: boolean }
+  { label: string; account: string; accountName: string; vatEligible: boolean; isImmobilisation?: boolean }
 > = {
+  // ── Charges d'exploitation (Classe 6) ─────────────────────────────────────
   achat_marchandises:    { label: "Achats de marchandises",                    account: "601100", accountName: "Achats de marchandises",                                  vatEligible: true  },
   achat_matieres:        { label: "Matières premières / consommables",          account: "601100", accountName: "Matières premières et consommables",                      vatEligible: true  },
   carburant:             { label: "Carburant",                                  account: "605100", accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
   electricite_eau:       { label: "Eau / Électricité",                          account: "605200", accountName: "Fournitures non stockables — Eau, énergie",               vatEligible: true  },
   fournitures_bureau:    { label: "Fournitures de bureau",                      account: "605400", accountName: "Fournitures de bureau",                                   vatEligible: true  },
   fournitures_entretien: { label: "Produits d'entretien",                       account: "605500", accountName: "Fournitures d'entretien",                                 vatEligible: true  },
+  petit_materiel:        { label: "Petit matériel et outillage",                account: "605300", accountName: "Fournitures non stockables — Petit matériel",             vatEligible: true  },
   transport_achat:       { label: "Transport sur achats",                       account: "616100", accountName: "Transports sur achats et approvisionnements",             vatEligible: true  },
   transport_personnel:   { label: "Transport du personnel",                     account: "614100", accountName: "Transports du personnel",                                 vatEligible: true  },
   loyer:                 { label: "Loyer / Bail",                               account: "622100", accountName: "Locations et charges locatives",                          vatEligible: false },
@@ -218,7 +220,14 @@ export const PURCHASE_CATEGORIES: Record<
   salaires:              { label: "Salaires / Rémunérations",                  account: "661100", accountName: "Appointements, salaires et commissions",                  vatEligible: false },
   charges_sociales:      { label: "Charges sociales (CNPS…)",                  account: "664100", accountName: "Charges sociales",                                        vatEligible: false },
   autres_achats:         { label: "Autres achats / charges",                    account: "628100", accountName: "Autres charges externes",                                 vatEligible: true  },
-} as const;
+  // ── Immobilisations corporelles (Classe 2) — actif du bilan ───────────────
+  // TVA → 445200 (récup. sur immos) ; crédit → 481100 (Fournisseurs d'immo)
+  immo_materiel_industriel: { label: "Immobilisation — Matériel industriel et outillage", account: "241100", accountName: "Matériel industriel et outillage",                    vatEligible: true, isImmobilisation: true },
+  immo_materiel_mobilier:   { label: "Immobilisation — Mobilier et agencements",          account: "244100", accountName: "Matériel et mobilier (bureau, agencements)",           vatEligible: true, isImmobilisation: true },
+  immo_materiel_transport:  { label: "Immobilisation — Matériel de transport",            account: "245100", accountName: "Matériel de transport",                                vatEligible: true, isImmobilisation: true },
+  immo_materiel_info:       { label: "Immobilisation — Matériel informatique",            account: "244100", accountName: "Matériel informatique et équipements numériques",      vatEligible: true, isImmobilisation: true },
+  immo_autres:              { label: "Immobilisation — Autres équipements",               account: "248100", accountName: "Autres matériels et mobiliers",                        vatEligible: true, isImmobilisation: true },
+};
 
 export type PurchaseCategoryKey = keyof typeof PURCHASE_CATEGORIES;
 
@@ -245,9 +254,10 @@ export function computePurchaseJournalLines(input: {
   aibAmount: number;           // 0 when no AIB applies
   chargeAccount: string;
   chargeName: string;
-  creditAccount: string;       // 4011 | 5211 | 552xxx
+  creditAccount: string;       // 4011 | 481100 | 5211 | 552xxx
   creditLabel: string;
   paymentMode: "credit" | "bank" | "mobile_money";
+  isImmobilisation?: boolean;  // true → TVA → 445200 (immos), not 445100 (achats)
 }): ComputedJournalLine[] {
   if (input.amountHt <= 0) throw new AccountingEngineError("Le montant HT doit être strictement positif.");
   if (input.amountTtc <= 0) throw new AccountingEngineError("Le montant TTC doit être strictement positif.");
@@ -270,7 +280,9 @@ export function computePurchaseJournalLines(input: {
     // Debit side
     { accountNumber: input.chargeAccount, label: input.chargeName,
       debitAmount: input.amountHt,  creditAmount: 0 },
-    ...(hasVat ? [{ accountNumber: "445100", label: "TVA récupérable sur achats",
+    ...(hasVat ? [{
+      accountNumber: input.isImmobilisation ? "445200" : "445100",
+      label: input.isImmobilisation ? "TVA récupérable sur immobilisations" : "TVA récupérable sur achats",
       debitAmount: input.vatAmount, creditAmount: 0 }] : []),
     // Credit side
     ...(hasAib ? [{ accountNumber: "447200",
