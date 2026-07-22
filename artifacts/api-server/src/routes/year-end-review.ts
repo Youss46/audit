@@ -290,7 +290,7 @@ Analyse complète requise. Format de réponse JSON exact:
   let raw: string;
   try {
     const message = await anthropic.messages.create({
-      model: "claude-sonnet-4-5",
+      model: "claude-sonnet-5",
       max_tokens: 4096,
       messages: [{ role: "user", content: userPrompt }],
       system: systemPrompt,
