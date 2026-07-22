@@ -428,7 +428,7 @@ export default function Financements() {
               <div className="min-w-0">
                 <h1 className="text-2xl font-bold tracking-tight">Financements &amp; Dettes</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Module M18 — Immobilisations Financières &amp; Emprunts SYSCOHADA
+                  Immobilisations Financières &amp; Emprunts SYSCOHADA
                 </p>
               </div>
             </div>

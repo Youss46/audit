@@ -228,7 +228,7 @@ export default function PayrollSettingsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Configuration des Taux de Paie</h1>
           <p className="text-sm text-muted-foreground mt-0.5">
-            Taux de cotisations sociales et fiscales appliqués lors du calcul des bulletins de paie — Module M20
+            Taux de cotisations sociales et fiscales appliqués lors du calcul des bulletins de paie
           </p>
         </div>
       </div>

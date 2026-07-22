@@ -278,7 +278,7 @@ export function EtatsFinanciers({ clientId }: { clientId: number }) {
               États Financiers Automatiques
             </CardTitle>
             <CardDescription>
-              Calculés en temps réel à partir des écritures validées du grand livre (module M3).
+              Calculés en temps réel à partir des écritures validées du grand livre.
             </CardDescription>
           </div>
           <div className="flex flex-wrap items-center gap-2">

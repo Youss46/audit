@@ -416,7 +416,7 @@ export default function Paie() {
             <div>
               <h1 className="text-2xl font-bold tracking-tight">Gestion de la Paie</h1>
               <p className="text-sm text-muted-foreground mt-0.5">
-                Module M20 — Salaires, ITS &amp; CNPS (Côte d&apos;Ivoire)
+                Salaires, ITS &amp; CNPS (Côte d&apos;Ivoire)
               </p>
             </div>
           </div>

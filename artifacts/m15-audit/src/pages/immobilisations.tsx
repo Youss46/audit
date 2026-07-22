@@ -432,7 +432,7 @@ export default function Immobilisations() {
               <div>
                 <h1 className="text-2xl font-bold tracking-tight">Registre des Immobilisations</h1>
                 <p className="text-sm text-muted-foreground mt-0.5">
-                  Module M17 — Gestion des immobilisations &amp; amortissements SYSCOHADA
+                  Gestion des immobilisations &amp; amortissements SYSCOHADA
                 </p>
               </div>
             </div>

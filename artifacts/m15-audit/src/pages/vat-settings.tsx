@@ -352,7 +352,7 @@ export default function VatSettings() {
               Configuration des Taxes (TVA)
             </h1>
             <p className="text-sm text-muted-foreground">
-              Taux et comptes SYSCOHADA appliqués lors des saisies de factures et déclarations TVA — Module M21
+              Taux et comptes SYSCOHADA appliqués lors des saisies de factures et déclarations TVA
             </p>
           </div>
         </div>
