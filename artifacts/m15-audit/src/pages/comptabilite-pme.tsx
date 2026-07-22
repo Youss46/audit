@@ -33,8 +33,21 @@ import {
 import {
   Plus, TrendingUp, TrendingDown, Paperclip, Wallet, Clock, CircleDollarSign,
   Upload, Camera, X, CheckCircle2, AlertCircle, Loader2, Pencil, Trash2,
-  ScanLine, Sparkles,
+  ScanLine, Sparkles, Check, ChevronsUpDown,
 } from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -120,6 +133,8 @@ export default function ComptabilitePme() {
   const attachmentCameraInputRef = useRef<HTMLInputElement>(null)
   // Edit / delete state
   const [editTargetId, setEditTargetId] = useState<number | null>(null)
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false)
+  const [editCategoryComboOpen, setEditCategoryComboOpen] = useState(false)
   const [editForm, setEditForm] = useState(emptyForm("recette"))
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
   // Phase 3 (OCR): tracks whether the current form was pre-filled by AI OCR.
@@ -824,22 +839,49 @@ export default function ComptabilitePme() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="category">Catégorie</Label>
-              <Select
-                value={form.category}
-                onValueChange={(v) => setForm((f) => ({ ...f, category: v }))}
-              >
-                <SelectTrigger id="category" data-testid="select-category">
-                  <SelectValue placeholder="Sélectionner une catégorie..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {(categories ?? []).map((c) => (
-                    <SelectItem key={c.key} value={c.key}>
-                      {c.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Catégorie</Label>
+              <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={categoryComboOpen}
+                    data-testid="select-category"
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {form.category
+                        ? (categories ?? []).find(c => c.key === form.category)?.label ?? "Sélectionner une catégorie..."
+                        : "Sélectionner une catégorie..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Rechercher une catégorie…" />
+                    <CommandList>
+                      <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
+                      <CommandGroup>
+                        {(categories ?? []).map((c) => (
+                          <CommandItem
+                            key={c.key}
+                            value={c.label}
+                            onSelect={() => {
+                              setForm(f => ({ ...f, category: c.key }))
+                              setCategoryComboOpen(false)
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4 shrink-0", form.category === c.key ? "opacity-100" : "opacity-0")} />
+                            {c.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
@@ -1129,14 +1171,46 @@ export default function ComptabilitePme() {
             </div>
             <div className="space-y-2">
               <Label>Catégorie</Label>
-              <Select value={editForm.category} onValueChange={(v) => setEditForm((f) => ({ ...f, category: v }))}>
-                <SelectTrigger><SelectValue placeholder="Catégorie…" /></SelectTrigger>
-                <SelectContent>
-                  {(editCategories ?? []).map((c) => (
-                    <SelectItem key={c.key} value={c.key}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover open={editCategoryComboOpen} onOpenChange={setEditCategoryComboOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    className="w-full justify-between font-normal"
+                  >
+                    <span className="truncate">
+                      {editForm.category
+                        ? (editCategories ?? []).find(c => c.key === editForm.category)?.label ?? "Catégorie…"
+                        : "Catégorie…"}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Rechercher une catégorie…" />
+                    <CommandList>
+                      <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
+                      <CommandGroup>
+                        {(editCategories ?? []).map((c) => (
+                          <CommandItem
+                            key={c.key}
+                            value={c.label}
+                            onSelect={() => {
+                              setEditForm(f => ({ ...f, category: c.key }))
+                              setEditCategoryComboOpen(false)
+                            }}
+                          >
+                            <Check className={cn("mr-2 h-4 w-4 shrink-0", editForm.category === c.key ? "opacity-100" : "opacity-0")} />
+                            {c.label}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
             <div className="space-y-2">
               <Label>Mode de règlement</Label>

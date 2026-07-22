@@ -24,8 +24,18 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet"
@@ -33,7 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   ShieldCheck, Loader2, Clock, CheckCircle2, FileText,
   Paperclip, Eye, AlertCircle, Building2, RefreshCw,
-  ClipboardCheck,
+  ClipboardCheck, Check, ChevronsUpDown,
 } from "lucide-react"
 
 // ---------------------------------------------------------------------------
@@ -101,6 +111,7 @@ export default function DepensesRevision() {
   const [activeTab, setActiveTab] = React.useState<"en_attente" | "valide">("en_attente")
   const [selectedId, setSelectedId] = React.useState<number | null>(null)
   const [correctedAccount, setCorrectedAccount] = React.useState("")
+  const [accountComboOpen, setAccountComboOpen] = React.useState(false)
   const [correctedName, setCorrectedName] = React.useState("")
 
   // ── Data ─────────────────────────────────────────────────────────────────
@@ -376,22 +387,59 @@ export default function DepensesRevision() {
                                 <div className="space-y-2">
                                   <div>
                                     <Label className="text-xs">Compte de charge corrigé</Label>
-                                    <Select value={correctedAccount} onValueChange={(v) => {
-                                      setCorrectedAccount(v)
-                                      setCorrectedName(categories.find((c) => c.account === v)?.accountName ?? "")
-                                    }}>
-                                      <SelectTrigger className="mt-1 text-sm">
-                                        <SelectValue placeholder={`Actuel : ${selected.chargeAccount} — ${selected.chargeName}`} />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="">Conserver l'imputation PME</SelectItem>
-                                        {categories.map((c) => (
-                                          <SelectItem key={c.key} value={c.account}>
-                                            <span className="font-mono text-xs text-muted-foreground mr-2">{c.account}</span>{c.label}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                    <Popover open={accountComboOpen} onOpenChange={setAccountComboOpen}>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          type="button"
+                                          variant="outline"
+                                          role="combobox"
+                                          className="w-full justify-between font-normal mt-1 text-sm h-9"
+                                        >
+                                          <span className="truncate">
+                                            {correctedAccount
+                                              ? categories.find(c => c.account === correctedAccount)?.label ?? correctedAccount
+                                              : `Actuel : ${selected.chargeAccount} — ${selected.chargeName}`}
+                                          </span>
+                                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                                        <Command>
+                                          <CommandInput placeholder="Rechercher par compte ou libellé…" />
+                                          <CommandList>
+                                            <CommandEmpty>Aucun compte trouvé.</CommandEmpty>
+                                            <CommandGroup>
+                                              <CommandItem
+                                                value="__keep__ Conserver l'imputation PME"
+                                                onSelect={() => {
+                                                  setCorrectedAccount("")
+                                                  setCorrectedName("")
+                                                  setAccountComboOpen(false)
+                                                }}
+                                              >
+                                                <Check className={cn("mr-2 h-4 w-4 shrink-0", correctedAccount === "" ? "opacity-100" : "opacity-0")} />
+                                                <span className="text-muted-foreground italic">Conserver l'imputation PME</span>
+                                              </CommandItem>
+                                              {categories.map((c) => (
+                                                <CommandItem
+                                                  key={c.key}
+                                                  value={`${c.account} ${c.label}`}
+                                                  onSelect={() => {
+                                                    setCorrectedAccount(c.account)
+                                                    setCorrectedName(c.accountName ?? "")
+                                                    setAccountComboOpen(false)
+                                                  }}
+                                                >
+                                                  <Check className={cn("mr-2 h-4 w-4 shrink-0", correctedAccount === c.account ? "opacity-100" : "opacity-0")} />
+                                                  <span className="font-mono text-xs text-muted-foreground mr-2">{c.account}</span>
+                                                  {c.label}
+                                                </CommandItem>
+                                              ))}
+                                            </CommandGroup>
+                                          </CommandList>
+                                        </Command>
+                                      </PopoverContent>
+                                    </Popover>
                                   </div>
                                   {correctedAccount && correctedAccount !== selected.chargeAccount && (
                                     <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1.5">

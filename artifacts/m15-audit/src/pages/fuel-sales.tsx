@@ -15,15 +15,21 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatFcfa } from "@/lib/status"
-import { formatDateTime } from "@/lib/utils"
-import { ArrowLeft, Fuel, CheckCircle2, Gauge, AlertCircle, Building2 } from "lucide-react"
+import { cn, formatDateTime } from "@/lib/utils"
+import { ArrowLeft, Fuel, CheckCircle2, Gauge, AlertCircle, Building2, Check, ChevronsUpDown } from "lucide-react"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { AmountInput } from "@/components/ui/amount-input"
@@ -53,6 +59,7 @@ function PendingShiftsList() {
   // stationId. Admins and cabinet staff get a manual station selector here.
   const userStationId = (user as any)?.stationId as number | null | undefined
   const [selectedStationId, setSelectedStationId] = useState<number | "all">("all")
+  const [stationComboOpen, setStationComboOpen] = useState(false)
 
   const { data: stations = [] } = useListStations(
     { clientId },
@@ -95,24 +102,52 @@ function PendingShiftsList() {
       {showStationSelector && (
         <div className="flex items-center gap-2">
           <Building2 className="h-4 w-4 text-amber-600 shrink-0" />
-          <Select
-            value={selectedStationId === "all" ? "all" : String(selectedStationId)}
-            onValueChange={(v) =>
-              setSelectedStationId(v === "all" ? "all" : Number(v))
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Toutes les stations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Toutes les stations</SelectItem>
-              {stations.map((s) => (
-                <SelectItem key={s.id} value={String(s.id)}>
-                  {s.name} — {s.city}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Popover open={stationComboOpen} onOpenChange={setStationComboOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={stationComboOpen}
+                className="w-full justify-between font-normal"
+              >
+                <span className="truncate">
+                  {selectedStationId === "all"
+                    ? "Toutes les stations"
+                    : stations.find(s => s.id === selectedStationId)
+                        ? `${stations.find(s => s.id === selectedStationId)!.name} — ${stations.find(s => s.id === selectedStationId)!.city}`
+                        : "Toutes les stations"}
+                </span>
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Rechercher une station…" />
+                <CommandList>
+                  <CommandEmpty>Aucune station trouvée.</CommandEmpty>
+                  <CommandGroup>
+                    <CommandItem
+                      value="all Toutes les stations"
+                      onSelect={() => { setSelectedStationId("all"); setStationComboOpen(false) }}
+                    >
+                      <Check className={cn("mr-2 h-4 w-4 shrink-0", selectedStationId === "all" ? "opacity-100" : "opacity-0")} />
+                      Toutes les stations
+                    </CommandItem>
+                    {stations.map((s) => (
+                      <CommandItem
+                        key={s.id}
+                        value={`${s.name} ${s.city}`}
+                        onSelect={() => { setSelectedStationId(s.id); setStationComboOpen(false) }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4 shrink-0", selectedStationId === s.id ? "opacity-100" : "opacity-0")} />
+                        {s.name} — {s.city}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
       )}
 

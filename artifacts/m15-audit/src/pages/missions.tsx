@@ -12,8 +12,21 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useQueryClient } from "@tanstack/react-query"
 import { getStatusColor, getStatusLabel } from "@/lib/status"
-import { formatCurrencyFCFA } from "@/lib/utils"
-import { Stamp, Search, ArrowRight, Plus } from "lucide-react"
+import { formatCurrencyFCFA, cn } from "@/lib/utils"
+import { Stamp, Search, ArrowRight, Plus, Check, ChevronsUpDown } from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { useToast } from "@/hooks/use-toast"
 
 import { Badge } from "@/components/ui/badge"
@@ -57,6 +70,7 @@ export default function Missions() {
   const [statusFilter, setStatusFilter] = useState<MissionStatus | "ALL">("ALL")
   const [isNewMissionOpen, setIsNewMissionOpen] = useState(false)
   const [newMissionClientId, setNewMissionClientId] = useState<string>("")
+  const [newMissionClientOpen, setNewMissionClientOpen] = useState(false)
   const [newMissionFiscalYear, setNewMissionFiscalYear] = useState<number>(new Date().getFullYear())
 
   const { data: missions, isLoading } = useListMissions()
@@ -141,18 +155,49 @@ export default function Missions() {
               <form onSubmit={handleCreateMission} className="space-y-4 pt-4">
                 <div className="space-y-2">
                   <Label htmlFor="client">Client</Label>
-                  <Select value={newMissionClientId} onValueChange={setNewMissionClientId}>
-                    <SelectTrigger id="client" data-testid="select-new-mission-client">
-                      <SelectValue placeholder="Sélectionner un client..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(clients ?? []).map((c) => (
-                        <SelectItem key={c.id} value={String(c.id)}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={newMissionClientOpen} onOpenChange={setNewMissionClientOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={newMissionClientOpen}
+                        data-testid="select-new-mission-client"
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className="truncate">
+                          {newMissionClientId
+                            ? ((clients ?? []).find(c => String(c.id) === newMissionClientId)?.name ?? "Sélectionner un client...")
+                            : "Sélectionner un client..."}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Rechercher un client…" />
+                        <CommandList>
+                          <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                          <CommandGroup>
+                            {(clients ?? []).map((c) => (
+                              <CommandItem
+                                key={c.id}
+                                value={c.name}
+                                data-testid={`option-mission-client-${c.id}`}
+                                onSelect={() => {
+                                  setNewMissionClientId(String(c.id))
+                                  setNewMissionClientOpen(false)
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4 shrink-0", newMissionClientId === String(c.id) ? "opacity-100" : "opacity-0")} />
+                                {c.name}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="year">Exercice fiscal</Label>

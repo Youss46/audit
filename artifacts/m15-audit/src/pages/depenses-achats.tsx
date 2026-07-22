@@ -37,7 +37,21 @@ import {
   CreditCard, TrendingDown, AlertCircle, History,
   Paperclip, Upload, X, Eye, FileText, Camera,
   ShieldCheck, DraftingCompass, ScanLine, Sparkles,
+  Check, ChevronsUpDown,
 } from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -281,6 +295,7 @@ export default function DepensesAchats() {
     suggested_category: string | null
   }
   const [isOcrDialogOpen, setIsOcrDialogOpen] = React.useState(false)
+  const [categoryComboOpen, setCategoryComboOpen] = React.useState(false)
   const [isOcrUploading, setIsOcrUploading]   = React.useState(false)
   const [isOcrProcessing, setIsOcrProcessing] = React.useState(false)
   const [ocrError, setOcrError]               = React.useState<string | null>(null)
@@ -579,16 +594,47 @@ export default function DepensesAchats() {
                 {/* Catégorie */}
                 <div>
                   <Label>Catégorie de charge <span className="text-destructive">*</span></Label>
-                  <Select value={form.categoryKey} onValueChange={(v) => setForm((f) => ({ ...f, categoryKey: v, aibRate: "0" }))}>
-                    <SelectTrigger className="mt-1"><SelectValue placeholder="Sélectionner une catégorie…" /></SelectTrigger>
-                    <SelectContent>
-                      {categories.map((c) => (
-                        <SelectItem key={c.key} value={c.key}>
-                          <span className="font-mono text-xs text-muted-foreground mr-2">{c.account}</span>{c.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        className="w-full justify-between font-normal mt-1"
+                      >
+                        <span className="truncate">
+                          {form.categoryKey
+                            ? categories.find(c => c.key === form.categoryKey)?.label ?? "Sélectionner une catégorie…"
+                            : "Sélectionner une catégorie…"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Rechercher par compte ou libellé…" />
+                        <CommandList>
+                          <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
+                          <CommandGroup>
+                            {categories.map((c) => (
+                              <CommandItem
+                                key={c.key}
+                                value={`${c.account} ${c.label}`}
+                                onSelect={() => {
+                                  setForm(f => ({ ...f, categoryKey: c.key, aibRate: "0" }))
+                                  setCategoryComboOpen(false)
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4 shrink-0", form.categoryKey === c.key ? "opacity-100" : "opacity-0")} />
+                                <span className="font-mono text-xs text-muted-foreground mr-2">{c.account}</span>
+                                {c.label}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {selectedCategory && (
                     <p className="text-xs text-muted-foreground mt-1">
                       → Compte SYSCOHADA <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}

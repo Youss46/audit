@@ -28,7 +28,22 @@ import {
   Wrench,
   Zap,
   TrendingDown,
+  Check,
+  ChevronsUpDown,
 } from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -172,6 +187,7 @@ export default function Immobilisations() {
   const [addError, setAddError] = useState<string | null>(null)
   // "catalogue" | "custom" — controls whether the SYSCOHADA picker or free-text input is shown
   const [accountPickerMode, setAccountPickerMode] = useState<"catalogue" | "custom">("catalogue")
+  const [accountComboOpen, setAccountComboOpen] = useState(false)
 
   const [scheduleAssetId, setScheduleAssetId] = useState<number | null>(null)
   const [showSchedule, setShowSchedule] = useState(false)
@@ -783,32 +799,64 @@ export default function Immobilisations() {
 
               {accountPickerMode === "catalogue" ? (
                 <div className="space-y-2">
-                  <Select
-                    value={addForm.accountNumber || undefined}
-                    onValueChange={handleAccountSelect}
-                  >
-                    <SelectTrigger data-testid="select-account-number">
-                      <SelectValue placeholder="Sélectionner un compte SYSCOHADA…" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-72">
-                      {/* Group by sub-class */}
-                      <SelectItem value="__custom__" className="text-muted-foreground italic">
-                        ✏️ Saisir un compte personnalisé…
-                      </SelectItem>
-                      <Separator className="my-1" />
-                      {SYSCOHADA_CLASS2_ACCOUNTS.map((acct) => (
-                        <SelectItem key={acct.number} value={acct.number}>
-                          <span className="font-mono text-xs mr-2 text-muted-foreground">{acct.number}</span>
-                          {acct.label}
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            {acct.isAmortizable === false
-                              ? "(non amortissable)"
-                              : `(${acct.usefulLife}\u00a0ans\u00a0\u2014\u00a0${acct.type === "LINEAIRE" ? "Lin." : "Dég."})`}
-                          </span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={accountComboOpen} onOpenChange={setAccountComboOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={accountComboOpen}
+                        data-testid="select-account-number"
+                        className="w-full justify-between font-normal"
+                      >
+                        <span className="truncate font-mono text-sm">
+                          {addForm.accountNumber
+                            ? `${addForm.accountNumber} — ${SYSCOHADA_CLASS2_ACCOUNTS.find(a => a.number === addForm.accountNumber)?.label ?? "Compte personnalisé"}`
+                            : "Sélectionner un compte SYSCOHADA…"}
+                        </span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[420px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Rechercher par numéro ou libellé…" />
+                        <CommandList className="max-h-72">
+                          <CommandEmpty>Aucun compte trouvé.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="__custom__ Saisir compte personnalisé"
+                              onSelect={() => {
+                                handleAccountSelect("__custom__")
+                                setAccountComboOpen(false)
+                              }}
+                            >
+                              <span className="text-muted-foreground italic">✏️ Saisir un compte personnalisé…</span>
+                            </CommandItem>
+                            <Separator className="my-1" />
+                            {SYSCOHADA_CLASS2_ACCOUNTS.map((acct) => (
+                              <CommandItem
+                                key={acct.number}
+                                value={`${acct.number} ${acct.label}`}
+                                onSelect={() => {
+                                  handleAccountSelect(acct.number)
+                                  setAccountComboOpen(false)
+                                }}
+                              >
+                                <Check className={cn("mr-2 h-4 w-4 shrink-0", addForm.accountNumber === acct.number ? "opacity-100" : "opacity-0")} />
+                                <span className="font-mono text-xs text-muted-foreground mr-2">{acct.number}</span>
+                                <span className="truncate">{acct.label}</span>
+                                <span className="ml-2 text-xs text-muted-foreground shrink-0">
+                                  {acct.isAmortizable === false
+                                    ? "(non amort.)"
+                                    : `(${acct.usefulLife} ans)`}
+                                </span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                   {addForm.accountNumber && (
                     <p className="text-xs text-muted-foreground">
                       Compte sélectionné :{" "}

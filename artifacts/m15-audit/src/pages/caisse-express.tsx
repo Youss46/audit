@@ -17,14 +17,27 @@ import {
 import { useAuth } from "@/hooks/use-auth"
 import { useToast } from "@/hooks/use-toast"
 import { formatFcfa } from "@/lib/status"
-import { formatDateTime } from "@/lib/utils"
+import { cn, formatDateTime } from "@/lib/utils"
 import {
   enqueueEntry,
   listQueuedEntries,
   removeQueuedEntries,
   type QueuedEntry,
 } from "@/lib/offline-queue"
-import { Plus, Minus, Wifi, WifiOff, RefreshCw, Lock, Wallet } from "lucide-react"
+import { Plus, Minus, Wifi, WifiOff, RefreshCw, Lock, Wallet, Check, ChevronsUpDown } from "lucide-react"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -82,6 +95,7 @@ export default function CaisseExpress() {
   const [entryForm, setEntryForm] = useState<ReturnType<typeof emptyEntryForm> | null>(null)
   const [queuedEntries, setQueuedEntries] = useState<QueuedEntry[]>([])
   const [isClosureOpen, setIsClosureOpen] = useState(false)
+  const [categoryComboOpen, setCategoryComboOpen] = useState(false)
   const [physicalBalance, setPhysicalBalance] = useState("")
   const [closureComment, setClosureComment] = useState("")
 
@@ -504,22 +518,49 @@ export default function CaisseExpress() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="entryCategory">Catégorie</Label>
-                <Select
-                  value={entryForm.category}
-                  onValueChange={(v) => setEntryForm((f) => (f ? { ...f, category: v } : f))}
-                >
-                  <SelectTrigger id="entryCategory" data-testid="select-entry-category">
-                    <SelectValue placeholder="Sélectionner une catégorie..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(categories ?? []).map((c) => (
-                      <SelectItem key={c.key} value={c.key}>
-                        {c.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Catégorie</Label>
+                <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      role="combobox"
+                      aria-expanded={categoryComboOpen}
+                      data-testid="select-entry-category"
+                      className="w-full justify-between font-normal"
+                    >
+                      <span className="truncate">
+                        {entryForm.category
+                          ? (categories ?? []).find(c => c.key === entryForm.category)?.label ?? "Sélectionner une catégorie..."
+                          : "Sélectionner une catégorie..."}
+                      </span>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                    <Command>
+                      <CommandInput placeholder="Rechercher une catégorie…" />
+                      <CommandList>
+                        <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
+                        <CommandGroup>
+                          {(categories ?? []).map((c) => (
+                            <CommandItem
+                              key={c.key}
+                              value={c.label}
+                              onSelect={() => {
+                                setEntryForm(f => f ? { ...f, category: c.key } : f)
+                                setCategoryComboOpen(false)
+                              }}
+                            >
+                              <Check className={cn("mr-2 h-4 w-4 shrink-0", entryForm.category === c.key ? "opacity-100" : "opacity-0")} />
+                              {c.label}
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setEntryForm(null)}>
