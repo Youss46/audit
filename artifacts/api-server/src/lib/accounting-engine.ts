@@ -215,7 +215,7 @@ export const PURCHASE_CATEGORIES: Record<
   electricite:           { label: "Électricité / CIE / Énergie",               account: "605200", accountName: "Fournitures non stockables — Électricité",                vatEligible: true  },
   fournitures_bureau:    { label: "Fournitures de bureau",                      account: "605400", accountName: "Fournitures de bureau",                                   vatEligible: true  },
   fournitures_entretien: { label: "Produits d'entretien",                       account: "605500", accountName: "Fournitures d'entretien",                                 vatEligible: true  },
-  petit_materiel:        { label: "Petit matériel et outillage",                account: "605300", accountName: "Fournitures non stockables — Petit matériel",             vatEligible: true  },
+  petit_materiel:        { label: "Petit matériel et outillage",                account: "605600", accountName: "Petit matériel et outillage",                              vatEligible: true  },
   transport_achat:       { label: "Transport sur achats",                       account: "616100", accountName: "Transports sur achats et approvisionnements",             vatEligible: true  },
   transport_personnel:   { label: "Transport du personnel",                     account: "614100", accountName: "Transports du personnel",                                 vatEligible: true  },
   loyer:                 { label: "Loyer / Bail",                               account: "622100", accountName: "Locations et charges locatives",                          vatEligible: false },
