@@ -214,12 +214,12 @@ export const PURCHASE_CATEGORIES: Record<
   loyer:                 { label: "Loyer / Bail",                               account: "622100", accountName: "Locations et charges locatives",                          vatEligible: false },
   entretien:             { label: "Entretien / Réparation",                     account: "624100", accountName: "Entretien, réparations et maintenance",                   vatEligible: true  },
   assurance:             { label: "Assurances",                                 account: "625100", accountName: "Assurances",                                              vatEligible: false },
-  telephone_internet:    { label: "Téléphone / Internet",                       account: "626100", accountName: "Frais de télécommunications",                             vatEligible: true  },
+  telephone_internet:    { label: "Téléphone / Internet",                       account: "628100", accountName: "Frais de télécommunications",                             vatEligible: true  },
   publicite:             { label: "Publicité / Marketing",                      account: "627100", accountName: "Publicité et relations publiques",                        vatEligible: true  },
   honoraires:            { label: "Honoraires (comptable, avocat…)",            account: "632100", accountName: "Honoraires",                                              vatEligible: false },
   salaires:              { label: "Salaires / Rémunérations",                  account: "661100", accountName: "Appointements, salaires et commissions",                  vatEligible: false },
   charges_sociales:      { label: "Charges sociales (CNPS…)",                  account: "664100", accountName: "Charges sociales",                                        vatEligible: false },
-  autres_achats:         { label: "Autres achats / charges",                    account: "628100", accountName: "Autres charges externes",                                 vatEligible: true  },
+  autres_achats:         { label: "Autres achats / charges",                    account: "658100", accountName: "Charges diverses",                                        vatEligible: true  },
   // ── Immobilisations corporelles (Classe 2) — actif du bilan ───────────────
   // TVA → 445200 (récup. sur immos) ; crédit → 481100 (Fournisseurs d'immo)
   immo_materiel_industriel: { label: "Immobilisation — Matériel industriel et outillage", account: "241100", accountName: "Matériel industriel et outillage",                    vatEligible: true, isImmobilisation: true },
