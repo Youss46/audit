@@ -215,13 +215,21 @@ export function CabinetAccountSmartSearch({ modal, onClose }: CabinetAccountSmar
             ...(classFilter !== undefined ? { classFilter } : {}),
           }),
         })
-        if (!resp.ok) throw new Error("Erreur serveur")
+        if (!resp.ok) {
+          let msg = `Erreur ${resp.status}`
+          try {
+            const body = await resp.json()
+            if (body?.error) msg = body.error
+            else if (body?.message) msg = body.message
+          } catch { /* ignore parse errors */ }
+          throw new Error(msg)
+        }
         const data: SearchResponse = await resp.json()
         setResults(data.results)
         setUsedAI(data.usedAI)
         setHasSearched(true)
-      } catch {
-        setError("Impossible de contacter le service de recherche.")
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Impossible de contacter le service de recherche.")
         setResults([])
       } finally {
         setLoading(false)
