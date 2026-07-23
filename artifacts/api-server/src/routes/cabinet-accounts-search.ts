@@ -62,12 +62,24 @@ router.post("/cabinet/accounts/smart-search", async (req, res) => {
     ? and(eq(accountsTable.accountClass, classFilter), textWhere)
     : textWhere;
 
-  const directRows = await db
-    .select()
-    .from(accountsTable)
-    .where(where)
-    .orderBy(asc(accountsTable.accountNumber))
-    .limit(20);
+  let directRows: { id: number; accountNumber: string; name: string; accountClass: number }[];
+  try {
+    directRows = await db
+      .select({
+        id: accountsTable.id,
+        accountNumber: accountsTable.accountNumber,
+        name: accountsTable.name,
+        accountClass: accountsTable.accountClass,
+      })
+      .from(accountsTable)
+      .where(where)
+      .orderBy(asc(accountsTable.accountNumber))
+      .limit(20);
+  } catch (err) {
+    req.log.error({ err }, "[smart-search] DB query failed");
+    res.status(500).json({ error: `Erreur base de données : ${err instanceof Error ? err.message : String(err)}` });
+    return;
+  }
 
   const directResults: SmartSearchResult[] = directRows.map((r) => {
     const isCodeHit = r.accountNumber
@@ -100,15 +112,22 @@ router.post("/cabinet/accounts/smart-search", async (req, res) => {
   }
 
   // Référentiel compact transmis au modèle
-  const planRows = await db
-    .select({
-      accountNumber: accountsTable.accountNumber,
-      name: accountsTable.name,
-      accountClass: accountsTable.accountClass,
-    })
-    .from(accountsTable)
-    .where(classFilter ? eq(accountsTable.accountClass, classFilter) : undefined)
-    .orderBy(asc(accountsTable.accountNumber));
+  let planRows: { accountNumber: string; name: string; accountClass: number }[];
+  try {
+    planRows = await db
+      .select({
+        accountNumber: accountsTable.accountNumber,
+        name: accountsTable.name,
+        accountClass: accountsTable.accountClass,
+      })
+      .from(accountsTable)
+      .where(classFilter ? eq(accountsTable.accountClass, classFilter) : undefined)
+      .orderBy(asc(accountsTable.accountNumber));
+  } catch (err) {
+    req.log.warn({ err }, "[smart-search] DB plan query failed — fallback to SQL results only");
+    res.json({ results: directResults, usedAI: false });
+    return;
+  }
 
   const planLines = planRows
     .slice(0, 1200)
