@@ -158,11 +158,15 @@ function fuzzySearch(
   catalog: CatalogEntry[],
 ): AccountSuggestion[] {
   const combined = [query, supplierName].filter(Boolean).join(" ");
+  // Normalise before alias matching so accented input ("électricité") reliably
+  // matches ASCII patterns like \belectr — without this, the alias boost is
+  // silently skipped and the fuzzy score falls below the DeepSeek threshold.
+  const normalisedCombined = normalise(combined);
 
   // Boost keys matched by alias patterns
   const aliasBoost = new Map<string, number>();
   for (const alias of ALIASES) {
-    if (alias.pattern.test(combined)) {
+    if (alias.pattern.test(normalisedCombined)) {
       for (const key of alias.keys) aliasBoost.set(key, 0.18);
     }
   }
