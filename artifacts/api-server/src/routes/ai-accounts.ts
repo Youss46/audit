@@ -71,20 +71,19 @@ async function buildCatalog(): Promise<CatalogEntry[]> {
     isImmobilisation: false,
   }));
 
-  // 2. Append immobilisation categories (only in PURCHASE_CATEGORIES, never in DB)
-  const immoKeys = Object.keys(PURCHASE_CATEGORIES).filter((k) =>
-    PURCHASE_CATEGORIES[k].isImmobilisation,
-  );
-  for (const key of immoKeys) {
-    if (catalog.some((c) => c.key === key)) continue; // already present
+  // 2. Append ALL PURCHASE_CATEGORIES not already in the DB as a static fallback.
+  //    This covers immobilisation categories (never seeded in DB by design) AND
+  //    guards against an empty/unseeded transaction_categories table.
+  for (const key of Object.keys(PURCHASE_CATEGORIES)) {
+    if (catalog.some((c) => c.key === key)) continue; // DB row takes precedence
     const cat = PURCHASE_CATEGORIES[key];
     catalog.push({
       key,
       label:            cat.label,
       account:          cat.account,
-      accountName:      cat.accountName,
+      accountName:      cat.accountName ?? cat.label,
       vatEligible:      cat.vatEligible,
-      isImmobilisation: true,
+      isImmobilisation: cat.isImmobilisation ?? false,
     });
   }
 
