@@ -48,10 +48,12 @@ interface SearchResponse {
 
 const CLASS_FILTERS = [
   { label: "Tous", value: undefined, color: "bg-muted text-muted-foreground" },
-  { label: "Classe 4 · Tiers", value: 4, color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
-  { label: "Classe 5 · Trésorerie", value: 5, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
-  { label: "Classe 6 · Charges", value: 6, color: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
-  { label: "Classe 7 · Produits", value: 7, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  { label: "Cl. 4 · Tiers", value: 4, color: "bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300" },
+  { label: "Cl. 5 · Tréso.", value: 5, color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300" },
+  { label: "Cl. 6 · Charges", value: 6, color: "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" },
+  { label: "Cl. 7 · Produits", value: 7, color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300" },
+  { label: "Cl. 8 · Résultats", value: 8, color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300" },
+  { label: "Cl. 9 · Analytique", value: 9, color: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
 ] as const
 
 // ── Confidence badge ──────────────────────────────────────────────────────────
