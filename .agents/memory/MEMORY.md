@@ -3,3 +3,4 @@
 - [AI Copilot](ai-copilot.md) — POST /api/ai/copilot, deepseek-chat streaming SSE, AICopilotDrawer.tsx in Shell.tsx.
 - [SYSCOHADA chart & imputation engine](syscohada-engine.md) — plan comptable complet en DB (accountsTable + accountType enum), catégories dans transaction_categories, service imputeAccount() avec fallback 471.
 - [Re-import bootstrap checklist](reimport-bootstrap-checklist.md) — when artifacts exist on disk but platform registry is empty, re-register via createArtifact + verifyAndReplaceArtifactToml; seed drizzle migrations table after db push.
+- [Drizzle migration hashes](drizzle-migration-hashes.md) — SHA256 hashes for all 4 migration files; must be re-seeded into drizzle.__drizzle_migrations after any db push on a fresh environment.
