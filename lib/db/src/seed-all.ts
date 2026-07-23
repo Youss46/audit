@@ -184,6 +184,34 @@ async function main() {
 
   await seedRoles();
 
+  // ── Rattrapage DDL : enum + colonne account_type ────────────────────────────
+  // Sur Railway, la migration 0004 peut être marquée comme appliquée dans
+  // drizzle.__drizzle_migrations sans que le SQL ait vraiment tourné (base
+  // provisionnée avant la création du fichier de migration). Ce bloc est
+  // idempotent : il recrée le type et la colonne si absents, sans erreur sinon.
+  await db.execute(sql`
+    DO $$ BEGIN
+      CREATE TYPE "public"."account_type" AS ENUM(
+        'CAPITAL',
+        'IMMOBILISATION',
+        'STOCK',
+        'TIERS',
+        'TRESORERIE',
+        'CHARGE',
+        'PRODUIT',
+        'HAO',
+        'ATTENTE',
+        'ANALYTIQUE'
+      );
+    EXCEPTION
+      WHEN duplicate_object THEN null;
+    END $$
+  `);
+  await db.execute(sql`
+    ALTER TABLE "accounts" ADD COLUMN IF NOT EXISTS "account_type" "account_type"
+  `);
+  console.log("✓ DDL account_type : enum + colonne vérifiés.");
+
   // Plan comptable SYSCOHADA complet (classes 1–8 + accountType) + catégories
   await seedPlanComptable();
   await seedTransactionCategories();
