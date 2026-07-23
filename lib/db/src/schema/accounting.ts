@@ -40,6 +40,7 @@ export const ACCOUNT_TYPES = [
   "PRODUIT",        // Classe 7 — Produits
   "HAO",            // Classe 8 — Hors activités ordinaires
   "ATTENTE",        // Comptes d'attente (471, 472)
+  "ANALYTIQUE",     // Classe 9 — Engagements hors bilan et CAGE
 ] as const;
 export type AccountType = (typeof ACCOUNT_TYPES)[number];
 
