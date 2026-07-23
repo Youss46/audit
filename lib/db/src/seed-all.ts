@@ -214,6 +214,25 @@ async function main() {
 
   // Plan comptable SYSCOHADA complet (classes 1–8 + accountType) + catégories
   await seedPlanComptable();
+
+  // ── Rattrapage DDL : table transaction_categories ───────────────────────────
+  // Même cause que account_type : migration marquée comme appliquée sur Railway
+  // sans que le SQL ait tourné. Idempotent grâce à IF NOT EXISTS.
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS "transaction_categories" (
+      "key"                    text PRIMARY KEY,
+      "display_name"           text NOT NULL,
+      "default_account_number" text NOT NULL,
+      "default_tva_rate"       integer NOT NULL DEFAULT 0,
+      "vat_eligible"           boolean NOT NULL DEFAULT false,
+      "transaction_type"       text NOT NULL,
+      "is_hidden"              boolean NOT NULL DEFAULT false,
+      "created_at"             timestamptz NOT NULL DEFAULT now(),
+      "updated_at"             timestamptz NOT NULL DEFAULT now()
+    )
+  `);
+  console.log("✓ DDL transaction_categories : table vérifiée.");
+
   await seedTransactionCategories();
 
   // Seed de base (ancienne version — conservé pour rétrocompatibilité)
