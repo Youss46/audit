@@ -1572,23 +1572,66 @@ const CATEGORIES: {
 export async function seedPlanComptable() {
   let upserted = 0;
   const seen = new Set<string>();
-  for (const compte of COMPTES) {
-    if (seen.has(compte.accountNumber)) continue;
-    seen.add(compte.accountNumber);
+  const uniqueComptes = COMPTES.filter((c) => {
+    if (seen.has(c.accountNumber)) return false;
+    seen.add(c.accountNumber);
+    return true;
+  });
+
+  // Probe with the first account to detect whether the account_type column/enum
+  // already exists in this environment. On older Railway installs the column is
+  // added by a migration that may not have been applied yet; in that case we fall
+  // back to inserting only the three guaranteed columns (accountNumber, name,
+  // accountClass) so that all 1 400+ accounts are still loaded.
+  let useAccountType = true;
+  if (uniqueComptes.length === 0) return;
+
+  try {
+    const first = uniqueComptes[0];
     await db
       .insert(accountsTable)
-      .values(compte)
+      .values(first)
       .onConflictDoUpdate({
         target: accountsTable.accountNumber,
-        set: {
-          name:         compte.name,
-          accountClass: compte.accountClass,
-          accountType:  compte.accountType,
-        },
+        set: { name: first.name, accountClass: first.accountClass, accountType: first.accountType },
+      });
+    upserted++;
+  } catch {
+    useAccountType = false;
+    // Retry first account without accountType
+    const first = uniqueComptes[0];
+    await db
+      .insert(accountsTable)
+      .values({ accountNumber: first.accountNumber, name: first.name, accountClass: first.accountClass })
+      .onConflictDoUpdate({
+        target: accountsTable.accountNumber,
+        set: { name: first.name, accountClass: first.accountClass },
       });
     upserted++;
   }
-  console.log(`✓ Plan comptable SYSCOHADA : ${upserted} comptes upsertés.`);
+
+  for (const compte of uniqueComptes.slice(1)) {
+    if (useAccountType) {
+      await db
+        .insert(accountsTable)
+        .values(compte)
+        .onConflictDoUpdate({
+          target: accountsTable.accountNumber,
+          set: { name: compte.name, accountClass: compte.accountClass, accountType: compte.accountType },
+        });
+    } else {
+      await db
+        .insert(accountsTable)
+        .values({ accountNumber: compte.accountNumber, name: compte.name, accountClass: compte.accountClass })
+        .onConflictDoUpdate({
+          target: accountsTable.accountNumber,
+          set: { name: compte.name, accountClass: compte.accountClass },
+        });
+    }
+    upserted++;
+  }
+
+  console.log(`✓ Plan comptable SYSCOHADA : ${upserted} comptes upsertés (accountType: ${useAccountType}).`);
 }
 
 export async function seedTransactionCategories() {
