@@ -209,7 +209,7 @@ export const PURCHASE_CATEGORIES: Record<
 > = {
   // ── Charges d'exploitation (Classe 6) ─────────────────────────────────────
   achat_marchandises:    { label: "Achats de marchandises",                    account: "601100", accountName: "Achats de marchandises",                                  vatEligible: true  },
-  achat_matieres:        { label: "Matières premières / consommables",          account: "601100", accountName: "Matières premières et consommables",                      vatEligible: true  },
+  achat_matieres:        { label: "Matières premières / consommables",          account: "602100", accountName: "Achats de matières premières et fournitures liées",  vatEligible: true  },
   carburant:             { label: "Carburant",                                  account: "605100", accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
   eau:                   { label: "Eau potable / SODECI",                       account: "605200", accountName: "Fournitures non stockables — Eau",                      vatEligible: false },
   electricite:           { label: "Électricité / CIE / Énergie",               account: "605210", accountName: "Fournitures non stockables — Électricité",                vatEligible: true  },
