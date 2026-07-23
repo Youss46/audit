@@ -29,6 +29,13 @@
       "when": 1784795433180,
       "tag": "0003_fix_telecom_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1753228800000,
+      "tag": "0004_add_account_type_enum",
+      "breakpoints": true
     }
   ]
 }
