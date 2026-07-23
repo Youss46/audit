@@ -522,7 +522,7 @@ export default function DepensesAchats() {
         </div>
 
         <Tabs value={tab} onValueChange={setTab}>
-          <TabsList>
+          <TabsList className="w-full overflow-x-auto flex-nowrap justify-start">
             <TabsTrigger value="saisie"><Plus className="mr-1.5 h-4 w-4" />Nouvelle dépense</TabsTrigger>
             <TabsTrigger value="a-regler" className="relative">
               <Clock className="mr-1.5 h-4 w-4" />À régler
@@ -537,13 +537,13 @@ export default function DepensesAchats() {
           <TabsContent value="saisie">
             <Card>
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                   <CardTitle className="text-base">Enregistrer une dépense</CardTitle>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30 shrink-0"
+                    className="border-violet-300 text-violet-700 hover:bg-violet-50 dark:border-violet-700 dark:text-violet-400 dark:hover:bg-violet-950/30 shrink-0 w-full sm:w-auto"
                     onClick={() => { setOcrError(null); setOcrResult(null); setOcrFileCapture(null); setIsOcrUploading(false); setIsOcrProcessing(false); setIsOcrDialogOpen(true) }}
                   >
                     <ScanLine className="mr-1.5 h-4 w-4" />
