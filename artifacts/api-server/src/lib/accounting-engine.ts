@@ -88,11 +88,17 @@ export const CATEGORY_RULES: Record<string, CategoryRule> = {
     counterpartAccount: "622100",
     counterpartName: "Locations et charges locatives",
   },
-  electricite_eau: {
-    label: "Électricité / Eau",
+  eau: {
+    label: "Eau potable / SODECI",
     type: "depense",
     counterpartAccount: "605200",
-    counterpartName: "Fournitures non stockables — Eau, électricité",
+    counterpartName: "Fournitures non stockables — Eau",
+  },
+  electricite: {
+    label: "Électricité / CIE / Énergie",
+    type: "depense",
+    counterpartAccount: "605210",
+    counterpartName: "Fournitures non stockables — Électricité",
   },
   fournitures_bureau: {
     label: "Fournitures de bureau",
@@ -205,7 +211,8 @@ export const PURCHASE_CATEGORIES: Record<
   achat_marchandises:    { label: "Achats de marchandises",                    account: "601100", accountName: "Achats de marchandises",                                  vatEligible: true  },
   achat_matieres:        { label: "Matières premières / consommables",          account: "601100", accountName: "Matières premières et consommables",                      vatEligible: true  },
   carburant:             { label: "Carburant",                                  account: "605100", accountName: "Fournitures non stockables — Carburant",                  vatEligible: true  },
-  electricite_eau:       { label: "Eau / Électricité",                          account: "605200", accountName: "Fournitures non stockables — Eau, énergie",               vatEligible: true  },
+  eau:                   { label: "Eau potable / SODECI",                       account: "605200", accountName: "Fournitures non stockables — Eau",                      vatEligible: false },
+  electricite:           { label: "Électricité / CIE / Énergie",               account: "605210", accountName: "Fournitures non stockables — Électricité",                vatEligible: true  },
   fournitures_bureau:    { label: "Fournitures de bureau",                      account: "605400", accountName: "Fournitures de bureau",                                   vatEligible: true  },
   fournitures_entretien: { label: "Produits d'entretien",                       account: "605500", accountName: "Fournitures d'entretien",                                 vatEligible: true  },
   petit_materiel:        { label: "Petit matériel et outillage",                account: "605300", accountName: "Fournitures non stockables — Petit matériel",             vatEligible: true  },

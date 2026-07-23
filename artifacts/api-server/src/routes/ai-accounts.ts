@@ -96,8 +96,8 @@ async function buildCatalog(): Promise<CatalogEntry[]> {
 //   "electr" matches \bélectr  →  "électricité"
 
 const ALIASES: Array<{ pattern: RegExp; keys: string[] }> = [
-  { pattern: /\bcie\b|\bciedl\b|\bélectr|\belectr/i,          keys: ["electricite_eau"] },
-  { pattern: /\bsodeci\b|\beau\b|\bliquid/i,                   keys: ["electricite_eau"] },
+  { pattern: /\bcie\b|\bciedl\b|\bélectr|\belectr|\bkwh\b|\bcourant\b|\bvolt\b/i, keys: ["electricite"] },
+  { pattern: /\bsodeci\b|\beau\b|\bliquid|\brobinet\b|\bpotable\b/i,             keys: ["eau"] },
   { pattern: /\bcarb|\bessence\b|\bgasoil\b|\bgaz\b|\bpétrole\b|\bpetrol/i, keys: ["carburant"] },
   { pattern: /\bpapier\b|\bstyle|\bagenda|\bclasseur\b|\bcrayon/i, keys: ["fournitures_bureau"] },
   { pattern: /\bnettoy|\bbalay|\bdéterg|\bsavon\b|\bproduit.*entret/i, keys: ["fournitures_entretien"] },
