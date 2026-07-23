@@ -42,6 +42,7 @@ interface SmartSearchResult {
 interface SearchResponse {
   results: SmartSearchResult[]
   usedAI: boolean
+  totalAccounts?: number
 }
 
 // ── Filter chips ─────────────────────────────────────────────────────────────

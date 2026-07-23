@@ -13,7 +13,7 @@ import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
 import { z } from "zod";
 import { db, accountsTable } from "@workspace/db";
-import { ilike, or, and, asc, eq } from "drizzle-orm";
+import { ilike, or, and, asc, eq, count } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router = Router();
@@ -63,18 +63,22 @@ router.post("/cabinet/accounts/smart-search", async (req, res) => {
     : textWhere;
 
   let directRows: { id: number; accountNumber: string; name: string; accountClass: number }[];
+  let totalAccounts = 0;
   try {
-    directRows = await db
-      .select({
-        id: accountsTable.id,
-        accountNumber: accountsTable.accountNumber,
-        name: accountsTable.name,
-        accountClass: accountsTable.accountClass,
-      })
-      .from(accountsTable)
-      .where(where)
-      .orderBy(asc(accountsTable.accountNumber))
-      .limit(20);
+    [directRows, [{ totalAccounts }]] = await Promise.all([
+      db
+        .select({
+          id: accountsTable.id,
+          accountNumber: accountsTable.accountNumber,
+          name: accountsTable.name,
+          accountClass: accountsTable.accountClass,
+        })
+        .from(accountsTable)
+        .where(where)
+        .orderBy(asc(accountsTable.accountNumber))
+        .limit(20),
+      db.select({ totalAccounts: count() }).from(accountsTable),
+    ]);
   } catch (err) {
     req.log.error({ err }, "[smart-search] DB query failed");
     res.status(500).json({ error: `Erreur base de données : ${err instanceof Error ? err.message : String(err)}` });
@@ -99,7 +103,7 @@ router.post("/cabinet/accounts/smart-search", async (req, res) => {
 
   // Pour les requêtes numériques ou si on a déjà beaucoup de résultats, skip AI
   if (isNumeric || directResults.length >= 8) {
-    res.json({ results: directResults.slice(0, 12), usedAI: false });
+    res.json({ results: directResults.slice(0, 12), usedAI: false, totalAccounts });
     return;
   }
 
@@ -107,7 +111,7 @@ router.post("/cabinet/accounts/smart-search", async (req, res) => {
 
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) {
-    res.json({ results: directResults, usedAI: false });
+    res.json({ results: directResults, usedAI: false, totalAccounts });
     return;
   }
 
