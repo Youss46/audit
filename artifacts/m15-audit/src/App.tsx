@@ -61,6 +61,7 @@ import AdminCabinets from '@/pages/admin/firms';
 import AdminLicences from '@/pages/admin/licenses';
 import AuditVisa from '@/pages/audit-visa';
 import YearEndReview from '@/pages/year-end-review';
+import CabinetPlanComptable from '@/pages/cabinet-plan-comptable';
 
 const queryClient = new QueryClient();
 
@@ -142,6 +143,7 @@ function Router() {
         <Route path="/notifications" component={Notifications} />
         <Route path="/cabinet/compliance" component={Compliance} />
         <Route path="/cabinet/communication" component={Communication} />
+        <Route path="/cabinet/plan-comptable" component={CabinetPlanComptable} />
         {/* ── Console Super Admin (route protégée, rôle super_admin uniquement) ── */}
         <Route path="/admin" component={AdminDashboard} />
         <Route path="/admin/dashboard" component={AdminDashboard} />

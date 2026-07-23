@@ -32,6 +32,7 @@ import {
   LayoutDashboard,
   ShieldAlert,
   MapPin,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { getRoleBadgeColor, getUserRoleLabel, isPortalRole, isSuperAdmin, hasPermission } from "@/lib/status"
@@ -40,6 +41,11 @@ import { useGetFirmPendingCounts, getGetFirmPendingCountsQueryKey, useGetClient 
 import { NotificationBell } from "@/components/collaboration/NotificationBell"
 import { HelpButton } from "@/components/support/HelpSupportPanel"
 import { AICopilotDrawer } from "@/components/ai/AICopilotDrawer"
+import { CabinetAccountSmartSearch } from "@/components/ai/CabinetAccountSmartSearch"
+import {
+  Dialog,
+  DialogContent,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
@@ -68,6 +74,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const search = useSearch()
   const typeParam = new URLSearchParams(search).get("type")
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false)
+  const [smartSearchOpen, setSmartSearchOpen] = React.useState(false)
   const isPublicRoute = PUBLIC_ROUTES.includes(location)
 
   // Bug fix: the sidebar's scroll position used to reset to the top on
@@ -133,6 +140,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
     setIsMobileMenuOpen(false)
   }, [location])
 
+  // Ctrl+K / Cmd+K — Plan Comptable smart search palette (cabinet only)
+  React.useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "k") {
+        if (!user || isPortalRole(user.role) || isSuperAdmin(user.role)) return
+        e.preventDefault()
+        setSmartSearchOpen((prev) => !prev)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [user])
+
   // Redirect to login once we know there's no authenticated session.
   // Without this, protected pages are left firing API calls that 401
   // forever and stay stuck on their loading skeleton.
@@ -174,7 +194,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   // own dedicated portal and must never reach the cabinet-facing screens
   // (dashboard, client list, team, audit log) even if they navigate there
   // directly by URL.
-  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/scoring", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication", "/cabinet/settings"]
+  const CABINET_ONLY_PREFIXES = ["/dashboard", "/clients", "/missions", "/documents", "/users", "/audit-log", "/comptabilite", "/immobilisations", "/financements", "/dsf", "/paie", "/teledeclaration", "/scoring", "/cabinet/client", "/cabinet/compliance", "/cabinet/communication", "/cabinet/settings", "/cabinet/plan-comptable"]
   const CLIENT_PME_PREFIXES = ["/mes-operations", "/caisse", "/pilotage", "/facturation", "/tresorerie-mobile-money", "/client/settings"]
   React.useEffect(() => {
     if (
@@ -674,6 +694,31 @@ export function Shell({ children }: { children: React.ReactNode }) {
             </>
           )}
 
+          {/* ── Outils ──────────────────────────────────────── */}
+          <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
+            Outils
+          </p>
+
+          <Link href="/cabinet/plan-comptable" className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-colors",
+            location.startsWith("/cabinet/plan-comptable")
+              ? "bg-primary text-primary-foreground"
+              : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+          )} data-testid="link-plan-comptable"
+            onClick={() => setSmartSearchOpen(false)}
+          >
+            <Sparkles className="h-5 w-5 shrink-0" />
+            <span className="flex flex-col leading-tight">
+              <span>Plan Comptable</span>
+              <span className={cn(
+                "text-[10px] font-normal leading-tight",
+                location.startsWith("/cabinet/plan-comptable")
+                  ? "opacity-70"
+                  : "text-sidebar-foreground/50"
+              )}>Recherche Intelligente IA</span>
+            </span>
+          </Link>
+
           {/* ── Administration ──────────────────────────────── */}
           <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40 select-none">
             Administration
@@ -936,6 +981,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
       />
       {/* M15 AI Copilot — global FAB + chat drawer, all pages */}
       <AICopilotDrawer />
+
+      {/* Plan Comptable Smart Search — Ctrl+K command palette (cabinet staff only) */}
+      {user && !isPortalRole(user.role) && !isSuperAdmin(user.role) && (
+        <Dialog open={smartSearchOpen} onOpenChange={setSmartSearchOpen}>
+          <DialogContent className="p-0 gap-0 max-w-xl overflow-hidden rounded-xl">
+            <CabinetAccountSmartSearch
+              modal
+              onClose={() => setSmartSearchOpen(false)}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   )
 }

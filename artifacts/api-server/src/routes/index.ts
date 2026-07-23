@@ -44,6 +44,7 @@ import fraudRouter from "./fraud";
 import cashflowRouter from "./cashflow";
 import copilotRouter from "./copilot";
 import aiAccountsRouter from "./ai-accounts";
+import cabinetAccountsSearchRouter from "./cabinet-accounts-search";
 
 const router: IRouter = Router();
 
@@ -92,5 +93,6 @@ router.use(fraudRouter);
 router.use(cashflowRouter);
 router.use(copilotRouter);
 router.use(aiAccountsRouter);
+router.use(cabinetAccountsSearchRouter);
 
 export default router;
