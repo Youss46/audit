@@ -71,27 +71,14 @@ export interface ImputationResult {
 // ---------------------------------------------------------------------------
 
 /**
- * Garantit que tout numéro de compte est en 6 chiffres.
+ * Retourne le numéro de compte tel quel.
  *
- * Règles :
- *   3 chiffres → append "100"   (571 → 571100)
- *   4 chiffres → append "00"    (6052 → 605200 ; 5211 → 521100)
- *   5 chiffres → append "0"
- *   ≥ 6        → identité
- *
- * Comptes spéciaux (attente) : 471 → 471000, 472 → 472000 sont
- * naturellement couverts par la règle 3c → append "100" (471 + 100 = 471100),
- * mais la convention interne utilise 471000/472000 pour signaler
- * l'absence de sous-compte réel. Ces deux cas sont donc traités explicitement.
+ * Le plan comptable intégré (seed-syscohada.ts) stocke tous les numéros dans
+ * leur forme exacte (6 chiffres pour les sous-comptes principaux, 2–5 chiffres
+ * pour les comptes de classe/rubrique).  Les opérations utilisent directement
+ * le numéro du plan sans padding automatique.
  */
 export function pad6(account: string): string {
-  if (account === "471") return "471000";
-  if (account === "472") return "472000";
-  const len = account.length;
-  if (len >= 6) return account;
-  if (len === 5) return account + "0";
-  if (len === 4) return account + "00";
-  if (len === 3) return account + "100";
   return account;
 }
 
