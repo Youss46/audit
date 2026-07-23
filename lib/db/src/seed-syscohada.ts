@@ -1527,7 +1527,7 @@ const CATEGORIES: {
 }[] = [
   // ── Dépenses / Achats fournisseurs ───────────────────────────────────────
   { key: "achat_marchandises",    displayName: "Achats de marchandises",                    defaultAccountNumber: "601100", defaultTvaRate: 18, vatEligible: true,  transactionType: "depense", isHidden: false },
-  { key: "achat_matieres",        displayName: "Matières premières / consommables",          defaultAccountNumber: "601100", defaultTvaRate: 18, vatEligible: true,  transactionType: "depense", isHidden: false },
+  { key: "achat_matieres",        displayName: "Matières premières / consommables",          defaultAccountNumber: "602100", defaultTvaRate: 18, vatEligible: true,  transactionType: "depense", isHidden: false },
   { key: "carburant",             displayName: "Carburant",                                  defaultAccountNumber: "605300", defaultTvaRate: 18, vatEligible: true,  transactionType: "depense", isHidden: false },
   { key: "eau",                   displayName: "Eau potable / SODECI",                       defaultAccountNumber: "605100", defaultTvaRate: 0,  vatEligible: false, transactionType: "depense", isHidden: false },
   { key: "electricite",           displayName: "Électricité / CIE / Énergie",                defaultAccountNumber: "605200", defaultTvaRate: 18, vatEligible: true,  transactionType: "depense", isHidden: false },
