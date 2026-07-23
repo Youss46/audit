@@ -147,11 +147,12 @@ async function main() {
       });
   }
   console.log(`Seeded ${TEMPLATES.length} document templates (M25).`);
-  process.exit(0);
+  // NB: pas de process.exit(0) ici — ce fichier est importé par seed-all.ts
 }
 
 export { main as seed };
 
+// Auto-run uniquement en exécution standalone
 if (process.argv[1]?.endsWith("seed-report-document-templates.ts") || process.argv[1]?.endsWith("seed-report-document-templates.js")) {
   main().then(() => process.exit(0)).catch((err) => { console.error(err); process.exit(1); });
 }

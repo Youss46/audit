@@ -1658,13 +1658,18 @@ export async function seedTransactionCategories() {
 }
 
 // Exécution autonome : tsx lib/db/src/seed-syscohada.ts
-async function main() {
-  await seedPlanComptable();
-  await seedTransactionCategories();
-  process.exit(0);
-}
+// Guard: ne s'exécute qu'en standalone, pas quand importé par seed-all.ts.
+// Sans ce guard, le process.exit(0) tue le processus parent prématurément.
+import { fileURLToPath } from "url";
+const isMain = process.argv[1] === fileURLToPath(import.meta.url);
 
-main().catch((err) => {
-  console.error("❌ Seed SYSCOHADA échoué :", err);
-  process.exit(1);
-});
+if (isMain) {
+  (async () => {
+    await seedPlanComptable();
+    await seedTransactionCategories();
+    process.exit(0);
+  })().catch((err) => {
+    console.error("❌ Seed SYSCOHADA échoué :", err);
+    process.exit(1);
+  });
+}
