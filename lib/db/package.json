@@ -26,6 +26,7 @@
     "drizzle-zod": "^0.8.3",
     "pg": "^8.22.0",
     "tsx": "catalog:",
+    "xlsx": "^0.18.5",
     "zod": "catalog:"
   },
   "devDependencies": {
