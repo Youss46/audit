@@ -37,21 +37,8 @@ import {
   CreditCard, TrendingDown, AlertCircle, History,
   Paperclip, Upload, X, Eye, FileText, Camera,
   ShieldCheck, DraftingCompass, ScanLine, Sparkles,
-  Check, ChevronsUpDown,
 } from "lucide-react"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+import { AccountCategorySelect } from "@/components/comptabilite/AccountCategorySelect"
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -295,7 +282,6 @@ export default function DepensesAchats() {
     suggested_category: string | null
   }
   const [isOcrDialogOpen, setIsOcrDialogOpen] = React.useState(false)
-  const [categoryComboOpen, setCategoryComboOpen] = React.useState(false)
   const [isOcrUploading, setIsOcrUploading]   = React.useState(false)
   const [isOcrProcessing, setIsOcrProcessing] = React.useState(false)
   const [ocrError, setOcrError]               = React.useState<string | null>(null)
@@ -591,61 +577,34 @@ export default function DepensesAchats() {
                   </div>
                 </div>
 
-                {/* Catégorie */}
+                {/* Catégorie — AI-powered combobox */}
                 <div>
-                  <Label>Catégorie de charge / Immobilisation <span className="text-destructive">*</span></Label>
-                  <Popover open={categoryComboOpen} onOpenChange={setCategoryComboOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        role="combobox"
-                        className="w-full justify-between font-normal mt-1"
-                      >
-                        <span className="truncate">
-                          {form.categoryKey
-                            ? categories.find(c => c.key === form.categoryKey)?.label ?? "Sélectionner une catégorie…"
-                            : "Sélectionner une catégorie…"}
-                        </span>
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
-                      <Command>
-                        <CommandInput placeholder="Rechercher par compte ou libellé…" />
-                        <CommandList>
-                          <CommandEmpty>Aucune catégorie trouvée.</CommandEmpty>
-                          <CommandGroup>
-                            {categories.map((c) => (
-                              <CommandItem
-                                key={c.key}
-                                value={`${c.account} ${c.label}`}
-                                onSelect={() => {
-                                  setForm(f => ({ ...f, categoryKey: c.key, aibRate: "0" }))
-                                  setCategoryComboOpen(false)
-                                }}
-                              >
-                                <Check className={cn("mr-2 h-4 w-4 shrink-0", form.categoryKey === c.key ? "opacity-100" : "opacity-0")} />
-                                <span className="font-mono text-xs text-muted-foreground mr-2">{c.account}</span>
-                                {c.label}
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
+                  <Label>
+                    Catégorie de charge / Immobilisation{" "}
+                    <span className="text-destructive">*</span>
+                  </Label>
+                  <AccountCategorySelect
+                    className="mt-1"
+                    value={form.categoryKey}
+                    onChange={(key) => setForm((f) => ({ ...f, categoryKey: key, aibRate: "0" }))}
+                    categories={categories}
+                    supplierName={form.supplierName.trim() || undefined}
+                  />
                   {selectedCategory && (
-                    // @ts-ignore — isImmobilisation added at runtime; schema updated
+                    // @ts-ignore — isImmobilisation appended at runtime
                     (selectedCategory as any).isImmobilisation ? (
                       <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded px-2 py-1">
-                        📦 Immobilisation → Compte bilan <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}
-                        {" · "}TVA → <span className="font-mono">445200</span> (récup. sur immos)
+                        📦 Immobilisation → Compte bilan{" "}
+                        <span className="font-mono font-medium">{selectedCategory.account}</span>{" "}
+                        — {selectedCategory.accountName}
+                        {" · "}TVA → <span className="font-mono">445200</span>
                         {" · "}Fournisseur → <span className="font-mono">481100</span> si à crédit
                       </p>
                     ) : (
                       <p className="text-xs text-muted-foreground mt-1">
-                        → Compte SYSCOHADA <span className="font-mono font-medium">{selectedCategory.account}</span> — {selectedCategory.accountName}
+                        → Compte SYSCOHADA{" "}
+                        <span className="font-mono font-medium">{selectedCategory.account}</span>{" "}
+                        — {selectedCategory.accountName}
                         {!selectedCategory.vatEligible && " · TVA non récupérable"}
                       </p>
                     )

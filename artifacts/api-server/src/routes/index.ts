@@ -43,6 +43,7 @@ import yearEndReviewRouter from "./year-end-review";
 import fraudRouter from "./fraud";
 import cashflowRouter from "./cashflow";
 import copilotRouter from "./copilot";
+import aiAccountsRouter from "./ai-accounts";
 
 const router: IRouter = Router();
 
@@ -90,5 +91,6 @@ router.use(yearEndReviewRouter);
 router.use(fraudRouter);
 router.use(cashflowRouter);
 router.use(copilotRouter);
+router.use(aiAccountsRouter);
 
 export default router;
