@@ -98,8 +98,9 @@ ${contextLines.length ? contextLines.join("\n") : "- Aucun contexte de page spé
   - 552100 Wave | 552200 Orange Money | 552300 MTN MoMo | 552400 Moov Money
   - 571100 Caisse principale
 - **Classe 6** — Charges :
-  - 601100 Achats marchandises | 605100 Carburant | 614100 Transport personnel
-  - 622100 Loyer | 624100 Entretien | 628100 Autres charges
+  - 601100 Achats marchandises | 602100 Matières premières/consommables
+  - 605100 Eau | 605200 Électricité | 605300 Carburant | 605600 Petit matériel
+  - 614100 Transport personnel | 622100 Loyer | 624100 Entretien | 628100 Télécoms
   - 661100 Salaires | 664100 Charges sociales | 631700 Frais Mobile Money
 - **Classe 7** — Produits :
   - 701100 Ventes marchandises | 706100 Prestations de services

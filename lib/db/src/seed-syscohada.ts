@@ -1479,6 +1479,7 @@ const COMPTES: {
   { accountNumber: "571100", name: "Caisse principale",                                              accountClass: 5, accountType: "TRESORERIE" },
   { accountNumber: "585100", name: "Virements de fonds — Mobile Money vers Banque (principal)",      accountClass: 5, accountType: "TRESORERIE" },
   { accountNumber: "601100", name: "Achats de marchandises — compte principal",                      accountClass: 6, accountType: "CHARGE" },
+  { accountNumber: "602100", name: "Matières premières et consommables — compte principal",           accountClass: 6, accountType: "CHARGE" },
   { accountNumber: "605100", name: "Eau potable — compte principal",                                  accountClass: 6, accountType: "CHARGE" },
   { accountNumber: "605200", name: "Électricité et énergie — compte principal",                      accountClass: 6, accountType: "CHARGE" },
   { accountNumber: "605300", name: "Carburant — compte principal",                                   accountClass: 6, accountType: "CHARGE" },
