@@ -277,7 +277,7 @@ export default function Dashboard() {
               Analyse mensuelle Claude AI : cohérence TVA, ratio charges, anomalies comptables — score de conformité 0-100 avec recommandations Expert-Comptable.
             </p>
             <Button asChild variant="outline" size="sm" className="w-full">
-              <Link href="/clients">
+              <Link href="/scoring">
                 Analyser un dossier
                 <ArrowRight className="ml-2 h-3.5 w-3.5" />
               </Link>
