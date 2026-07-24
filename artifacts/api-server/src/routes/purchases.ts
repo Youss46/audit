@@ -178,14 +178,20 @@ router.get("/purchases/categories", async (_req, res) => {
         }));
 
       return res.json([
-        ...rows.map((r) => ({
-          key:             r.key,
-          label:           r.displayName,
-          account:         r.defaultAccountNumber,
-          accountName:     r.displayName,
-          vatEligible:     r.vatEligible,
-          isImmobilisation: false,
-        })),
+        ...rows.map((r) => {
+          // Le moteur comptable (PURCHASE_CATEGORIES) est la source de vérité
+          // pour le numéro de compte. Si la clé existe dans PURCHASE_CATEGORIES,
+          // on utilise son compte — évite toute désynchronisation avec le seed DB.
+          const engineEntry = PURCHASE_CATEGORIES[r.key as keyof typeof PURCHASE_CATEGORIES];
+          return {
+            key:             r.key,
+            label:           r.displayName,
+            account:         engineEntry ? engineEntry.account : r.defaultAccountNumber,
+            accountName:     engineEntry ? engineEntry.accountName : r.displayName,
+            vatEligible:     r.vatEligible,
+            isImmobilisation: false,
+          };
+        }),
         ...staticSupplements,
       ]);
     }
